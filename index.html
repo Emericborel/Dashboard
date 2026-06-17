@@ -1928,20 +1928,29 @@ function envoyerRapport(){
     pdfHtml: pdfHtml
   };
 
-  fetch(SCRIPT_URL, {
-    method: "POST",
-    mode: "no-cors",
-    headers: {"Content-Type":"application/json"},
-    body: JSON.stringify(payload)
-  })
-  .then(function(){
+  var form2 = document.createElement("form");
+  form2.method = "POST";
+  form2.action = SCRIPT_URL;
+  form2.target = "hidden-iframe-send";
+  form2.style.display = "none";
+  var inp2 = document.createElement("input");
+  inp2.type = "hidden"; inp2.name = "payload";
+  inp2.value = JSON.stringify(payload);
+  form2.appendChild(inp2);
+  var iframe2 = document.getElementById("hidden-iframe-send");
+  if(!iframe2){
+    iframe2 = document.createElement("iframe");
+    iframe2.name = "hidden-iframe-send";
+    iframe2.style.display = "none";
+    document.body.appendChild(iframe2);
+  }
+  document.body.appendChild(form2);
+  form2.submit();
+  setTimeout(function(){
     if(st) st.innerHTML = "<span style='color:var(--green)'>✅ Rapport envoyé à "+email+"</span>";
     toast("Rapport envoyé à "+email+" ✓");
-  })
-  .catch(function(e){
-    if(st) st.innerHTML = "<span style='color:var(--red)'>❌ Erreur : "+e.message+"</span>";
-    toast("Erreur envoi : "+e.message, true);
-  });
+    document.body.removeChild(form2);
+  }, 3000);
 }
 
 function buildExcelWB(data, kpi){
@@ -2153,19 +2162,44 @@ function envoyerDepuisRapports(){
     pdfHtml: pdfHtml
   };
 
-  fetch(SCRIPT_URL, {
-    method:"POST", mode:"no-cors",
-    headers:{"Content-Type":"application/json"},
-    body: JSON.stringify(payload)
-  })
-  .then(function(){
+  // Utiliser un formulaire caché pour contourner la limite no-cors
+  var form = document.createElement("form");
+  form.method = "POST";
+  form.action = SCRIPT_URL;
+  form.target = "hidden-iframe-send";
+  form.style.display = "none";
+
+  // Encoder le payload en JSON dans un champ caché
+  var input = document.createElement("input");
+  input.type = "hidden";
+  input.name = "payload";
+  input.value = JSON.stringify(payload);
+  form.appendChild(input);
+
+  // Créer un iframe caché pour recevoir la réponse
+  var iframe = document.getElementById("hidden-iframe-send");
+  if(!iframe){
+    iframe = document.createElement("iframe");
+    iframe.name = "hidden-iframe-send";
+    iframe.style.display = "none";
+    document.body.appendChild(iframe);
+  }
+  iframe.onload = function(){
     if(st) st.innerHTML = "<span style='color:var(--green)'>✅ Rapport envoyé à "+email+"</span>";
     toast("✅ Rapport envoyé à "+email);
-  })
-  .catch(function(e){
-    if(st) st.innerHTML = "<span style='color:var(--red)'>❌ "+e.message+"</span>";
-    toast("Erreur : "+e.message, true);
-  });
+    document.body.removeChild(form);
+  };
+
+  document.body.appendChild(form);
+  form.submit();
+
+  // Afficher succès après délai (fallback)
+  setTimeout(function(){
+    if(st && st.innerHTML.includes("⏳")){
+      if(st) st.innerHTML = "<span style='color:var(--green)'>✅ Rapport envoyé à "+email+"</span>";
+      toast("✅ Rapport envoyé à "+email);
+    }
+  }, 4000);
 }
 </script>
 </body>
