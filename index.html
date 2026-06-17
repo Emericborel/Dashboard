@@ -1177,10 +1177,11 @@ function buildRapportSelects(){
   var sel=document.getElementById("rap-groupe");if(!sel)return;
   while(sel.options.length>1)sel.remove(1);
   GROUPES.forEach(function(g){var o=document.createElement("option");o.value=g.id;o.textContent=g.nom+" ("+g.entites.length+" entités)";sel.appendChild(o);});
-  // Aussi ajouter les prestataires individuels
-  var prests=[...new Set(WO.map(function(r){return r._f;}).filter(function(v){return v&&v!=="Inconnu";}))].sort();
-  var grp=document.createElement("optgroup");grp.label="Prestataires individuels";
-  prests.slice(0,100).forEach(function(p){var o=document.createElement("option");o.value="__"+p;o.textContent=p;grp.appendChild(o);});
+  // Prestataires individuels avec >50 WO
+  var pCount={};WO.forEach(function(r){if(r._f&&r._f!=="Inconnu")pCount[r._f]=(pCount[r._f]||0)+1;});
+  var prests=Object.entries(pCount).filter(function(e){return e[1]>=50;}).sort(function(a,b){return b[1]-a[1];}).map(function(e){return e[0];});
+  var grp=document.createElement("optgroup");grp.label="Prestataires individuels (≥50 WO)";
+  prests.forEach(function(p){var o=document.createElement("option");o.value="__"+p;o.textContent=p+" ("+fN(pCount[p])+" WO)";grp.appendChild(o);});
   sel.appendChild(grp);
   // Période
   var selP=document.getElementById("rap-periode");if(!selP)return;
@@ -1365,15 +1366,79 @@ function genererPDF(){
     +"<div class='kpi-box'><div class='kpi-label'>WO &gt;30j ouverts</div><div class='kpi-value'>"+fN(kpi.ag30)+"</div><div class='kpi-sub'>"+fN(kpi.ag60)+" &gt;60j</div></div>"
     +"</div>"
     +npsSection
+    +"<div style='display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px'>"
+    +"<div><h3 style='font-size:12px;color:#1a1a2e;margin:0 0 8px;border-bottom:1px solid #e2e4eb;padding-bottom:4px'>Répartition statuts WO</h3>__DONUT__</div>"
+    +"<div><h3 style='font-size:12px;color:#1a1a2e;margin:0 0 8px;border-bottom:1px solid #e2e4eb;padding-bottom:4px'>Taux clôture par entité</h3>__ENTITE_TAUX__</div>"
+    +"</div>"
+    +"<div style='margin-top:16px'><h3 style='font-size:12px;color:#1a1a2e;margin:0 0 8px;border-bottom:1px solid #e2e4eb;padding-bottom:4px'>Évolution mensuelle — WO créés &amp; taux clôture</h3>__EVOL__</div>"
+    +(data.entites.length>1?"<div style='margin-top:16px'><h3 style='font-size:12px;color:#1a1a2e;margin:0 0 8px;border-bottom:1px solid #e2e4eb;padding-bottom:4px'>TTR moyen par entité (jours)</h3>__ENTITE_TTR__</div>":"")
+    +(kpi.npsN>0?"<div style='margin-top:16px'><h3 style='font-size:12px;color:#1a1a2e;margin:0 0 8px;border-bottom:1px solid #e2e4eb;padding-bottom:4px'>Distribution NPS (0→10)</h3>__NPS_DIST__</div>":"")
     +entiteDetail
     +mensuelTable
     +"<div class='footer'><span>Carrefour — Direction Technique France</span><span>Dashboard Maintenance Curative Nationale 2026</span></div>"
     +"</div></body></html>";
 
+  // Build canvas charts as base64 images
+  function buildChartImg(type, labels, datasets, opts){
+    var canvas=document.createElement("canvas");
+    canvas.width=600;canvas.height=220;
+    var ctx2=canvas.getContext("2d");
+    new Chart(ctx2,{type:type,data:{labels:labels,datasets:datasets},options:Object.assign({animation:false,responsive:false,plugins:{legend:{labels:{font:{size:11}}}}},opts||{})});
+    return canvas.toDataURL("image/png");
+  }
+
+  // Chart 1: Donut statuts WO
+  var etats={};["CL","AS","EC","AT","AN"].forEach(function(k){etats[k]=0;});
+  data.wo.forEach(function(r){if(etats[r._e]!==undefined)etats[r._e]++;});
+  var eL={CL:"Clôturés",AS:"Assignés",EC:"En cours",AT:"En attente",AN:"Annulés"};
+  var eC={CL:"#1D9E75",AS:"#378ADD",EC:"#BA7517",AT:"#E24B4A",AN:"#888"};
+  var eKeys=Object.keys(etats).filter(function(k){return etats[k]>0;});
+  var donutImg=buildChartImg("doughnut",eKeys.map(function(k){return eL[k];}),
+    [{data:eKeys.map(function(k){return etats[k];}),backgroundColor:eKeys.map(function(k){return eC[k];}),borderWidth:2,borderColor:"#fff"}],
+    {cutout:"65%",plugins:{legend:{position:"right",labels:{boxWidth:12,padding:8,font:{size:11}}}}});
+
+  // Chart 2: Évolution mensuelle barres + taux
+  var monthsMap2={};data.wo.forEach(function(r){if(r._mo){if(!monthsMap2[r._mo])monthsMap2[r._mo]={cl:0,tot:0,cout:0};monthsMap2[r._mo].tot++;if(r._e==="CL")monthsMap2[r._mo].cl++;}});
+  data.quo.forEach(function(r){if(r._mo&&monthsMap2[r._mo])monthsMap2[r._mo].cout+=r._c;});
+  var mos2=Object.keys(monthsMap2).sort();
+  var evolImg=buildChartImg("bar",mos2.map(mL),[
+    {label:"WO créés",data:mos2.map(function(m){return monthsMap2[m].tot;}),backgroundColor:"rgba(55,138,221,.7)",yAxisID:"y",borderRadius:3},
+    {label:"Taux clôture %",data:mos2.map(function(m){return+(monthsMap2[m].cl/monthsMap2[m].tot*100).toFixed(1);}),type:"line",borderColor:"#1D9E75",backgroundColor:"rgba(29,158,117,.1)",yAxisID:"y2",tension:.3,fill:true,borderWidth:2,pointRadius:4},
+  ],{scales:{y:{position:"left",title:{display:true,text:"WO",font:{size:10}},grid:{color:"rgba(0,0,0,.08)"}},y2:{position:"right",min:0,max:100,title:{display:true,text:"Taux %",font:{size:10}},grid:{display:false},ticks:{callback:function(v){return v+"%";}}}},plugins:{legend:{position:"top",labels:{font:{size:11}}}}});
+
+  // Chart 3: Comparaison entités barres horizontales
+  var entiteLabels=data.entites;
+  var entiteKPIs=data.entites.map(function(e){var eWO=data.wo.filter(function(r){return r._f===e;});var eCl=eWO.filter(function(r){return r._e==="CL";}).length;return eWO.length?+(eCl/eWO.length*100).toFixed(1):0;});
+  var entiteImg=buildChartImg("bar",entiteLabels,[
+    {label:"Taux clôture %",data:entiteKPIs,backgroundColor:entiteKPIs.map(function(v){return v>=70?"#1D9E75":v>=50?"#378ADD":v>=35?"#BA7517":"#E24B4A";}),borderRadius:4}
+  ],{indexAxis:"y",scales:{x:{min:0,max:100,ticks:{callback:function(v){return v+"%";}},grid:{color:"rgba(0,0,0,.08)"}},y:{grid:{display:false}}},plugins:{legend:{display:false}}});
+
+  // Chart 4: TTR comparaison entités
+  var entiteTTR=data.entites.map(function(e){var eWO=data.wo.filter(function(r){return r._f===e&&r._ttr!==null&&r._ttr!==undefined;});return eWO.length?+(eWO.reduce(function(s,r){return s+r._ttr;},0)/eWO.length).toFixed(1):0;});
+  var ttrImg=buildChartImg("bar",entiteLabels,[
+    {label:"TTR moyen (jours)",data:entiteTTR,backgroundColor:entiteTTR.map(function(v){return v<=7?"#1D9E75":v<=15?"#378ADD":v<=30?"#BA7517":"#E24B4A";}),borderRadius:4}
+  ],{indexAxis:"y",scales:{x:{ticks:{callback:function(v){return v+"j";}},grid:{color:"rgba(0,0,0,.08)"}},y:{grid:{display:false}}},plugins:{legend:{display:false}}});
+
+  // Chart 5: NPS distribution
+  var npsImg="";
+  if(kpi.npsN>0){
+    var dist2={};for(var ii=0;ii<=10;ii++)dist2[ii]=0;
+    data.nps.forEach(function(r){if(r._n>=0&&r._n<=10)dist2[Math.round(r._n)]++;});
+    npsImg=buildChartImg("bar",Object.keys(dist2),[
+      {data:Object.values(dist2),backgroundColor:Object.keys(dist2).map(function(k){return k>=9?"#1D9E75":k>=7?"#BA7517":"#E24B4A";}),borderRadius:3}
+    ],{scales:{x:{grid:{display:false}},y:{grid:{color:"rgba(0,0,0,.08)"}}},plugins:{legend:{display:false}}});
+  }
+
   var win=window.open("","_blank");
-  win.document.write(printHTML);
+  win.document.write(printHTML
+    .replace("__DONUT__", donutImg?("<img src='"+donutImg+"' style='width:100%;max-height:200px;object-fit:contain'>"):"")
+    .replace("__EVOL__", evolImg?("<img src='"+evolImg+"' style='width:100%;max-height:200px;object-fit:contain'>"):"")
+    .replace("__ENTITE_TAUX__", entiteImg?("<img src='"+entiteImg+"' style='width:100%;max-height:160px;object-fit:contain'>"):"")
+    .replace("__ENTITE_TTR__", ttrImg?("<img src='"+ttrImg+"' style='width:100%;max-height:160px;object-fit:contain'>"):"")
+    .replace("__NPS_DIST__", npsImg?("<img src='"+npsImg+"' style='width:100%;max-height:160px;object-fit:contain'>"):"")
+  );
   win.document.close();
-  setTimeout(function(){win.print();},500);
+  setTimeout(function(){win.print();},800);
   toast("Rapport PDF ouvert ✓");
 }
 
