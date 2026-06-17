@@ -193,6 +193,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
     <div class="tab" onclick="go('recurrence')">🔁 Récurrence</div>
     <div class="tab" onclick="go('bc')">⚠ Sans BC</div>
     <div class="tab" onclick="go('nps')">⭐ NPS</div>
+    <div class="tab" onclick="go('rapports')" style="border-left:1px solid var(--border);margin-left:auto">📋 Rapports</div>
   </div>
   <div class="fbar">
     <div class="fl"><label>Région</label><select class="fs" id="f-reg" onchange="applyF()"><option value="">Toutes</option></select></div>
@@ -380,6 +381,51 @@ tr:hover td{background:rgba(255,255,255,.025)}
       </div>
     </div>
 
+    <!-- RAPPORTS -->
+    <div class="page" id="page-rapports">
+      <div class="ai alert" style="margin-bottom:14px">
+        💡 Configurez vos groupes prestataires, puis générez un rapport PDF ou Excel consolidé.
+      </div>
+      <!-- Groupes configurés -->
+      <div class="g2">
+        <div class="card">
+          <div class="ch"><div class="ct">Groupes prestataires</div><button onclick="addGroupe()" style="padding:5px 12px;background:var(--blue);color:#fff;border:none;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer">+ Ajouter groupe</button></div>
+          <div id="groupes-list"></div>
+        </div>
+        <div class="card">
+          <div class="ct" style="margin-bottom:12px">Générer un rapport</div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div class="fl"><label>Groupe</label>
+              <select class="fs" id="rap-groupe" style="width:100%" onchange="previewRapport()"><option value="">Sélectionner un groupe…</option></select>
+            </div>
+            <div class="fl"><label>Période</label>
+              <select class="fs" id="rap-periode" style="width:100%"><option value="">Toute la période</option></select>
+            </div>
+            <div class="fl"><label>Contenu</label>
+              <div style="display:flex;flex-direction:column;gap:6px;margin-top:4px">
+                <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--t2);text-transform:none;letter-spacing:0"><input type="checkbox" id="rap-kpi" checked> KPIs consolidés</label>
+                <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--t2);text-transform:none;letter-spacing:0"><input type="checkbox" id="rap-taux" checked> Taux clôture par entité</label>
+                <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--t2);text-transform:none;letter-spacing:0"><input type="checkbox" id="rap-ttr" checked> Délai TTR</label>
+                <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--t2);text-transform:none;letter-spacing:0"><input type="checkbox" id="rap-devis" checked> Analyse devis</label>
+                <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--t2);text-transform:none;letter-spacing:0"><input type="checkbox" id="rap-nps" checked> NPS (si disponible)</label>
+                <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--t2);text-transform:none;letter-spacing:0"><input type="checkbox" id="rap-bc" checked> Devis sans BC</label>
+                <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--t2);text-transform:none;letter-spacing:0"><input type="checkbox" id="rap-detail" checked> Détail par entité</label>
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:4px">
+              <button onclick="genererPDF()" style="flex:1;padding:9px;background:var(--red);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">📄 Exporter PDF</button>
+              <button onclick="genererExcel()" style="flex:1;padding:9px;background:var(--green);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">📊 Exporter Excel</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Prévisualisation -->
+      <div class="card g1" id="rap-preview" style="display:none">
+        <div class="ch"><div><div class="ct" id="rap-preview-title">Aperçu rapport</div><div class="cs" id="rap-preview-sub"></div></div></div>
+        <div id="rap-preview-content"></div>
+      </div>
+    </div>
+
   </div></div>
 </div>
 <div class="toast" id="toast"></div>
@@ -394,7 +440,7 @@ var CHARTS={};
 var TAB="overview";
 var FILES={wo:null,quo:null,nps:null};
 var BUDGETS={};
-var TABS=["overview","taux","magasins","devis","ttr","aging","budget","recurrence","bc","nps"];
+var TABS=["overview","taux","magasins","devis","ttr","aging","budget","recurrence","bc","nps","rapports"];
 
 // ═══════════════════════════════════════════════════════════════
 // UTILITAIRES
@@ -649,7 +695,7 @@ function go(tab){
 function renderAll(){
   var fn={overview:renderOV,taux:renderTaux,magasins:renderMag,devis:renderDevis,
           ttr:renderTTR,aging:renderAging,budget:renderBudget,
-          recurrence:renderRec,bc:renderBC,nps:renderNPS};
+          recurrence:renderRec,bc:renderBC,nps:renderNPS,rapports:renderRapports};
   if(fn[TAB])fn[TAB]();
 }
 
@@ -1097,6 +1143,315 @@ function renderNPS(){
   hbars("b-nps-prest",Object.entries(pMap).filter(function(e){return e[1].n>=5;}).map(function(e){var s=(e[1].p-e[1].d)/e[1].n*100;return{l:e[0],v:s};}).sort(function(a,b){return b.v-a.v;}).slice(0,20),
     function(d){return nC(d.v);},function(d){return(d.v>0?"+":"")+d.v.toFixed(1)+" NPS";});
 }
+
+// ═══════════════════════════════════════════════════════════════
+// RAPPORTS PRESTATAIRES
+// ═══════════════════════════════════════════════════════════════
+var GROUPES = [
+  {id:"equans", nom:"EQUANS", couleur:"#0078D4", entites:["MCI SAS","AXIMA REFRIGERATION FRANCE","AXIMA CONCEPT"]},
+  {id:"dalkia", nom:"DALKIA", couleur:"#E2001A", entites:["DALKIA FROID SOLUTIONS"]},
+];
+
+function renderRapports(){
+  buildGroupesUI();
+  buildRapportSelects();
+}
+
+function buildGroupesUI(){
+  var el=document.getElementById("groupes-list");if(!el)return;
+  if(!GROUPES.length){el.innerHTML="<p style='color:var(--t3);font-size:11px;padding:8px'>Aucun groupe. Cliquez + Ajouter groupe.</p>";return;}
+  el.innerHTML=GROUPES.map(function(g,i){
+    return"<div style='padding:10px 12px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px;border-left:3px solid "+g.couleur+"'>"
+      +"<div style='display:flex;align-items:center;justify-content:space-between;margin-bottom:6px'>"
+      +"<div style='font-size:12px;font-weight:700;color:"+g.couleur+"'>"+g.nom+"</div>"
+      +"<div style='display:flex;gap:6px'>"
+      +"<button onclick='editGroupe("+i+")' style='padding:3px 8px;background:rgba(55,138,221,.15);color:#90c4f5;border:1px solid rgba(55,138,221,.25);border-radius:5px;font-size:10px;cursor:pointer'>✏ Modifier</button>"
+      +"<button onclick='deleteGroupe("+i+")' style='padding:3px 8px;background:rgba(226,75,74,.1);color:var(--red);border:1px solid rgba(226,75,74,.2);border-radius:5px;font-size:10px;cursor:pointer'>✕</button>"
+      +"</div></div>"
+      +"<div style='font-size:10px;color:var(--t3)'>Entités : "+g.entites.join(" · ")+"</div>"
+      +"</div>";
+  }).join("");
+}
+
+function buildRapportSelects(){
+  var sel=document.getElementById("rap-groupe");if(!sel)return;
+  while(sel.options.length>1)sel.remove(1);
+  GROUPES.forEach(function(g){var o=document.createElement("option");o.value=g.id;o.textContent=g.nom+" ("+g.entites.length+" entités)";sel.appendChild(o);});
+  // Aussi ajouter les prestataires individuels
+  var prests=[...new Set(WO.map(function(r){return r._f;}).filter(function(v){return v&&v!=="Inconnu";}))].sort();
+  var grp=document.createElement("optgroup");grp.label="Prestataires individuels";
+  prests.slice(0,100).forEach(function(p){var o=document.createElement("option");o.value="__"+p;o.textContent=p;grp.appendChild(o);});
+  sel.appendChild(grp);
+  // Période
+  var selP=document.getElementById("rap-periode");if(!selP)return;
+  while(selP.options.length>1)selP.remove(1);
+  var months=[...new Set(WO.map(function(r){return r._mo;}).filter(Boolean))].sort();
+  months.forEach(function(m){var o=document.createElement("option");o.value=m;o.textContent=mL(m)+" 2026";selP.appendChild(o);});
+}
+
+function addGroupe(){
+  var nom=prompt("Nom du groupe (ex: EQUANS, OTIS, SCHINDLER)");if(!nom)return;
+  var entites=prompt("Entités (noms exacts des prestataires, séparés par des virgules)");if(!entites)return;
+  var couleur=["#378ADD","#1D9E75","#D85A30","#BA7517","#8B5CF6","#E24B4A"][GROUPES.length%6];
+  GROUPES.push({id:nom.toLowerCase().replace(/\s/g,"_"),nom:nom.toUpperCase(),couleur:couleur,entites:entites.split(",").map(function(s){return s.trim();})});
+  buildGroupesUI();buildRapportSelects();
+  toast("Groupe "+nom.toUpperCase()+" ajouté ✓");
+}
+
+function editGroupe(i){
+  var g=GROUPES[i];
+  var nom=prompt("Nom du groupe",g.nom);if(!nom)return;
+  var entites=prompt("Entités (séparées par des virgules)",g.entites.join(", "));if(!entites)return;
+  GROUPES[i]={...g,nom:nom.toUpperCase(),entites:entites.split(",").map(function(s){return s.trim();})};
+  buildGroupesUI();buildRapportSelects();
+  toast("Groupe modifié ✓");
+}
+
+function deleteGroupe(i){
+  if(!confirm("Supprimer ce groupe ?"))return;
+  GROUPES.splice(i,1);
+  buildGroupesUI();buildRapportSelects();
+}
+
+function getGroupeData(gid){
+  var g=GROUPES.find(function(x){return x.id===gid;});
+  var isIndiv=gid.startsWith("__");
+  var nom=isIndiv?gid.slice(2):(g?g.nom:"");
+  var entites=isIndiv?[gid.slice(2)]:(g?g.entites:[]);
+  var periode=document.getElementById("rap-periode").value||"";
+  var woG=WO.filter(function(r){
+    if(entites.indexOf(r._f)<0)return false;
+    if(periode&&r._mo!==periode)return false;
+    return true;
+  });
+  var quoG=QUO.filter(function(r){
+    if(entites.indexOf(r._f)<0)return false;
+    if(periode&&r._mo!==periode)return false;
+    return true;
+  });
+  var npsG=NPS.filter(function(r){
+    if(entites.indexOf(r._f)<0)return false;
+    if(periode&&r._mo!==periode)return false;
+    return true;
+  });
+  return{nom:nom,entites:entites,couleur:g?g.couleur:"#378ADD",wo:woG,quo:quoG,nps:npsG};
+}
+
+function calcKPIs(wo,quo,nps){
+  var n=wo.length||1;
+  var cl=wo.filter(function(r){return r._e==="CL";}).length;
+  var at=wo.filter(function(r){return r._e==="AT";}).length;
+  var tu=wo.filter(function(r){return r._p==="TU"&&r._e!=="CL"&&r._e!=="AN";}).length;
+  var ttrWO=wo.filter(function(r){return r._ttr!==null&&r._ttr!==undefined;});
+  var ttrMoy=ttrWO.length?ttrWO.reduce(function(s,r){return s+r._ttr;},0)/ttrWO.length:0;
+  var coutTot=quo.reduce(function(s,r){return s+r._c;},0);
+  var coutApp=quo.filter(function(r){return r._s==="APP";}).reduce(function(s,r){return s+r._c;},0);
+  var bcRisk=quo.filter(function(r){return r._s==="APP"&&!r._bc;}).reduce(function(s,r){return s+r._c;},0);
+  var aging=wo.filter(function(r){return r._age>=0;});
+  var ag30=aging.filter(function(r){return r._age>=30;}).length;
+  var ag60=aging.filter(function(r){return r._age>=60;}).length;
+  var npsN=nps.length||1;
+  var npsProm=nps.filter(function(r){return r._cat==="P";}).length;
+  var npsDet=nps.filter(function(r){return r._cat==="D";}).length;
+  var npsScore=(npsProm-npsDet)/npsN*100;
+  var npsMoy=nps.length?nps.reduce(function(s,r){return s+r._n;},0)/npsN:0;
+  return{n:n,cl:cl,at:at,tu:tu,taux:cl/n*100,ttrMoy:ttrMoy,ttrN:ttrWO.length,
+    coutTot:coutTot,coutApp:coutApp,bcRisk:bcRisk,
+    ag30:ag30,ag60:ag60,agN:aging.length,
+    npsScore:npsScore,npsMoy:npsMoy,npsN:nps.length,npsProm:npsProm,npsDet:npsDet};
+}
+
+function previewRapport(){
+  var gid=document.getElementById("rap-groupe").value;if(!gid)return;
+  var data=getGroupeData(gid);
+  var kpi=calcKPIs(data.wo,data.quo,data.nps);
+  var prev=document.getElementById("rap-preview");
+  var title=document.getElementById("rap-preview-title");
+  var sub=document.getElementById("rap-preview-sub");
+  var content=document.getElementById("rap-preview-content");
+  if(!prev)return;
+  prev.style.display="block";
+  title.textContent="Rapport — "+data.nom;
+  sub.textContent=data.entites.join(" + ")+" · "+fN(kpi.n)+" WO";
+  // KPIs grid
+  var kpiHTML="<div class='kg' style='grid-template-columns:repeat(auto-fit,minmax(130px,1fr));margin-bottom:14px'>"
+    +"<div class='kpi' style='border-top-color:"+data.couleur+"'><div class='kl'>WO Total</div><div class='kv'>"+fN(kpi.n)+"</div></div>"
+    +"<div class='kpi' style='border-top-color:var(--green)'><div class='kl'>Taux clôture</div><div class='kv' style='color:"+tC(kpi.taux)+"'>"+kpi.taux.toFixed(1)+"%</div><div class='ks'>"+fN(kpi.cl)+" clôturés</div></div>"
+    +"<div class='kpi' style='border-top-color:var(--red)'><div class='kl'>En attente</div><div class='kv'>"+fN(kpi.at)+"</div><div class='ks'>("+fN(kpi.tu)+" TU)</div></div>"
+    +"<div class='kpi' style='border-top-color:var(--amber)'><div class='kl'>TTR moyen</div><div class='kv'>"+kpi.ttrMoy.toFixed(1)+"j</div><div class='ks'>"+fN(kpi.ttrN)+" WO analysés</div></div>"
+    +"<div class='kpi' style='border-top-color:var(--coral)'><div class='kl'>Coût total</div><div class='kv'>"+fmt(kpi.coutTot)+"</div></div>"
+    +"<div class='kpi' style='border-top-color:var(--red)'><div class='kl'>Sans BC</div><div class='kv'>"+fmt(kpi.bcRisk)+"</div></div>"
+    +(kpi.npsN>0?"<div class='kpi' style='border-top-color:"+nC(kpi.npsScore)+"'><div class='kl'>NPS</div><div class='kv' style='color:"+nC(kpi.npsScore)+"'>"+(kpi.npsScore>0?"+":"")+kpi.npsScore.toFixed(1)+"</div><div class='ks'>"+fN(kpi.npsN)+" éval.</div></div>":"")
+    +"</div>";
+  // Détail par entité
+  var detailHTML="";
+  if(document.getElementById("rap-detail")&&document.getElementById("rap-detail").checked&&data.entites.length>1){
+    detailHTML="<div style='margin-top:14px'><div class='ct' style='margin-bottom:10px'>Détail par entité</div>"
+      +"<div class='tscroll'><table><thead><tr><th>Entité</th><th>WO Total</th><th>Taux clôture</th><th>En attente</th><th>TTR moyen</th><th>Coût devis</th><th>Sans BC</th>"+(kpi.npsN>0?"<th>NPS</th>":"")+"</tr></thead><tbody>";
+    data.entites.forEach(function(e){
+      var eWO=data.wo.filter(function(r){return r._f===e;});
+      var eQUO=data.quo.filter(function(r){return r._f===e;});
+      var eNPS=data.nps.filter(function(r){return r._f===e;});
+      var ek=calcKPIs(eWO,eQUO,eNPS);
+      var pp=ek.taux>=70?"pg":ek.taux>=50?"pb":ek.taux>=35?"pa":"pr";
+      detailHTML+="<tr><td style='font-weight:600;color:"+data.couleur+"'>"+e+"</td>"
+        +"<td>"+fN(ek.n)+"</td>"
+        +"<td><span class='pill "+pp+"'>"+ek.taux.toFixed(1)+"%</span></td>"
+        +"<td>"+fN(ek.at)+(ek.tu>0?" <span style='color:var(--red);font-size:9px'>("+ek.tu+" TU)</span>":"")+"</td>"
+        +"<td>"+ek.ttrMoy.toFixed(1)+"j</td>"
+        +"<td>"+fmt(ek.coutTot)+"</td>"
+        +"<td style='color:"+(ek.bcRisk>0?"var(--red)":"var(--t3)")+"'>"+fmt(ek.bcRisk)+"</td>"
+        +(kpi.npsN>0?"<td>"+(ek.npsN>0?"<span style='color:"+nC(ek.npsScore)+"'>"+(ek.npsScore>0?"+":"")+ek.npsScore.toFixed(1)+"</span>":"—")+"</td>":"")
+        +"</tr>";
+    });
+    detailHTML+="</tbody></table></div></div>";
+  }
+  // WO mensuel par entité
+  var monthsMap={};data.wo.forEach(function(r){if(r._mo){if(!monthsMap[r._mo])monthsMap[r._mo]={cl:0,tot:0};monthsMap[r._mo].tot++;if(r._e==="CL")monthsMap[r._mo].cl++;}});
+  var months=Object.keys(monthsMap).sort();
+  var mensuelHTML="";
+  if(months.length){
+    mensuelHTML="<div style='margin-top:14px'><div class='ct' style='margin-bottom:10px'>Évolution mensuelle</div>"
+      +"<div class='tscroll'><table><thead><tr><th>Mois</th><th>WO créés</th><th>Clôturés</th><th>Taux</th></tr></thead><tbody>"
+      +months.map(function(m){var v=monthsMap[m];var tx=v.cl/v.tot*100;var pp=tx>=70?"pg":tx>=50?"pb":"pa";return"<tr><td>"+mL(m)+"</td><td>"+fN(v.tot)+"</td><td>"+fN(v.cl)+"</td><td><span class='pill "+pp+"'>"+tx.toFixed(1)+"%</span></td></tr>";}).join("")
+      +"</tbody></table></div></div>";
+  }
+  content.innerHTML=kpiHTML+detailHTML+mensuelHTML;
+}
+
+// ── EXPORT PDF ────────────────────────────────────────────────
+function genererPDF(){
+  var gid=document.getElementById("rap-groupe").value;
+  if(!gid){toast("Sélectionnez un groupe",true);return;}
+  var data=getGroupeData(gid);
+  var kpi=calcKPIs(data.wo,data.quo,data.nps);
+  var periode=document.getElementById("rap-periode").value||"Toute la période";
+  var periodeLabel=periode==="Toute la période"?periode:mL(periode)+" 2026";
+  var now=new Date().toLocaleDateString("fr-FR");
+
+  // Build HTML for print
+  var entiteDetail="";
+  if(document.getElementById("rap-detail")&&document.getElementById("rap-detail").checked&&data.entites.length>1){
+    entiteDetail="<h2 style='color:#1a1a2e;font-size:14px;margin:20px 0 10px;border-bottom:2px solid #e2e4eb;padding-bottom:6px'>Détail par entité</h2><table style='width:100%;border-collapse:collapse;font-size:11px'><thead><tr style='background:#f5f6fa'><th style='padding:8px;text-align:left;border-bottom:2px solid #e2e4eb'>Entité</th><th style='padding:8px;text-align:right;border-bottom:2px solid #e2e4eb'>WO Total</th><th style='padding:8px;text-align:right;border-bottom:2px solid #e2e4eb'>Taux clôture</th><th style='padding:8px;text-align:right;border-bottom:2px solid #e2e4eb'>En attente</th><th style='padding:8px;text-align:right;border-bottom:2px solid #e2e4eb'>TTR moyen</th><th style='padding:8px;text-align:right;border-bottom:2px solid #e2e4eb'>Coût devis</th><th style='padding:8px;text-align:right;border-bottom:2px solid #e2e4eb'>Sans BC</th></tr></thead><tbody>";
+    data.entites.forEach(function(e,idx){
+      var eWO=data.wo.filter(function(r){return r._f===e;});
+      var eQUO=data.quo.filter(function(r){return r._f===e;});
+      var ek=calcKPIs(eWO,eQUO,[]);
+      var txColor=ek.taux>=70?"#085041":ek.taux>=50?"#185FA5":ek.taux>=35?"#633806":"#791F1F";
+      entiteDetail+="<tr style='background:"+(idx%2===0?"#fff":"#f9fafb")+"'><td style='padding:8px;font-weight:600;color:"+data.couleur+"'>"+e+"</td><td style='padding:8px;text-align:right'>"+fN(ek.n)+"</td><td style='padding:8px;text-align:right;color:"+txColor+";font-weight:700'>"+ek.taux.toFixed(1)+"%</td><td style='padding:8px;text-align:right'>"+fN(ek.at)+"</td><td style='padding:8px;text-align:right'>"+ek.ttrMoy.toFixed(1)+"j</td><td style='padding:8px;text-align:right'>"+fmt(ek.coutTot)+"</td><td style='padding:8px;text-align:right;color:"+(ek.bcRisk>0?"#791F1F":"#555")+"'>"+fmt(ek.bcRisk)+"</td></tr>";
+    });
+    entiteDetail+="</tbody></table>";
+  }
+
+  // Mensuel
+  var monthsMap={};data.wo.forEach(function(r){if(r._mo){if(!monthsMap[r._mo])monthsMap[r._mo]={cl:0,tot:0,cout:0};monthsMap[r._mo].tot++;if(r._e==="CL")monthsMap[r._mo].cl++;}});
+  data.quo.forEach(function(r){if(r._mo&&monthsMap[r._mo])monthsMap[r._mo].cout+=r._c;});
+  var months=Object.keys(monthsMap).sort();
+  var mensuelTable=months.length?"<h2 style='color:#1a1a2e;font-size:14px;margin:20px 0 10px;border-bottom:2px solid #e2e4eb;padding-bottom:6px'>Évolution mensuelle</h2><table style='width:100%;border-collapse:collapse;font-size:11px'><thead><tr style='background:#f5f6fa'><th style='padding:8px;text-align:left;border-bottom:2px solid #e2e4eb'>Mois</th><th style='padding:8px;text-align:right;border-bottom:2px solid #e2e4eb'>WO créés</th><th style='padding:8px;text-align:right;border-bottom:2px solid #e2e4eb'>Clôturés</th><th style='padding:8px;text-align:right;border-bottom:2px solid #e2e4eb'>Taux clôture</th><th style='padding:8px;text-align:right;border-bottom:2px solid #e2e4eb'>Coût devis</th></tr></thead><tbody>"+months.map(function(m,i){var v=monthsMap[m];var tx=v.cl/v.tot*100;var txC=tx>=70?"#085041":tx>=50?"#185FA5":"#633806";return"<tr style='background:"+(i%2===0?"#fff":"#f9fafb")+"'><td style='padding:8px'>"+mL(m)+" 2026</td><td style='padding:8px;text-align:right'>"+fN(v.tot)+"</td><td style='padding:8px;text-align:right'>"+fN(v.cl)+"</td><td style='padding:8px;text-align:right;font-weight:700;color:"+txC+"'>"+tx.toFixed(1)+"%</td><td style='padding:8px;text-align:right'>"+fmt(v.cout)+"</td></tr>";}).join("")+"</tbody></table>":"";
+
+  var npsSection=kpi.npsN>0?"<div style='background:#f0fdf8;border:1px solid #b9ead8;border-radius:8px;padding:12px 16px;margin-top:12px'><div style='font-size:11px;font-weight:700;color:#085041;margin-bottom:6px'>⭐ NPS — Satisfaction client</div><div style='display:grid;grid-template-columns:repeat(4,1fr);gap:8px;font-size:11px'><div><div style='color:#555'>Score NPS</div><div style='font-size:18px;font-weight:700;color:"+nC(kpi.npsScore)+"'>"+(kpi.npsScore>0?"+":"")+kpi.npsScore.toFixed(1)+"</div></div><div><div style='color:#555'>Évaluations</div><div style='font-size:18px;font-weight:700'>"+fN(kpi.npsN)+"</div></div><div><div style='color:#555'>Note moyenne</div><div style='font-size:18px;font-weight:700'>"+kpi.npsMoy.toFixed(2)+"/10</div></div><div><div style='color:#555'>% Promoteurs</div><div style='font-size:18px;font-weight:700;color:#085041'>"+(kpi.npsProm/kpi.npsN*100).toFixed(1)+"%</div></div></div></div>":"";
+
+  var printHTML="<!DOCTYPE html><html><head><meta charset='UTF-8'><title>Rapport "+data.nom+"</title><style>body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;color:#1a1a2e;margin:0;padding:0}@media print{body{margin:0}}.page{max-width:800px;margin:0 auto;padding:32px 40px}@media print{.page{padding:20px}}.header{display:flex;align-items:center;justify-content:space-between;border-bottom:3px solid "+data.couleur+";padding-bottom:16px;margin-bottom:24px}.logo-area{display:flex;align-items:center;gap:12px}.group-name{font-size:22px;font-weight:800;color:"+data.couleur+"}.subtitle{font-size:11px;color:#888;margin-top:2px}.meta{text-align:right;font-size:11px;color:#888}.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px}.kpi-box{border:1px solid #e2e4eb;border-radius:8px;padding:12px;border-top:3px solid "+data.couleur+"}.kpi-label{font-size:9px;color:#888;text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px}.kpi-value{font-size:18px;font-weight:700}.kpi-sub{font-size:10px;color:#aaa;margin-top:3px}h2{color:#1a1a2e}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:7px 10px;border-bottom:1px solid #f0f2f8}th{font-size:9px;text-transform:uppercase;letter-spacing:.05em;color:#888;background:#f8f9fc}.footer{margin-top:32px;padding-top:12px;border-top:1px solid #e2e4eb;font-size:10px;color:#aaa;display:flex;justify-content:space-between}@media print{.no-print{display:none}}</style></head><body><div class='page'>"
+    +"<div class='header'><div class='logo-area'><div><div class='group-name'>"+data.nom+"</div><div class='subtitle'>Rapport Maintenance Curative · "+data.entites.join(" + ")+"</div></div></div><div class='meta'><div>Carrefour — Direction Technique France</div><div>Période : "+periodeLabel+"</div><div>Généré le "+now+"</div></div></div>"
+    +"<h2 style='font-size:14px;margin:0 0 12px;border-bottom:2px solid #e2e4eb;padding-bottom:6px'>KPIs consolidés groupe</h2>"
+    +"<div class='kpi-grid'>"
+    +"<div class='kpi-box'><div class='kpi-label'>WO Total</div><div class='kpi-value'>"+fN(kpi.n)+"</div></div>"
+    +"<div class='kpi-box'><div class='kpi-label'>Taux clôture</div><div class='kpi-value' style='color:"+(kpi.taux>=70?"#085041":kpi.taux>=50?"#185FA5":"#791F1F")+"'>"+kpi.taux.toFixed(1)+"%</div><div class='kpi-sub'>"+fN(kpi.cl)+" clôturés</div></div>"
+    +"<div class='kpi-box'><div class='kpi-label'>En attente</div><div class='kpi-value'>"+fN(kpi.at)+"</div><div class='kpi-sub'>"+fN(kpi.tu)+" très urgents</div></div>"
+    +"<div class='kpi-box'><div class='kpi-label'>TTR moyen</div><div class='kpi-value'>"+kpi.ttrMoy.toFixed(1)+"j</div><div class='kpi-sub'>"+fN(kpi.ttrN)+" WO clôturés</div></div>"
+    +"<div class='kpi-box'><div class='kpi-label'>Coût total devis</div><div class='kpi-value'>"+fmt(kpi.coutTot)+"</div></div>"
+    +"<div class='kpi-box'><div class='kpi-label'>Approuvés ERP</div><div class='kpi-value'>"+fmt(kpi.coutApp)+"</div></div>"
+    +"<div class='kpi-box'><div class='kpi-label'>Risque sans BC</div><div class='kpi-value' style='color:#791F1F'>"+fmt(kpi.bcRisk)+"</div></div>"
+    +"<div class='kpi-box'><div class='kpi-label'>WO &gt;30j ouverts</div><div class='kpi-value'>"+fN(kpi.ag30)+"</div><div class='kpi-sub'>"+fN(kpi.ag60)+" &gt;60j</div></div>"
+    +"</div>"
+    +npsSection
+    +entiteDetail
+    +mensuelTable
+    +"<div class='footer'><span>Carrefour — Direction Technique France</span><span>Dashboard Maintenance Curative Nationale 2026</span></div>"
+    +"</div></body></html>";
+
+  var win=window.open("","_blank");
+  win.document.write(printHTML);
+  win.document.close();
+  setTimeout(function(){win.print();},500);
+  toast("Rapport PDF ouvert ✓");
+}
+
+// ── EXPORT EXCEL ──────────────────────────────────────────────
+function genererExcel(){
+  var gid=document.getElementById("rap-groupe").value;
+  if(!gid){toast("Sélectionnez un groupe",true);return;}
+  var data=getGroupeData(gid);
+  var kpi=calcKPIs(data.wo,data.quo,data.nps);
+  var wb=XLSX.utils.book_new();
+
+  // Feuille 1 : KPIs consolidés
+  var kpiRows=[
+    ["RAPPORT MAINTENANCE CURATIVE — "+data.nom],
+    ["Généré le",new Date().toLocaleDateString("fr-FR")],
+    ["Entités",data.entites.join(", ")],
+    [],
+    ["INDICATEUR","VALEUR","CONTEXTE"],
+    ["WO Total",kpi.n,""],
+    ["WO Clôturés",kpi.cl,(kpi.taux.toFixed(1)+"%")],
+    ["WO En attente",kpi.at,""],
+    ["WO Très urgents ouverts",kpi.tu,""],
+    ["Taux de clôture",kpi.taux.toFixed(1)+"%",""],
+    ["TTR moyen",kpi.ttrMoy.toFixed(1)+" jours",fN(kpi.ttrN)+" WO analysés"],
+    ["Coût total devis",kpi.coutTot,""],
+    ["Coût approuvés ERP",kpi.coutApp,""],
+    ["Risque sans BC",kpi.bcRisk,""],
+    ["WO ouverts >30j",kpi.ag30,""],
+    ["WO ouverts >60j",kpi.ag60,""],
+    ["Score NPS",kpi.npsN>0?(kpi.npsScore>0?"+":"")+kpi.npsScore.toFixed(1):"N/A",fN(kpi.npsN)+" évaluations"],
+    ["Note NPS moyenne",kpi.npsN>0?kpi.npsMoy.toFixed(2)+"/10":"N/A",""],
+  ];
+  var ws1=XLSX.utils.aoa_to_sheet(kpiRows);
+  ws1["!cols"]=[{wch:30},{wch:20},{wch:25}];
+  XLSX.utils.book_append_sheet(wb,ws1,"KPIs Consolidés");
+
+  // Feuille 2 : Détail par entité
+  if(data.entites.length>1){
+    var detRows=[["DÉTAIL PAR ENTITÉ"],["Entité","WO Total","Clôturés","Taux clôture","En attente","TU ouverts","TTR moyen","Coût devis","Coût approuvés","Sans BC","NPS Score","Nb évaluations"]];
+    data.entites.forEach(function(e){
+      var eWO=data.wo.filter(function(r){return r._f===e;});
+      var eQUO=data.quo.filter(function(r){return r._f===e;});
+      var eNPS=data.nps.filter(function(r){return r._f===e;});
+      var ek=calcKPIs(eWO,eQUO,eNPS);
+      detRows.push([e,ek.n,ek.cl,+(ek.taux.toFixed(1)),ek.at,ek.tu,+(ek.ttrMoy.toFixed(1)),ek.coutTot,ek.coutApp,ek.bcRisk,ek.npsN>0?+(ek.npsScore.toFixed(1)):"N/A",ek.npsN]);
+    });
+    var ws2=XLSX.utils.aoa_to_sheet(detRows);
+    ws2["!cols"]=[{wch:30},{wch:10},{wch:10},{wch:12},{wch:12},{wch:12},{wch:12},{wch:15},{wch:16},{wch:12},{wch:12},{wch:14}];
+    XLSX.utils.book_append_sheet(wb,ws2,"Détail Entités");
+  }
+
+  // Feuille 3 : WO détail
+  var woRows=[["LISTE WO — "+data.nom],["N° WO","Statut","Prestataire","Magasin","Région","Priorité","Mois","Âge (j)","TTR (j)"]];
+  data.wo.slice(0,5000).forEach(function(r){woRows.push([r["Numéro"]||"",r["État"]||"",r._f,r._m,r._r,r._p,r._mo,r._age>=0?r._age:"",r._ttr!==null&&r._ttr!==undefined?+(r._ttr.toFixed(1)):""]);});
+  var ws3=XLSX.utils.aoa_to_sheet(woRows);
+  ws3["!cols"]=[{wch:14},{wch:18},{wch:28},{wch:28},{wch:16},{wch:10},{wch:10},{wch:8},{wch:8}];
+  XLSX.utils.book_append_sheet(wb,ws3,"WO Détail");
+
+  // Feuille 4 : Devis détail
+  var quoRows=[["LISTE DEVIS — "+data.nom],["Statut","Prestataire","Région","Sous-famille","Coût","Mois","BC"]];
+  data.quo.slice(0,5000).forEach(function(r){quoRows.push([r["Statut du devis"]||r._s,r._f,r._r,r._sf,r._c,r._mo,r._bc?"Oui":"Non"]);});
+  var ws4=XLSX.utils.aoa_to_sheet(quoRows);
+  ws4["!cols"]=[{wch:20},{wch:28},{wch:16},{wch:25},{wch:14},{wch:10},{wch:6}];
+  XLSX.utils.book_append_sheet(wb,ws4,"Devis Détail");
+
+  // Feuille 5 : Mensuel
+  var monthsMap={};data.wo.forEach(function(r){if(r._mo){if(!monthsMap[r._mo])monthsMap[r._mo]={cl:0,tot:0,at:0,tu:0,ttrSum:0,ttrN:0};monthsMap[r._mo].tot++;if(r._e==="CL")monthsMap[r._mo].cl++;if(r._e==="AT")monthsMap[r._mo].at++;if(r._p==="TU"&&r._e!=="CL"&&r._e!=="AN")monthsMap[r._mo].tu++;if(r._ttr!==null&&r._ttr!==undefined){monthsMap[r._mo].ttrSum+=r._ttr;monthsMap[r._mo].ttrN++;}}});
+  data.quo.forEach(function(r){if(r._mo&&monthsMap[r._mo]){if(!monthsMap[r._mo].cout)monthsMap[r._mo].cout=0;monthsMap[r._mo].cout+=r._c;}});
+  var mRows=[["ÉVOLUTION MENSUELLE"],["Mois","WO créés","Clôturés","Taux clôture","En attente","TU ouverts","TTR moyen","Coût devis"]];
+  Object.keys(monthsMap).sort().forEach(function(m){var v=monthsMap[m];mRows.push([mL(m)+" 2026",v.tot,v.cl,+(v.cl/v.tot*100).toFixed(1),v.at,v.tu,v.ttrN?+(v.ttrSum/v.ttrN).toFixed(1):"",v.cout||0]);});
+  var ws5=XLSX.utils.aoa_to_sheet(mRows);
+  ws5["!cols"]=[{wch:14},{wch:10},{wch:10},{wch:14},{wch:12},{wch:12},{wch:12},{wch:14}];
+  XLSX.utils.book_append_sheet(wb,ws5,"Évolution Mensuelle");
+
+  XLSX.writeFile(wb,"Rapport_"+data.nom.replace(/\s/g,"_")+"_"+new Date().toISOString().slice(0,10)+".xlsx");
+  toast("Excel exporté ✓ ("+data.entites.length+" entités, "+fN(data.wo.length)+" WO)");
+}
+
 </script>
 </body>
 </html>
