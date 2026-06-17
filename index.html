@@ -165,6 +165,18 @@ tr:hover td{background:rgba(255,255,255,.025)}
   </div>
   <div class="prog-bar" id="pbar"><div class="prog-fill" id="pfill"></div></div>
   <button class="btn-go" id="btngo" onclick="processFiles()">✓ Charger le dashboard</button>
+  <button onclick="ouvrirConfigSplash()" style="background:none;border:none;color:rgba(232,234,240,.3);font-size:11px;cursor:pointer;margin-top:-6px;padding:4px 8px">
+    ⚙ Configurer l'URL Apps Script
+  </button>
+  <div id="config-splash" style="display:none;width:100%;max-width:480px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:14px">
+    <div style="font-size:11px;font-weight:600;margin-bottom:8px;color:var(--t2)">URL Apps Script (pour l'envoi des emails)</div>
+    <div style="display:flex;gap:6px">
+      <input id="splash-script-url" type="text" placeholder="https://script.google.com/a/macros/carrefour.com/s/..."
+        style="flex:1;background:var(--bg);border:1px solid rgba(255,255,255,.1);color:var(--text);border-radius:6px;padding:6px 10px;font-size:11px;font-family:monospace">
+      <button onclick="saveSplashUrl()" style="padding:6px 12px;background:var(--blue);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">OK</button>
+    </div>
+    <div id="splash-url-status" style="font-size:10px;color:var(--t3);margin-top:5px"></div>
+  </div>
 </div>
 
 <!-- APP -->
@@ -763,14 +775,17 @@ function go(tab){
   document.querySelectorAll(".tab").forEach(function(t,i){t.classList.toggle("active",TABS[i]===tab);});
   document.querySelectorAll(".page").forEach(function(p){p.classList.remove("active");});
   var pg=document.getElementById("page-"+tab);if(pg)pg.classList.add("active");
-  renderAll();
+  try { renderAll(); } catch(e){ console.error("render error:", e); }
 }
 
 function renderAll(){
   var fn={overview:renderOV,taux:renderTaux,magasins:renderMag,devis:renderDevis,
           ttr:renderTTR,aging:renderAging,budget:renderBudget,
           recurrence:renderRec,bc:renderBC,nps:renderNPS,rapports:renderRapports,contacts:renderContacts};
-  if(fn[TAB])fn[TAB]();
+  // contacts et rapports fonctionnent même sans données
+  var noDataOk = ["contacts","rapports"];
+  if(!WO.length && noDataOk.indexOf(TAB) < 0) return;
+  if(fn[TAB]) try { fn[TAB](); } catch(e){ console.error("renderAll error:", e); }
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1608,20 +1623,24 @@ function saveScriptUrl(){
 }
 
 function renderContacts(){
-  // Remplir URL si sauvegardée
-  var urlEl = document.getElementById("apps-script-url");
-  if(urlEl && SCRIPT_URL) urlEl.value = SCRIPT_URL;
-  // Remplir sélecteurs envoi
-  buildSendSelects();
-  // Afficher liste contacts
-  displayContacts(CONTACTS);
-  // Mise à jour aperçu message
-  updatePreview();
-  // Remplir période
-  var sp = document.getElementById("send-periode");
-  if(sp && sp.options.length <= 1){
-    var months=[...new Set(WO.map(function(r){return r._mo;}).filter(Boolean))].sort();
-    months.forEach(function(m){var o=document.createElement("option");o.value=m;o.textContent=mL(m)+" 2026";sp.appendChild(o);});
+  try {
+    // Remplir URL si sauvegardée
+    var urlEl = document.getElementById("apps-script-url");
+    if(urlEl && SCRIPT_URL) urlEl.value = SCRIPT_URL;
+    // Afficher liste contacts (fonctionne même sans données WO)
+    displayContacts(CONTACTS);
+    // Remplir sélecteurs envoi
+    buildSendSelects();
+    // Mise à jour aperçu message
+    updatePreview();
+    // Remplir période (seulement si données disponibles)
+    var sp = document.getElementById("send-periode");
+    if(sp && sp.options.length <= 1 && WO && WO.length){
+      var months=[...new Set(WO.map(function(r){return r._mo;}).filter(Boolean))].sort();
+      months.forEach(function(m){var o=document.createElement("option");o.value=m;o.textContent=mL(m)+" 2026";sp.appendChild(o);});
+    }
+  } catch(e) {
+    console.error("renderContacts error:", e);
   }
 }
 
@@ -1898,6 +1917,22 @@ function buildPDFHtml(data, kpi, periodeLabel){
     +"</div></div></body></html>";
 }
 
+
+function ouvrirConfigSplash(){
+  var el = document.getElementById("config-splash");
+  if(el) el.style.display = el.style.display==="none"?"block":"none";
+  var inp = document.getElementById("splash-script-url");
+  if(inp && SCRIPT_URL) inp.value = SCRIPT_URL;
+}
+function saveSplashUrl(){
+  var url = (document.getElementById("splash-script-url").value||"").trim();
+  if(url){ SCRIPT_URL = url; localStorage.setItem("mc_script_url", url); }
+  var st = document.getElementById("splash-url-status");
+  if(st) st.textContent = "✅ URL sauvegardée — accessible dans Contacts après chargement";
+  setTimeout(function(){ var el=document.getElementById("config-splash"); if(el)el.style.display="none"; }, 2000);
+}
+// Charger SCRIPT_URL depuis localStorage au démarrage
+(function(){ SCRIPT_URL = localStorage.getItem("mc_script_url")||""; })();
 </script>
 </body>
 </html>
