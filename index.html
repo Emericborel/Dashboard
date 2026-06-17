@@ -193,7 +193,8 @@ tr:hover td{background:rgba(255,255,255,.025)}
     <div class="tab" onclick="go('recurrence')">🔁 Récurrence</div>
     <div class="tab" onclick="go('bc')">⚠ Sans BC</div>
     <div class="tab" onclick="go('nps')">⭐ NPS</div>
-    <div class="tab" onclick="go('rapports')" style="border-left:1px solid var(--border);margin-left:auto">📋 Rapports</div>
+    <div class="tab" onclick="go('rapports')">📋 Rapports</div>
+    <div class="tab" onclick="go('contacts')" style="border-left:1px solid var(--border);margin-left:auto">📧 Contacts</div>
   </div>
   <div class="fbar">
     <div class="fl"><label>Région</label><select class="fs" id="f-reg" onchange="applyF()"><option value="">Toutes</option></select></div>
@@ -424,6 +425,79 @@ tr:hover td{background:rgba(255,255,255,.025)}
         <div class="ch"><div><div class="ct" id="rap-preview-title">Aperçu rapport</div><div class="cs" id="rap-preview-sub"></div></div></div>
         <div id="rap-preview-content"></div>
       </div>
+    <!-- CONTACTS -->
+    <div class="page" id="page-contacts">
+      <div class="ai alert">
+        💡 Saisissez les emails de vos interlocuteurs prestataires. Ces données sont sauvegardées localement dans votre navigateur.
+        L'envoi se fait via votre Apps Script Carrefour.
+      </div>
+      <!-- Config Apps Script URL -->
+      <div class="card g1">
+        <div class="ch">
+          <div><div class="ct">Configuration Apps Script</div><div class="cs">URL de votre Web App pour l'envoi des emails</div></div>
+          <span class="cbadge cb-b">Requis pour l'envoi</span>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input id="apps-script-url" type="text" placeholder="https://script.google.com/a/macros/carrefour.com/s/..." 
+            style="flex:1;background:var(--bg);border:1px solid rgba(255,255,255,.12);color:var(--text);border-radius:7px;padding:7px 12px;font-size:11px;font-family:monospace">
+          <button onclick="saveScriptUrl()" style="padding:7px 14px;background:var(--blue);color:#fff;border:none;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer">Sauvegarder</button>
+          <button onclick="testerScript()" style="padding:7px 14px;background:rgba(29,158,117,.2);color:#5DCAA5;border:1px solid rgba(29,158,117,.3);border-radius:7px;font-size:11px;font-weight:600;cursor:pointer">Tester</button>
+        </div>
+        <div id="script-status" style="font-size:10px;color:var(--t3);margin-top:6px"></div>
+      </div>
+      <!-- Contacts prestataires -->
+      <div class="g2">
+        <div class="card">
+          <div class="ch">
+            <div><div class="ct">Contacts prestataires</div><div class="cs" id="contacts-count">0 contacts</div></div>
+            <button onclick="addContact()" style="padding:5px 12px;background:var(--blue);color:#fff;border:none;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer">+ Ajouter</button>
+          </div>
+          <!-- Barre recherche -->
+          <input id="contacts-search" type="text" placeholder="🔍 Rechercher un prestataire…" 
+            oninput="filterContacts()"
+            style="width:100%;background:var(--bg);border:1px solid rgba(255,255,255,.1);color:var(--text);border-radius:7px;padding:6px 10px;font-size:11px;margin-bottom:10px">
+          <div id="contacts-list" style="max-height:450px;overflow-y:auto"></div>
+        </div>
+        <div class="card">
+          <div class="ct" style="margin-bottom:12px">Envoi groupé</div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div class="fl"><label>Groupe / Prestataire</label>
+              <select class="fs" id="send-groupe" style="width:100%"><option value="">Sélectionner…</option></select>
+            </div>
+            <div class="fl"><label>Période du rapport</label>
+              <select class="fs" id="send-periode" style="width:100%"><option value="">Toute la période</option></select>
+            </div>
+            <div class="fl"><label>Objet de l'email</label>
+              <input id="send-objet" type="text" value="Rapport performance maintenance — {groupe} — {periode}"
+                style="background:var(--bg);border:1px solid rgba(255,255,255,.1);color:var(--text);border-radius:7px;padding:6px 10px;font-size:11px;width:100%">
+            </div>
+            <div class="fl"><label>Message personnalisé</label>
+              <textarea id="send-message" rows="5"
+                style="width:100%;background:var(--bg);border:1px solid rgba(255,255,255,.1);color:var(--text);border-radius:7px;padding:7px 10px;font-size:11px;resize:vertical;line-height:1.5">Bonjour,
+
+Veuillez trouver ci-joint votre rapport de performance maintenance curative pour la période {periode}.
+
+{message_performance}
+
+Cordialement,
+Direction Technique France — Carrefour</textarea>
+            </div>
+            <div style="display:flex;gap:6px;align-items:center">
+              <input type="checkbox" id="send-pdf" checked>
+              <label style="font-size:11px;color:var(--t2)">Joindre PDF</label>
+              <input type="checkbox" id="send-excel" checked style="margin-left:8px">
+              <label style="font-size:11px;color:var(--t2)">Joindre Excel</label>
+            </div>
+            <!-- Aperçu message -->
+            <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px;font-size:11px;color:var(--t2);max-height:120px;overflow-y:auto" id="send-preview"></div>
+            <button onclick="envoyerRapport()" 
+              style="padding:10px;background:var(--green);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">
+              📧 Envoyer le rapport maintenant
+            </button>
+            <div id="send-status" style="font-size:11px;text-align:center"></div>
+          </div>
+        </div>
+      </div>
     </div>
 
   </div></div>
@@ -440,7 +514,7 @@ var CHARTS={};
 var TAB="overview";
 var FILES={wo:null,quo:null,nps:null};
 var BUDGETS={};
-var TABS=["overview","taux","magasins","devis","ttr","aging","budget","recurrence","bc","nps","rapports"];
+var TABS=["overview","taux","magasins","devis","ttr","aging","budget","recurrence","bc","nps","rapports","contacts"];
 
 // ═══════════════════════════════════════════════════════════════
 // UTILITAIRES
@@ -695,7 +769,7 @@ function go(tab){
 function renderAll(){
   var fn={overview:renderOV,taux:renderTaux,magasins:renderMag,devis:renderDevis,
           ttr:renderTTR,aging:renderAging,budget:renderBudget,
-          recurrence:renderRec,bc:renderBC,nps:renderNPS,rapports:renderRapports};
+          recurrence:renderRec,bc:renderBC,nps:renderNPS,rapports:renderRapports,contacts:renderContacts};
   if(fn[TAB])fn[TAB]();
 }
 
@@ -1515,6 +1589,313 @@ function genererExcel(){
 
   XLSX.writeFile(wb,"Rapport_"+data.nom.replace(/\s/g,"_")+"_"+new Date().toISOString().slice(0,10)+".xlsx");
   toast("Excel exporté ✓ ("+data.entites.length+" entités, "+fN(data.wo.length)+" WO)");
+}
+
+
+// ═══════════════════════════════════════════════════════════════
+// CONTACTS & ENVOI EMAIL
+// ═══════════════════════════════════════════════════════════════
+var CONTACTS = JSON.parse(localStorage.getItem("mc_contacts")||"[]");
+var SCRIPT_URL = localStorage.getItem("mc_script_url")||"";
+
+function saveContacts(){ localStorage.setItem("mc_contacts", JSON.stringify(CONTACTS)); }
+function saveScriptUrl(){
+  var url = document.getElementById("apps-script-url").value.trim();
+  SCRIPT_URL = url;
+  localStorage.setItem("mc_script_url", url);
+  document.getElementById("script-status").textContent = "✅ URL sauvegardée";
+  toast("URL Apps Script sauvegardée ✓");
+}
+
+function renderContacts(){
+  // Remplir URL si sauvegardée
+  var urlEl = document.getElementById("apps-script-url");
+  if(urlEl && SCRIPT_URL) urlEl.value = SCRIPT_URL;
+  // Remplir sélecteurs envoi
+  buildSendSelects();
+  // Afficher liste contacts
+  displayContacts(CONTACTS);
+  // Mise à jour aperçu message
+  updatePreview();
+  // Remplir période
+  var sp = document.getElementById("send-periode");
+  if(sp && sp.options.length <= 1){
+    var months=[...new Set(WO.map(function(r){return r._mo;}).filter(Boolean))].sort();
+    months.forEach(function(m){var o=document.createElement("option");o.value=m;o.textContent=mL(m)+" 2026";sp.appendChild(o);});
+  }
+}
+
+function displayContacts(list){
+  var el = document.getElementById("contacts-list"); if(!el) return;
+  var cnt = document.getElementById("contacts-count");
+  if(cnt) cnt.textContent = CONTACTS.length + " contact(s) · " + list.length + " affiché(s)";
+  if(!list.length){
+    el.innerHTML = "<p style='color:var(--t3);font-size:11px;padding:8px'>Aucun contact. Cliquez + Ajouter.</p>";
+    return;
+  }
+  el.innerHTML = list.map(function(c, i){
+    var realIdx = CONTACTS.indexOf(c);
+    var txColor = c.taux_ref >= 70 ? "#5DCAA5" : c.taux_ref >= 50 ? "#9EC8F5" : c.taux_ref >= 35 ? "#EFC96A" : "#F09595";
+    return "<div style='padding:10px 12px;border:1px solid var(--border);border-radius:8px;margin-bottom:7px;border-left:3px solid "+(c.couleur||"var(--blue)")+"'>"
+      + "<div style='display:flex;align-items:center;justify-content:space-between;margin-bottom:5px'>"
+      + "<div style='font-size:12px;font-weight:700'>"+c.nom+"</div>"
+      + "<div style='display:flex;gap:5px'>"
+      + "<button onclick='editContact("+realIdx+")' style='padding:3px 8px;background:rgba(55,138,221,.12);color:#90c4f5;border:1px solid rgba(55,138,221,.2);border-radius:5px;font-size:10px;cursor:pointer'>✏</button>"
+      + "<button onclick='deleteContact("+realIdx+")' style='padding:3px 8px;background:rgba(226,75,74,.1);color:var(--red);border:1px solid rgba(226,75,74,.2);border-radius:5px;font-size:10px;cursor:pointer'>✕</button>"
+      + "</div></div>"
+      + "<div style='font-size:11px;color:var(--t2)'>📧 "+c.email+"</div>"
+      + (c.email2?"<div style='font-size:10px;color:var(--t3)'>📧 CC: "+c.email2+"</div>":"")
+      + "<div style='display:flex;gap:8px;margin-top:5px;flex-wrap:wrap'>"
+      + (c.groupe?"<span style='font-size:9px;padding:2px 6px;background:rgba(55,138,221,.12);color:#9EC8F5;border-radius:8px'>Groupe: "+c.groupe+"</span>":"")
+      + (c.taux_ref?"<span style='font-size:9px;padding:2px 6px;background:rgba(255,255,255,.06);color:"+txColor+";border-radius:8px'>Objectif: "+c.taux_ref+"%</span>":"")
+      + (c.auto_send?"<span style='font-size:9px;padding:2px 6px;background:rgba(29,158,117,.12);color:#5DCAA5;border-radius:8px'>✓ Envoi auto</span>":"")
+      + "</div>"
+      + "</div>";
+  }).join("");
+}
+
+function filterContacts(){
+  var q = (document.getElementById("contacts-search").value||"").toLowerCase();
+  var filtered = q ? CONTACTS.filter(function(c){return c.nom.toLowerCase().includes(q)||c.email.toLowerCase().includes(q)||(c.groupe||"").toLowerCase().includes(q);}) : CONTACTS;
+  displayContacts(filtered);
+}
+
+function addContact(){
+  var nom = prompt("Nom du prestataire (tel qu'il apparaît dans les données)");
+  if(!nom) return;
+  var email = prompt("Email principal");
+  if(!email) return;
+  var email2 = prompt("Email CC (optionnel — laisser vide pour ignorer)")||"";
+  var groupe = prompt("Groupe (ex: EQUANS) — laisser vide si prestataire seul")||"";
+  var taux_ref = parseFloat(prompt("Objectif taux clôture % (ex: 70)")||"70")||70;
+  var auto_send = confirm("Inclure dans l'envoi automatique mensuel ?");
+  var couleurs = ["#378ADD","#1D9E75","#D85A30","#BA7517","#8B5CF6","#E24B4A"];
+  CONTACTS.push({nom:nom.trim(),email:email.trim(),email2:email2.trim(),groupe:groupe.trim(),taux_ref:taux_ref,auto_send:auto_send,couleur:couleurs[CONTACTS.length%couleurs.length]});
+  saveContacts();
+  displayContacts(CONTACTS);
+  buildSendSelects();
+  toast("Contact ajouté : "+nom+" ✓");
+}
+
+function editContact(i){
+  var c = CONTACTS[i];
+  var nom = prompt("Nom du prestataire", c.nom); if(!nom) return;
+  var email = prompt("Email principal", c.email); if(!email) return;
+  var email2 = prompt("Email CC", c.email2||"")||"";
+  var groupe = prompt("Groupe", c.groupe||"")||"";
+  var taux_ref = parseFloat(prompt("Objectif taux clôture %", c.taux_ref||70))||70;
+  var auto_send = confirm("Inclure dans l'envoi automatique mensuel ?");
+  CONTACTS[i] = {...c, nom:nom.trim(), email:email.trim(), email2:email2.trim(), groupe:groupe.trim(), taux_ref:taux_ref, auto_send:auto_send};
+  saveContacts();
+  displayContacts(CONTACTS);
+  buildSendSelects();
+  toast("Contact modifié ✓");
+}
+
+function deleteContact(i){
+  if(!confirm("Supprimer "+CONTACTS[i].nom+" ?")) return;
+  CONTACTS.splice(i, 1);
+  saveContacts();
+  displayContacts(CONTACTS);
+  buildSendSelects();
+}
+
+function buildSendSelects(){
+  var sel = document.getElementById("send-groupe"); if(!sel) return;
+  while(sel.options.length > 1) sel.remove(1);
+  // Groupes
+  if(GROUPES.length){
+    var og = document.createElement("optgroup"); og.label = "Groupes configurés";
+    GROUPES.forEach(function(g){var o=document.createElement("option");o.value="grp:"+g.id;o.textContent=g.nom+" ("+g.entites.length+" entités)";og.appendChild(o);});
+    sel.appendChild(og);
+  }
+  // Contacts individuels
+  if(CONTACTS.length){
+    var oc = document.createElement("optgroup"); oc.label = "Contacts individuels";
+    CONTACTS.forEach(function(c,i){var o=document.createElement("option");o.value="cnt:"+i;o.textContent=c.nom+(c.groupe?" ["+c.groupe+"]":"");oc.appendChild(o);});
+    sel.appendChild(oc);
+  }
+  sel.onchange = updatePreview;
+}
+
+function getMessagePerformance(taux, objectif){
+  var diff = taux - objectif;
+  if(taux >= 70) return "🟢 Excellente performance : votre taux de clôture de "+taux.toFixed(1)+"% dépasse l'objectif fixé ("+objectif+"%). Félicitations pour la qualité de vos interventions.";
+  if(taux >= 50) return "🔵 Bonne performance : votre taux de clôture de "+taux.toFixed(1)+"% est satisfaisant. Un effort supplémentaire permettrait d'atteindre l'objectif de "+objectif+"%.";
+  if(taux >= 35) return "🟡 Performance à améliorer : votre taux de clôture de "+taux.toFixed(1)+"% est en deçà de l'objectif ("+objectif+"%). Nous vous invitons à analyser les points bloquants.";
+  return "🔴 Performance insuffisante : votre taux de clôture de "+taux.toFixed(1)+"% nécessite une action corrective urgente. Un plan d'amélioration est attendu.";
+}
+
+function updatePreview(){
+  var sel = document.getElementById("send-groupe");
+  var msg = document.getElementById("send-message");
+  var prev = document.getElementById("send-preview");
+  if(!sel||!msg||!prev) return;
+  var val = sel.value;
+  var periode = document.getElementById("send-periode").value||"Toute la période";
+  var periodeLabel = periode==="Toute la période"?periode:mL(periode)+" 2026";
+  // Calculer taux selon sélection
+  var taux = 0, objectif = 70, nomGroupe = "";
+  if(val.startsWith("cnt:")){
+    var ci = parseInt(val.slice(4));
+    var c = CONTACTS[ci];
+    if(c){
+      nomGroupe = c.nom;
+      objectif = c.taux_ref||70;
+      var woC = WO.filter(function(r){return r._f===c.nom&&(!periode||r._mo===periode);});
+      var clC = woC.filter(function(r){return r._e==="CL";}).length;
+      taux = woC.length ? clC/woC.length*100 : 0;
+    }
+  } else if(val.startsWith("grp:")){
+    var gid = val.slice(4);
+    var g = GROUPES.find(function(x){return x.id===gid;});
+    if(g){
+      nomGroupe = g.nom;
+      var woG = WO.filter(function(r){return g.entites.indexOf(r._f)>=0&&(!periode||r._mo===periode);});
+      var clG = woG.filter(function(r){return r._e==="CL";}).length;
+      taux = woG.length ? clG/woG.length*100 : 0;
+    }
+  }
+  var msgPerf = taux>0 ? getMessagePerformance(taux, objectif) : "[Sélectionnez un groupe pour voir le message personnalisé]";
+  var preview = msg.value
+    .replace("{groupe}", nomGroupe||"[groupe]")
+    .replace("{periode}", periodeLabel)
+    .replace("{message_performance}", msgPerf);
+  prev.textContent = preview;
+}
+
+function testerScript(){
+  if(!SCRIPT_URL){ toast("Saisissez d'abord l'URL Apps Script", true); return; }
+  var st = document.getElementById("script-status");
+  if(st) st.textContent = "⏳ Test en cours…";
+  fetch(SCRIPT_URL+"?action=ping", {method:"GET", mode:"no-cors"})
+    .then(function(){if(st) st.textContent = "✅ Apps Script accessible";toast("Apps Script accessible ✓");})
+    .catch(function(e){if(st) st.textContent = "❌ Erreur : "+e.message;toast("Erreur connexion", true);});
+}
+
+function envoyerRapport(){
+  var val = document.getElementById("send-groupe").value;
+  if(!val){ toast("Sélectionnez un groupe ou prestataire", true); return; }
+  if(!SCRIPT_URL){ toast("Configurez d'abord l'URL Apps Script dans l'onglet Contacts", true); return; }
+
+  // Trouver le contact et son email
+  var email = "", email2 = "", nomGroupe = "", gid = "", objectif = 70;
+  if(val.startsWith("cnt:")){
+    var ci = parseInt(val.slice(4));
+    var c = CONTACTS[ci];
+    if(!c){ toast("Contact introuvable", true); return; }
+    email = c.email; email2 = c.email2||""; nomGroupe = c.nom; objectif = c.taux_ref||70;
+    gid = "__"+c.nom;
+  } else if(val.startsWith("grp:")){
+    gid = val.slice(4);
+    var g = GROUPES.find(function(x){return x.id===gid;});
+    if(!g){ toast("Groupe introuvable", true); return; }
+    nomGroupe = g.nom;
+    // Chercher email dans contacts
+    var cFound = CONTACTS.find(function(x){return x.groupe===g.nom||x.nom===g.nom;});
+    if(cFound){ email=cFound.email; email2=cFound.email2||""; objectif=cFound.taux_ref||70; }
+    else { email = prompt("Email destinataire pour "+g.nom+":");}
+    if(!email){ toast("Email requis", true); return; }
+  }
+
+  var periode = document.getElementById("send-periode").value||"";
+  var periodeLabel = periode?mL(periode)+" 2026":"Toute la période";
+  var objet = (document.getElementById("send-objet").value||"Rapport performance maintenance")
+    .replace("{groupe}", nomGroupe).replace("{periode}", periodeLabel);
+
+  // Calcul taux pour message
+  var data = getGroupeData(gid);
+  var kpi = calcKPIs(data.wo, data.quo, data.nps);
+  var msgPerf = getMessagePerformance(kpi.taux, objectif);
+  var message = (document.getElementById("send-message").value||"")
+    .replace("{groupe}", nomGroupe).replace("{periode}", periodeLabel)
+    .replace("{message_performance}", msgPerf);
+
+  var st = document.getElementById("send-status");
+  if(st) st.innerHTML = "<span style='color:var(--amber)'>⏳ Génération des pièces jointes…</span>";
+
+  // Générer Excel en base64
+  var excelB64 = "";
+  if(document.getElementById("send-excel").checked){
+    var wb = buildExcelWB(data, kpi);
+    var wbout = XLSX.write(wb, {bookType:"xlsx", type:"base64"});
+    excelB64 = wbout;
+  }
+
+  // Générer PDF HTML
+  var pdfHtml = "";
+  if(document.getElementById("send-pdf").checked){
+    pdfHtml = buildPDFHtml(data, kpi, periodeLabel);
+  }
+
+  if(st) st.innerHTML = "<span style='color:var(--amber)'>⏳ Envoi en cours…</span>";
+
+  // Appel Apps Script
+  var payload = {
+    action: "sendRapport",
+    to: email,
+    cc: email2,
+    objet: objet,
+    message: message,
+    nomGroupe: nomGroupe,
+    periode: periodeLabel,
+    kpi: {
+      n: kpi.n, cl: kpi.cl, taux: kpi.taux.toFixed(1),
+      at: kpi.at, tu: kpi.tu, ttrMoy: kpi.ttrMoy.toFixed(1),
+      cout: fmt(kpi.coutTot), bcRisk: fmt(kpi.bcRisk),
+      npsScore: kpi.npsN>0?kpi.npsScore.toFixed(1):"N/A"
+    },
+    excelB64: excelB64,
+    excelNom: "Rapport_"+nomGroupe.replace(/\s/g,"_")+"_"+new Date().toISOString().slice(0,10)+".xlsx",
+    pdfHtml: pdfHtml
+  };
+
+  fetch(SCRIPT_URL, {
+    method: "POST",
+    mode: "no-cors",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify(payload)
+  })
+  .then(function(){
+    if(st) st.innerHTML = "<span style='color:var(--green)'>✅ Rapport envoyé à "+email+"</span>";
+    toast("Rapport envoyé à "+email+" ✓");
+  })
+  .catch(function(e){
+    if(st) st.innerHTML = "<span style='color:var(--red)'>❌ Erreur : "+e.message+"</span>";
+    toast("Erreur envoi : "+e.message, true);
+  });
+}
+
+function buildExcelWB(data, kpi){
+  var wb = XLSX.utils.book_new();
+  var kpiRows=[
+    ["RAPPORT MAINTENANCE CURATIVE — "+data.nom],
+    ["WO Total",kpi.n],["Clôturés",kpi.cl],["%",+(kpi.taux.toFixed(1))],
+    ["En attente",kpi.at],["TU ouverts",kpi.tu],
+    ["TTR moyen (j)",+(kpi.ttrMoy.toFixed(1))],
+    ["Coût devis",kpi.coutTot],["Sans BC",kpi.bcRisk],
+    ["NPS",kpi.npsN>0?+(kpi.npsScore.toFixed(1)):"N/A"]
+  ];
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(kpiRows), "KPIs");
+  var woRows=[["N° WO","Statut","Prestataire","Magasin","Région","Priorité","Mois","Âge","TTR"]];
+  data.wo.slice(0,5000).forEach(function(r){woRows.push([r["Numéro"]||"",r["État"]||"",r._f,r._m,r._r,r._p,r._mo,r._age>=0?r._age:"",r._ttr!=null?+(r._ttr.toFixed(1)):""]);});
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(woRows), "WO Détail");
+  return wb;
+}
+
+function buildPDFHtml(data, kpi, periodeLabel){
+  var txColor = kpi.taux>=70?"#085041":kpi.taux>=50?"#185FA5":kpi.taux>=35?"#633806":"#791F1F";
+  return "<!DOCTYPE html><html><head><meta charset=UTF-8><style>body{font-family:system-ui;color:#1a1a2e;margin:0;padding:0}.p{padding:28px 36px;max-width:750px;margin:0 auto}.hdr{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid "+data.couleur+";padding-bottom:14px;margin-bottom:20px}.gn{font-size:20px;font-weight:800;color:"+data.couleur+"}.gs{font-size:11px;color:#888;margin-top:3px}.meta{text-align:right;font-size:11px;color:#888}.kg{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px}.k{border:1px solid #e2e4eb;border-radius:7px;padding:10px;border-top:3px solid "+data.couleur+"}.kl{font-size:9px;color:#888;text-transform:uppercase;margin-bottom:4px}.kv{font-size:16px;font-weight:700}.ks{font-size:9px;color:#bbb;margin-top:2px}</style></head><body><div class=p>"
+    +"<div class=hdr><div><div class=gn>"+data.nom+"</div><div class=gs>"+data.entites.join(" + ")+"</div></div><div class=meta>Carrefour DTF<br>"+periodeLabel+"<br>"+new Date().toLocaleDateString("fr-FR")+"</div></div>"
+    +"<div class=kg>"
+    +"<div class=k><div class=kl>WO Total</div><div class=kv>"+fN(kpi.n)+"</div></div>"
+    +"<div class=k><div class=kl>Taux clôture</div><div class=kv style=color:"+txColor+">"+kpi.taux.toFixed(1)+"%</div><div class=ks>"+fN(kpi.cl)+" clôturés</div></div>"
+    +"<div class=k><div class=kl>En attente</div><div class=kv>"+fN(kpi.at)+"</div><div class=ks>"+fN(kpi.tu)+" TU</div></div>"
+    +"<div class=k><div class=kl>TTR moyen</div><div class=kv>"+kpi.ttrMoy.toFixed(1)+"j</div></div>"
+    +"<div class=k><div class=kl>Coût devis</div><div class=kv>"+fmt(kpi.coutTot)+"</div></div>"
+    +"<div class=k><div class=kl>Sans BC</div><div class=kv style=color:#791F1F>"+fmt(kpi.bcRisk)+"</div></div>"
+    +(kpi.npsN>0?"<div class=k><div class=kl>NPS</div><div class=kv style=color:"+nC(kpi.npsScore)+">"+(kpi.npsScore>0?"+":"")+kpi.npsScore.toFixed(1)+"</div></div>":"")
+    +"</div></div></body></html>";
 }
 
 </script>
