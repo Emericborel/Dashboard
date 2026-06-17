@@ -181,7 +181,51 @@ tr:hover td{background:rgba(255,255,255,.025)}
   </div>
   <div class="prog-bar" id="pbar"><div class="prog-fill" id="pfill"></div></div>
   <button class="btn-go" id="btngo" onclick="processFiles()">✓ Charger le dashboard</button>
+  <button onclick="ouvrirModalContacts()" style="background:rgba(55,138,221,.12);border:1px solid rgba(55,138,221,.25);color:#90c4f5;font-size:11px;font-weight:600;cursor:pointer;padding:7px 18px;border-radius:8px;margin-top:-4px">
+    📧 Gérer les contacts prestataires
+  </button>
 
+  <!-- MODAL CONTACTS (accessible depuis l'accueil) -->
+  <div id="modal-contacts" style="display:none;position:fixed;inset:0;background:rgba(10,12,28,.85);z-index:9999;overflow-y:auto;padding:20px">
+    <div style="max-width:800px;margin:0 auto;background:var(--bg3);border-radius:14px;padding:24px;border:1px solid var(--border)">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
+        <div style="font-size:16px;font-weight:700">📧 Contacts prestataires</div>
+        <button onclick="fermerModalContacts()" style="background:rgba(226,75,74,.15);border:1px solid rgba(226,75,74,.25);color:var(--red);border-radius:7px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer">✕ Fermer</button>
+      </div>
+      <div class="ai alert" style="margin-bottom:14px">
+        💡 Ces données sont sauvegardées dans votre navigateur. Elles seront disponibles après le chargement des fichiers Excel.
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <!-- Liste contacts -->
+        <div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+            <div style="font-size:12px;font-weight:600" id="modal-contacts-count">0 contacts</div>
+            <button onclick="addContact();renderModalContacts()" style="padding:5px 12px;background:var(--blue);color:#fff;border:none;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer">+ Ajouter</button>
+          </div>
+          <input type="text" placeholder="🔍 Rechercher…" oninput="filterModalContacts(this.value)"
+            style="width:100%;background:var(--bg);border:1px solid rgba(255,255,255,.1);color:var(--text);border-radius:7px;padding:6px 10px;font-size:11px;margin-bottom:10px">
+          <div id="modal-contacts-list" style="max-height:400px;overflow-y:auto"></div>
+        </div>
+        <!-- Config URL -->
+        <div>
+          <div style="font-size:12px;font-weight:600;margin-bottom:10px">⚙ Configuration Apps Script</div>
+          <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:12px">
+            <div style="font-size:10px;color:var(--t3);margin-bottom:6px">URL Web App pour l'envoi des emails</div>
+            <div style="display:flex;gap:6px">
+              <input id="modal-script-url" type="text" placeholder="https://script.google.com/..."
+                style="flex:1;background:var(--bg2);border:1px solid rgba(255,255,255,.1);color:var(--text);border-radius:6px;padding:6px 8px;font-size:10px;font-family:monospace">
+              <button onclick="saveModalUrl()" style="padding:6px 10px;background:var(--blue);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">OK</button>
+            </div>
+            <div id="modal-url-status" style="font-size:10px;color:var(--green);margin-top:5px"></div>
+          </div>
+          <!-- Groupes rapides -->
+          <div style="font-size:12px;font-weight:600;margin-bottom:10px">Groupes configurés</div>
+          <div id="modal-groupes-list" style="max-height:200px;overflow-y:auto"></div>
+          <button onclick="addGroupe();renderModalGroupes()" style="margin-top:8px;width:100%;padding:7px;background:rgba(55,138,221,.12);color:#90c4f5;border:1px solid rgba(55,138,221,.2);border-radius:7px;font-size:11px;font-weight:600;cursor:pointer">+ Ajouter un groupe</button>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- APP -->
@@ -1946,6 +1990,73 @@ function saveSplashUrl(){
     }
   });
 })();
+
+// ── MODAL CONTACTS (accessible depuis splash) ─────────────────
+function ouvrirModalContacts(){
+  document.getElementById("modal-contacts").style.display="block";
+  var inp = document.getElementById("modal-script-url");
+  if(inp && SCRIPT_URL) inp.value = SCRIPT_URL;
+  renderModalContacts();
+  renderModalGroupes();
+}
+function fermerModalContacts(){
+  document.getElementById("modal-contacts").style.display="none";
+  // Sync avec l'onglet contacts si données chargées
+  if(WO.length) renderContacts();
+}
+function saveModalUrl(){
+  var url=(document.getElementById("modal-script-url").value||"").trim();
+  if(url){ SCRIPT_URL=url; localStorage.setItem("mc_script_url",url); }
+  // Sync splash input aussi
+  var si=document.getElementById("splash-script-url"); if(si&&url) si.value=url;
+  var ai=document.getElementById("apps-script-url"); if(ai&&url) ai.value=url;
+  var st=document.getElementById("modal-url-status");
+  if(st){st.textContent="✅ URL sauvegardée";setTimeout(function(){if(st)st.textContent="";},3000);}
+}
+function renderModalContacts(){
+  var el=document.getElementById("modal-contacts-list");
+  var cnt=document.getElementById("modal-contacts-count");
+  if(!el)return;
+  if(cnt) cnt.textContent=CONTACTS.length+" contact(s)";
+  if(!CONTACTS.length){el.innerHTML="<p style='color:var(--t3);font-size:11px;padding:8px'>Aucun contact.</p>";return;}
+  el.innerHTML=CONTACTS.map(function(c,i){
+    return"<div style='padding:9px 11px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;border-left:3px solid "+(c.couleur||"var(--blue)")+"'>"
+      +"<div style='display:flex;align-items:center;justify-content:space-between'>"
+      +"<div style='font-size:11px;font-weight:700'>"+c.nom+"</div>"
+      +"<div style='display:flex;gap:4px'>"
+      +"<button onclick='editContact("+i+");renderModalContacts()' style='padding:2px 7px;background:rgba(55,138,221,.12);color:#90c4f5;border:1px solid rgba(55,138,221,.2);border-radius:5px;font-size:10px;cursor:pointer'>✏</button>"
+      +"<button onclick='deleteContact("+i+");renderModalContacts()' style='padding:2px 7px;background:rgba(226,75,74,.1);color:var(--red);border:1px solid rgba(226,75,74,.2);border-radius:5px;font-size:10px;cursor:pointer'>✕</button>"
+      +"</div></div>"
+      +"<div style='font-size:10px;color:var(--t2);margin-top:3px'>📧 "+c.email+"</div>"
+      +(c.groupe?"<div style='font-size:9px;color:var(--t3);margin-top:2px'>Groupe: "+c.groupe+(c.auto_send?" · ✓ Auto":"")+"</div>":"")
+      +"</div>";
+  }).join("");
+}
+function filterModalContacts(q){
+  var el=document.getElementById("modal-contacts-list"); if(!el)return;
+  q=q.toLowerCase();
+  var filtered=q?CONTACTS.filter(function(c){return c.nom.toLowerCase().includes(q)||c.email.toLowerCase().includes(q);}) : CONTACTS;
+  el.innerHTML=filtered.map(function(c,i){
+    var ri=CONTACTS.indexOf(c);
+    return"<div style='padding:9px 11px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;border-left:3px solid "+(c.couleur||"var(--blue)")+"'>"
+      +"<div style='font-size:11px;font-weight:700'>"+c.nom+"</div>"
+      +"<div style='font-size:10px;color:var(--t2)'>📧 "+c.email+"</div>"
+      +"</div>";
+  }).join("");
+}
+function renderModalGroupes(){
+  var el=document.getElementById("modal-groupes-list"); if(!el)return;
+  if(!GROUPES.length){el.innerHTML="<p style='color:var(--t3);font-size:11px;padding:4px'>Aucun groupe.</p>";return;}
+  el.innerHTML=GROUPES.map(function(g,i){
+    return"<div style='padding:8px 10px;border:1px solid var(--border);border-radius:7px;margin-bottom:5px;border-left:3px solid "+g.couleur+"'>"
+      +"<div style='display:flex;align-items:center;justify-content:space-between'>"
+      +"<div style='font-size:11px;font-weight:700;color:"+g.couleur+"'>"+g.nom+"</div>"
+      +"<button onclick='deleteGroupe("+i+");renderModalGroupes()' style='padding:2px 7px;background:rgba(226,75,74,.1);color:var(--red);border:1px solid rgba(226,75,74,.2);border-radius:5px;font-size:10px;cursor:pointer'>✕</button>"
+      +"</div>"
+      +"<div style='font-size:9px;color:var(--t3);margin-top:2px'>"+g.entites.join(" · ")+"</div>"
+      +"</div>";
+  }).join("");
+}
 </script>
 </body>
 </html>
