@@ -478,6 +478,14 @@ tr:hover td{background:rgba(255,255,255,.025)}
               <button onclick="genererPDF()" style="flex:1;padding:9px;background:var(--red);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">📄 Exporter PDF</button>
               <button onclick="genererExcel()" style="flex:1;padding:9px;background:var(--green);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">📊 Exporter Excel</button>
             </div>
+            <div style="border-top:1px solid var(--border);margin-top:12px;padding-top:12px">
+              <div style="font-size:10px;color:var(--t3);margin-bottom:8px">✉ Envoi par email (Apps Script requis)</div>
+              <div id="rap-email-info" style="font-size:11px;color:var(--t2);margin-bottom:8px;padding:8px;background:var(--bg);border-radius:6px;min-height:32px"></div>
+              <button onclick="envoyerDepuisRapports()" style="width:100%;padding:10px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">
+                📧 Envoyer par email
+              </button>
+              <div id="rap-send-status" style="font-size:11px;text-align:center;margin-top:6px"></div>
+            </div>
           </div>
         </div>
       </div>
@@ -1402,6 +1410,8 @@ function calcKPIs(wo,quo,nps){
 
 function previewRapport(){
   var gid=document.getElementById("rap-groupe").value;if(!gid)return;
+  // Mise à jour info email
+  updateRapEmailInfo(gid);
   var data=getGroupeData(gid);
   var kpi=calcKPIs(data.wo,data.quo,data.nps);
   var prev=document.getElementById("rap-preview");
@@ -2056,6 +2066,106 @@ function renderModalGroupes(){
       +"<div style='font-size:9px;color:var(--t3);margin-top:2px'>"+g.entites.join(" · ")+"</div>"
       +"</div>";
   }).join("");
+}
+
+function updateRapEmailInfo(gid){
+  var el = document.getElementById("rap-email-info"); if(!el) return;
+  // Chercher contact correspondant
+  var nomGroupe = "";
+  var email = "";
+  if(gid && gid.startsWith("__")){
+    nomGroupe = gid.slice(2);
+  } else {
+    var g = GROUPES.find(function(x){return x.id===gid;});
+    if(g) nomGroupe = g.nom;
+  }
+  // Chercher dans CONTACTS
+  var c = CONTACTS.find(function(x){
+    return x.nom===nomGroupe || x.groupe===nomGroupe ||
+           (gid&&gid.startsWith("__")&&x.nom===gid.slice(2));
+  });
+  if(c){
+    el.innerHTML = "📧 <strong>"+c.email+"</strong>"+(c.email2?" · CC: "+c.email2:"")
+      +"<br><span style='font-size:10px;color:var(--t3)'>Objectif: "+c.taux_ref+"% · "+(c.auto_send?"✓ Envoi auto actif":"Envoi auto désactivé")+"</span>";
+  } else if(!SCRIPT_URL){
+    el.innerHTML = "<span style='color:var(--red)'>⚠ Configurez d'abord l'URL Apps Script dans Contacts</span>";
+  } else {
+    el.innerHTML = "<span style='color:var(--amber)'>⚠ Aucun contact trouvé pour ce groupe — l'email sera demandé à l'envoi</span>";
+  }
+}
+
+function envoyerDepuisRapports(){
+  var gid = document.getElementById("rap-groupe").value;
+  if(!gid){ toast("Sélectionnez un groupe d'abord", true); return; }
+  if(!SCRIPT_URL){ toast("Configurez l'URL Apps Script dans l'onglet Contacts", true); return; }
+
+  var nomGroupe = "";
+  var email = "", email2 = "", objectif = 70;
+
+  if(gid.startsWith("__")){
+    nomGroupe = gid.slice(2);
+  } else {
+    var g = GROUPES.find(function(x){return x.id===gid;});
+    if(g) nomGroupe = g.nom;
+  }
+
+  // Chercher contact
+  var c = CONTACTS.find(function(x){
+    return x.nom===nomGroupe || x.groupe===nomGroupe ||
+           (gid.startsWith("__")&&x.nom===gid.slice(2));
+  });
+
+  if(c){
+    email = c.email; email2 = c.email2||""; objectif = c.taux_ref||70;
+  } else {
+    email = prompt("Email destinataire pour "+nomGroupe+" :");
+    if(!email){ return; }
+  }
+
+  var periode = document.getElementById("rap-periode").value||"";
+  var periodeLabel = periode ? mL(periode)+" 2026" : "Toute la période";
+  var data = getGroupeData(gid);
+  var kpi = calcKPIs(data.wo, data.quo, data.nps);
+  var msgPerf = getMessagePerformance(kpi.taux, objectif);
+
+  var objet = "Rapport performance maintenance — "+nomGroupe+" — "+periodeLabel;
+  var message = "Bonjour,\n\nVeuillez trouver ci-joint votre rapport de performance maintenance curative pour la période "+periodeLabel+".\n\n"+msgPerf+"\n\nCordialement,\nDirection Technique France — Carrefour";
+
+  var st = document.getElementById("rap-send-status");
+  if(st) st.innerHTML = "<span style='color:var(--amber)'>⏳ Génération et envoi en cours…</span>";
+
+  // Excel
+  var wb = buildExcelWB(data, kpi);
+  var excelB64 = XLSX.write(wb, {bookType:"xlsx", type:"base64"});
+  // PDF HTML
+  var pdfHtml = buildPDFHtml(data, kpi, periodeLabel);
+
+  var payload = {
+    action: "sendRapport",
+    to: email, cc: email2,
+    objet: objet, message: message,
+    nomGroupe: nomGroupe, periode: periodeLabel,
+    kpi: {n:kpi.n, cl:kpi.cl, taux:kpi.taux.toFixed(1), at:kpi.at, tu:kpi.tu,
+          ttrMoy:kpi.ttrMoy.toFixed(1), cout:fmt(kpi.coutTot), bcRisk:fmt(kpi.bcRisk),
+          npsScore:kpi.npsN>0?kpi.npsScore.toFixed(1):"N/A"},
+    excelB64: excelB64,
+    excelNom: "Rapport_"+nomGroupe.replace(/\s/g,"_")+"_"+new Date().toISOString().slice(0,10)+".xlsx",
+    pdfHtml: pdfHtml
+  };
+
+  fetch(SCRIPT_URL, {
+    method:"POST", mode:"no-cors",
+    headers:{"Content-Type":"application/json"},
+    body: JSON.stringify(payload)
+  })
+  .then(function(){
+    if(st) st.innerHTML = "<span style='color:var(--green)'>✅ Rapport envoyé à "+email+"</span>";
+    toast("✅ Rapport envoyé à "+email);
+  })
+  .catch(function(e){
+    if(st) st.innerHTML = "<span style='color:var(--red)'>❌ "+e.message+"</span>";
+    toast("Erreur : "+e.message, true);
+  });
 }
 </script>
 </body>
