@@ -1478,169 +1478,149 @@ function genererPDF(){
   var periodeLabel=periode==="Toute la période"?periode:mL(periode)+" 2026";
   var now=new Date().toLocaleDateString("fr-FR");
 
-  // Build HTML for print
-  var entiteDetail="";
-  if(document.getElementById("rap-detail")&&document.getElementById("rap-detail").checked&&data.entites.length>1){
-    entiteDetail="<h2 style='color:#1a1a2e;font-size:14px;margin:20px 0 10px;border-bottom:2px solid #e2e4eb;padding-bottom:6px'>Détail par entité</h2><table style='width:100%;border-collapse:collapse;font-size:11px'><thead><tr style='background:#f5f6fa'><th style='padding:8px;text-align:left;border-bottom:2px solid #e2e4eb'>Entité</th><th style='padding:8px;text-align:right;border-bottom:2px solid #e2e4eb'>WO Total</th><th style='padding:8px;text-align:right;border-bottom:2px solid #e2e4eb'>Taux clôture</th><th style='padding:8px;text-align:right;border-bottom:2px solid #e2e4eb'>En attente</th><th style='padding:8px;text-align:right;border-bottom:2px solid #e2e4eb'>TTR moyen</th><th style='padding:8px;text-align:right;border-bottom:2px solid #e2e4eb'>Coût devis</th><th style='padding:8px;text-align:right;border-bottom:2px solid #e2e4eb'>Sans BC</th></tr></thead><tbody>";
-    data.entites.forEach(function(e,idx){
-      var eWO=data.wo.filter(function(r){return r._f===e;});
-      var eQUO=data.quo.filter(function(r){return r._f===e;});
-      var ek=calcKPIs(eWO,eQUO,[]);
-      var txColor=ek.taux>=70?"#085041":ek.taux>=50?"#185FA5":ek.taux>=35?"#633806":"#791F1F";
-      entiteDetail+="<tr style='background:"+(idx%2===0?"#fff":"#f9fafb")+"'><td style='padding:8px;font-weight:600;color:"+data.couleur+"'>"+e+"</td><td style='padding:8px;text-align:right'>"+fN(ek.n)+"</td><td style='padding:8px;text-align:right;color:"+txColor+";font-weight:700'>"+ek.taux.toFixed(1)+"%</td><td style='padding:8px;text-align:right'>"+fN(ek.at)+"</td><td style='padding:8px;text-align:right'>"+ek.ttrMoy.toFixed(1)+"j</td><td style='padding:8px;text-align:right'>"+fmt(ek.coutTot)+"</td><td style='padding:8px;text-align:right;color:"+(ek.bcRisk>0?"#791F1F":"#555")+"'>"+fmt(ek.bcRisk)+"</td></tr>";
-    });
-    entiteDetail+="</tbody></table>";
-  }
+  // Options cochées
+  var showKPI   = document.getElementById("rap-kpi")   ? document.getElementById("rap-kpi").checked   : true;
+  var showTTR   = document.getElementById("rap-ttr")   ? document.getElementById("rap-ttr").checked   : true;
+  var showDevis = document.getElementById("rap-devis") ? document.getElementById("rap-devis").checked : true;
+  var showNPS2  = document.getElementById("rap-nps")   ? document.getElementById("rap-nps").checked   : true;
+  var showBC    = document.getElementById("rap-bc")    ? document.getElementById("rap-bc").checked    : true;
+  var showDet   = document.getElementById("rap-detail")? document.getElementById("rap-detail").checked: true;
+  var showTaux  = document.getElementById("rap-taux")  ? document.getElementById("rap-taux").checked  : true;
 
-  // Mensuel
-  var monthsMap={};data.wo.forEach(function(r){if(r._mo){if(!monthsMap[r._mo])monthsMap[r._mo]={cl:0,tot:0,cout:0};monthsMap[r._mo].tot++;if(r._e==="CL")monthsMap[r._mo].cl++;}});
-  data.quo.forEach(function(r){if(r._mo&&monthsMap[r._mo])monthsMap[r._mo].cout+=r._c;});
-  var months=Object.keys(monthsMap).sort();
-    var mensuelTable="";
-  if(mos3.length){
-    mensuelTable+="<h2>Évolution mensuelle</h2>";
-    mensuelTable+="<table><thead><tr>";
-    mensuelTable+="<th>Mois</th><th style='text-align:right'>WO créés</th><th style='text-align:right'>Clôturés</th>";
-    mensuelTable+="<th style='text-align:right'>WO en attente magasins</th>";
-    mensuelTable+="<th style='text-align:right'>Taux clôture</th><th style='text-align:right'>Coût devis</th>";
-    mensuelTable+="</tr></thead><tbody>";
-    mos3.forEach(function(m,i){
-      var v=monthsMap3[m];
-      var tx=v.cl/v.tot*100;
-      var txC=tx>=70?"#085041":tx>=50?"#185FA5":tx>=35?"#633806":"#791F1F";
-      var bg=i%2===0?"#fff":"#f9fafb";
-      mensuelTable+="<tr style='background:"+bg+"'>";
-      mensuelTable+="<td>"+mL(m)+" 2026</td>";
-      mensuelTable+="<td style='text-align:right'>"+fN(v.tot)+"</td>";
-      mensuelTable+="<td style='text-align:right'>"+fN(v.cl)+"</td>";
-      mensuelTable+="<td style='text-align:right;color:#791F1F;font-weight:600'>"+fN(v.at)+"</td>";
-      mensuelTable+="<td style='text-align:right;font-weight:700;color:"+txC+"'>"+tx.toFixed(1)+"%</td>";
-      mensuelTable+="<td style='text-align:right'>"+fmt(v.cout)+"</td>";
-      mensuelTable+="</tr>";
-    });
-    mensuelTable+="</tbody></table>";
-  }
+  // Couleur taux
+  var txC = kpi.taux>=70?"#085041":kpi.taux>=50?"#185FA5":kpi.taux>=35?"#633806":"#791F1F";
 
-  var npsSection=kpi.npsN>0?"<div style='background:#f0fdf8;border:1px solid #b9ead8;border-radius:8px;padding:12px 16px;margin-top:12px'><div style='font-size:11px;font-weight:700;color:#085041;margin-bottom:6px'>⭐ NPS — Satisfaction client</div><div style='display:grid;grid-template-columns:repeat(4,1fr);gap:8px;font-size:11px'><div><div style='color:#555'>Score NPS</div><div style='font-size:18px;font-weight:700;color:"+nC(kpi.npsScore)+"'>"+(kpi.npsScore>0?"+":"")+kpi.npsScore.toFixed(1)+"</div></div><div><div style='color:#555'>Évaluations</div><div style='font-size:18px;font-weight:700'>"+fN(kpi.npsN)+"</div></div><div><div style='color:#555'>Note moyenne</div><div style='font-size:18px;font-weight:700'>"+kpi.npsMoy.toFixed(2)+"/10</div></div><div><div style='color:#555'>% Promoteurs</div><div style='font-size:18px;font-weight:700;color:#085041'>"+(kpi.npsProm/kpi.npsN*100).toFixed(1)+"%</div></div></div></div>":"";
-
-  var showKPI   = document.getElementById("rap-kpi") && document.getElementById("rap-kpi").checked;
-  var showTTR   = document.getElementById("rap-ttr") && document.getElementById("rap-ttr").checked;
-  var showNPS2  = document.getElementById("rap-nps") && document.getElementById("rap-nps").checked;
-  var showBC    = document.getElementById("rap-bc")  && document.getElementById("rap-bc").checked;
-  var showDet   = document.getElementById("rap-detail") && document.getElementById("rap-detail").checked;
-
-  // WO en attente par mois
-  var atMagMap={};
-  data.wo.filter(function(r){return r._e==="AT";}).forEach(function(r){
-    if(r._mo){if(!atMagMap[r._mo])atMagMap[r._mo]=0;atMagMap[r._mo]++;}
-  });
-
-  // Mensuel
-  var monthsMap3={};
+  // Calcul mensuel avec WO en attente
+  var mMap={};
   data.wo.forEach(function(r){
-    if(r._mo){
-      if(!monthsMap3[r._mo])monthsMap3[r._mo]={cl:0,tot:0,at:0,cout:0};
-      monthsMap3[r._mo].tot++;
-      if(r._e==="CL")monthsMap3[r._mo].cl++;
-      if(r._e==="AT")monthsMap3[r._mo].at++;
-    }
+    if(!r._mo)return;
+    if(!mMap[r._mo])mMap[r._mo]={tot:0,cl:0,at:0,cout:0};
+    mMap[r._mo].tot++;
+    if(r._e==="CL")mMap[r._mo].cl++;
+    if(r._e==="AT")mMap[r._mo].at++;
   });
-  data.quo.forEach(function(r){if(r._mo&&monthsMap3[r._mo])monthsMap3[r._mo].cout+=r._c;});
-  var mos3=Object.keys(monthsMap3).sort();
+  data.quo.forEach(function(r){if(r._mo&&mMap[r._mo])mMap[r._mo].cout+=r._c;});
+  var mos=Object.keys(mMap).sort();
 
-  var txColor3=kpi.taux>=70?"#085041":kpi.taux>=50?"#185FA5":kpi.taux>=35?"#633806":"#791F1F";
+  // CSS
+  var css="body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;color:#1a1a2e;margin:0;padding:0}"
+    +"@media print{body{margin:0}@page{margin:15mm}}"
+    +".wrap{max-width:800px;margin:0 auto;padding:28px 36px}"
+    +".hdr{display:flex;align-items:center;justify-content:space-between;border-bottom:3px solid "+data.couleur+";padding-bottom:14px;margin-bottom:20px}"
+    +".logo{height:50px;object-fit:contain}"
+    +".gname{font-size:20px;font-weight:800;color:"+data.couleur+";margin-bottom:3px}"
+    +".gsub{font-size:11px;color:#888}"
+    +".meta{text-align:right;font-size:11px;color:#888;line-height:1.8}"
+    +".kg{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}"
+    +".kb{border:1px solid #e2e4eb;border-radius:8px;padding:12px;border-top:3px solid "+data.couleur+"}"
+    +".kl{font-size:9px;color:#888;text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px}"
+    +".kv{font-size:18px;font-weight:700}"
+    +".ks{font-size:10px;color:#aaa;margin-top:2px}"
+    +"h2{font-size:13px;color:#1a1a2e;margin:18px 0 10px;border-bottom:2px solid #e2e4eb;padding-bottom:5px}"
+    +"table{width:100%;border-collapse:collapse;font-size:11px}"
+    +"th{padding:7px 10px;text-align:left;border-bottom:2px solid #e2e4eb;font-size:9px;text-transform:uppercase;color:#888;background:#f8f9fc}"
+    +"td{padding:7px 10px;border-bottom:1px solid #f0f2f8}"
+    +".tr{text-align:right}"
+    +".footer{margin-top:28px;padding-top:12px;border-top:1px solid #e2e4eb;font-size:10px;color:#aaa;display:flex;justify-content:space-between}";
 
-  // CSS commun
-  var css=[
-    "body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;color:#1a1a2e;margin:0;padding:0}",
-    "@media print{body{margin:0}@page{margin:15mm}}",
-    ".page{max-width:800px;margin:0 auto;padding:28px 36px}",
-    ".header{display:flex;align-items:center;justify-content:space-between;border-bottom:3px solid "+data.couleur+";padding-bottom:14px;margin-bottom:20px}",
-    ".logo-area{display:flex;align-items:center;gap:14px}",
-    ".logo-area img{height:50px;object-fit:contain}",
-    ".gname{font-size:20px;font-weight:800;color:"+data.couleur+"}",
-    ".gsub{font-size:11px;color:#888;margin-top:3px}",
-    ".meta{text-align:right;font-size:11px;color:#888;line-height:1.7}",
-    ".kg{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px}",
-    ".kb{border:1px solid #e2e4eb;border-radius:8px;padding:12px;border-top:3px solid "+data.couleur+"}",
-    ".kl{font-size:9px;color:#888;text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px}",
-    ".kv{font-size:18px;font-weight:700}",
-    ".ks{font-size:10px;color:#aaa;margin-top:2px}",
-    "h2{color:#1a1a2e;font-size:13px;margin:18px 0 10px;border-bottom:2px solid #e2e4eb;padding-bottom:5px}",
-    "table{width:100%;border-collapse:collapse;font-size:11px}",
-    "th{padding:7px 10px;text-align:left;border-bottom:2px solid #e2e4eb;font-size:9px;text-transform:uppercase;color:#888;background:#f8f9fc}",
-    "td{padding:7px 10px;border-bottom:1px solid #f0f2f8}",
-    ".footer{margin-top:28px;padding-top:12px;border-top:1px solid #e2e4eb;font-size:10px;color:#aaa;display:flex;justify-content:space-between}"
-  ].join("");
+  // Construire HTML par blocs
+  var H=[];
+  H.push("<!DOCTYPE html><html><head><meta charset='UTF-8'><title>Rapport "+data.nom+"</title><style>"+css+"</style></head><body><div class='wrap'>");
 
-  // Build HTML
-  var parts=[];
-  parts.push("<!DOCTYPE html><html><head><meta charset='UTF-8'><title>Rapport "+data.nom+"</title><style>"+css+"</style></head><body><div class='page'>");
+  // HEADER avec logo
+  H.push("<div class='hdr'>");
+  H.push("<div style='display:flex;align-items:center;gap:14px'>");
+  H.push("<img class='logo' src='https://emericborel.github.io/Tableau-de-bord/carrefour.png' alt='Carrefour' onerror=\"this.style.display='none'\">");
+  H.push("<div><div class='gname'>"+data.nom+"</div><div class='gsub'>"+data.entites.join(" + ")+"</div></div>");
+  H.push("</div>");
+  H.push("<div class='meta'>Carrefour — Direction Technique France<br>Période : "+periodeLabel+"<br>Généré le "+now+"</div>");
+  H.push("</div>");
 
-  // Header avec logo Carrefour
-  parts.push("<div class='header'>");
-  parts.push("<div class='logo-area'>");
-  parts.push("<img src='https://emericborel.github.io/Tableau-de-bord/carrefour.png' alt='Carrefour' onerror=\"this.style.display='none'\">");
-  parts.push("<div><div class='gname'>"+data.nom+"</div><div class='gsub'>"+data.entites.join(" + ")+"</div></div>");
-  parts.push("</div>");
-  parts.push("<div class='meta'><div>Carrefour — Direction Technique France</div><div>Période : "+periodeLabel+"</div><div>Généré le "+now+"</div></div>");
-  parts.push("</div>");
-
-  // KPIs (sans TTR moyen, sans Risque sans BC)
+  // KPIs (sans TTR, sans BC dans la grille principale)
   if(showKPI){
-    parts.push("<h2>KPIs consolidés groupe</h2><div class='kg'>");
-    parts.push("<div class='kb'><div class='kl'>WO Total</div><div class='kv'>"+fN(kpi.n)+"</div></div>");
-    parts.push("<div class='kb'><div class='kl'>Taux clôture</div><div class='kv' style='color:"+txColor3+"'>"+kpi.taux.toFixed(1)+"%</div><div class='ks'>"+fN(kpi.cl)+" clôturés</div></div>");
-    parts.push("<div class='kb'><div class='kl'>WO en attente magasins</div><div class='kv' style='color:#791F1F'>"+fN(kpi.at)+"</div><div class='ks'>"+fN(kpi.tu)+" très urgents</div></div>");
-    parts.push("<div class='kb'><div class='kl'>Coût total devis</div><div class='kv'>"+fmt(kpi.coutTot)+"</div></div>");
-    parts.push("<div class='kb'><div class='kl'>Approuvés ERP</div><div class='kv'>"+fmt(kpi.coutApp)+"</div></div>");
-    if(kpi.npsN>0) parts.push("<div class='kb'><div class='kl'>Score NPS</div><div class='kv' style='color:"+(kpi.npsScore>=30?"#085041":"#791F1F")+"'>"+(kpi.npsScore>0?"+":"")+kpi.npsScore.toFixed(1)+"</div><div class='ks'>"+fN(kpi.npsN)+" évaluations</div></div>");
-    parts.push("</div>");
+    H.push("<h2>KPIs consolidés</h2><div class='kg'>");
+    H.push("<div class='kb'><div class='kl'>WO Total</div><div class='kv'>"+fN(kpi.n)+"</div></div>");
+    H.push("<div class='kb'><div class='kl'>Taux de clôture</div><div class='kv' style='color:"+txC+"'>"+kpi.taux.toFixed(1)+"%</div><div class='ks'>"+fN(kpi.cl)+" clôturés</div></div>");
+    H.push("<div class='kb'><div class='kl'>WO en attente magasins</div><div class='kv' style='color:#791F1F'>"+fN(kpi.at)+"</div><div class='ks'>"+fN(kpi.tu)+" très urgents</div></div>");
+    H.push("<div class='kb'><div class='kl'>Coût total devis</div><div class='kv'>"+fmt(kpi.coutTot)+"</div></div>");
+    H.push("<div class='kb'><div class='kl'>Approuvés ERP</div><div class='kv'>"+fmt(kpi.coutApp)+"</div></div>");
+    if(kpi.npsN>0) H.push("<div class='kb'><div class='kl'>Score NPS</div><div class='kv' style='color:"+(kpi.npsScore>=30?"#085041":"#791F1F")+"'>"+(kpi.npsScore>0?"+":"")+kpi.npsScore.toFixed(1)+"</div><div class='ks'>"+fN(kpi.npsN)+" éval.</div></div>");
+    H.push("</div>");
   }
 
   // TTR (si coché)
   if(showTTR){
-    parts.push("<div style='background:#f0f4ff;border:1px solid #c5d0f5;border-radius:8px;padding:12px 16px;margin-bottom:14px'>");
-    parts.push("<div style='font-size:11px;font-weight:700;color:#185FA5;margin-bottom:6px'>⏱ Délai TTR</div>");
-    parts.push("<div style='display:grid;grid-template-columns:repeat(3,1fr);gap:8px;font-size:11px'>");
-    parts.push("<div><div style='color:#555'>TTR moyen</div><div style='font-size:18px;font-weight:700'>"+kpi.ttrMoy.toFixed(1)+"j</div></div>");
-    parts.push("<div><div style='color:#555'>WO analysés</div><div style='font-size:18px;font-weight:700'>"+fN(kpi.ttrN)+"</div></div>");
-    parts.push("</div></div>");
+    H.push("<div style='background:#f0f4ff;border:1px solid #c5d0f5;border-radius:8px;padding:12px 16px;margin-bottom:14px'>");
+    H.push("<div style='font-size:11px;font-weight:700;color:#185FA5;margin-bottom:8px'>⏱ Délai TTR</div>");
+    H.push("<div style='display:flex;gap:24px;font-size:11px'>");
+    H.push("<div><div style='color:#555;margin-bottom:2px'>TTR moyen</div><div style='font-size:18px;font-weight:700'>"+kpi.ttrMoy.toFixed(1)+"j</div></div>");
+    H.push("<div><div style='color:#555;margin-bottom:2px'>WO analysés</div><div style='font-size:18px;font-weight:700'>"+fN(kpi.ttrN)+"</div></div>");
+    H.push("</div></div>");
   }
 
   // Sans BC (si coché)
   if(showBC){
-    parts.push("<div style='background:#fff5f5;border:1px solid #f5c1c1;border-radius:8px;padding:12px 16px;margin-bottom:14px'>");
-    parts.push("<div style='font-size:11px;font-weight:700;color:#791F1F;margin-bottom:6px'>⚠ Risque sans BC</div>");
-    parts.push("<div style='font-size:18px;font-weight:700;color:#791F1F'>"+fmt(kpi.bcRisk)+"</div>");
-    parts.push("<div style='font-size:10px;color:#aaa;margin-top:3px'>Devis approuvés ERP sans bon de commande</div>");
-    parts.push("</div>");
+    H.push("<div style='background:#fff5f5;border:1px solid #f5c1c1;border-radius:8px;padding:12px 16px;margin-bottom:14px'>");
+    H.push("<div style='font-size:11px;font-weight:700;color:#791F1F;margin-bottom:6px'>⚠ Risque sans BC</div>");
+    H.push("<div style='font-size:18px;font-weight:700;color:#791F1F'>"+fmt(kpi.bcRisk)+"</div>");
+    H.push("<div style='font-size:10px;color:#aaa;margin-top:3px'>Devis approuvés ERP sans bon de commande</div>");
+    H.push("</div>");
   }
 
-  // NPS (si coché et disponible)
+  // NPS (si coché)
   if(showNPS2&&kpi.npsN>0){
-    parts.push("<div style='background:#f0fdf8;border:1px solid #b9ead8;border-radius:8px;padding:12px 16px;margin-bottom:14px'>");
-    parts.push("<div style='font-size:11px;font-weight:700;color:#085041;margin-bottom:6px'>⭐ NPS — Satisfaction client</div>");
-    parts.push("<div style='display:grid;grid-template-columns:repeat(4,1fr);gap:8px;font-size:11px'>");
-    parts.push("<div><div style='color:#555'>Score NPS</div><div style='font-size:18px;font-weight:700;color:"+(kpi.npsScore>=30?"#085041":"#791F1F")+"'>"+(kpi.npsScore>0?"+":"")+kpi.npsScore.toFixed(1)+"</div></div>");
-    parts.push("<div><div style='color:#555'>Évaluations</div><div style='font-size:18px;font-weight:700'>"+fN(kpi.npsN)+"</div></div>");
-    parts.push("<div><div style='color:#555'>Note moyenne</div><div style='font-size:18px;font-weight:700'>"+kpi.npsMoy.toFixed(2)+"/10</div></div>");
-    parts.push("<div><div style='color:#555'>% Promoteurs</div><div style='font-size:18px;font-weight:700;color:#085041'>"+(kpi.npsProm/kpi.npsN*100).toFixed(1)+"%</div></div>");
-    parts.push("</div></div>");
+    H.push("<div style='background:#f0fdf8;border:1px solid #b9ead8;border-radius:8px;padding:12px 16px;margin-bottom:14px'>");
+    H.push("<div style='font-size:11px;font-weight:700;color:#085041;margin-bottom:8px'>⭐ NPS — Satisfaction client</div>");
+    H.push("<div style='display:flex;gap:24px;font-size:11px'>");
+    H.push("<div><div style='color:#555;margin-bottom:2px'>Score NPS</div><div style='font-size:20px;font-weight:700;color:"+(kpi.npsScore>=30?"#085041":"#791F1F")+"'>"+(kpi.npsScore>0?"+":"")+kpi.npsScore.toFixed(1)+"</div></div>");
+    H.push("<div><div style='color:#555;margin-bottom:2px'>Évaluations</div><div style='font-size:20px;font-weight:700'>"+fN(kpi.npsN)+"</div></div>");
+    H.push("<div><div style='color:#555;margin-bottom:2px'>Note moyenne</div><div style='font-size:20px;font-weight:700'>"+kpi.npsMoy.toFixed(2)+"/10</div></div>");
+    H.push("<div><div style='color:#555;margin-bottom:2px'>% Promoteurs</div><div style='font-size:20px;font-weight:700;color:#085041'>"+(kpi.npsProm/kpi.npsN*100).toFixed(1)+"%</div></div>");
+    H.push("</div></div>");
   }
 
-  var printHTML=parts.join("")+entiteDetail+mensuelTable
-    +"<div class='footer'><span>Carrefour — Direction Technique France</span><span>Dashboard Maintenance Curative Nationale 2026</span></div>"
-    +"</div></body></html>";
+  // Détail par entité (si coché)
+  if(showDet&&data.entites.length>1){
+    H.push("<h2>Détail par entité</h2>");
+    H.push("<table><thead><tr><th>Entité</th><th class='tr'>WO Total</th><th class='tr'>Taux clôture</th><th class='tr'>En attente</th><th class='tr'>TTR moyen</th><th class='tr'>Coût devis</th></tr></thead><tbody>");
+    data.entites.forEach(function(e,idx){
+      var eW=data.wo.filter(function(r){return r._f===e;});
+      var eQ=data.quo.filter(function(r){return r._f===e;});
+      var ek=calcKPIs(eW,eQ,[]);
+      var ec=ek.taux>=70?"#085041":ek.taux>=50?"#185FA5":ek.taux>=35?"#633806":"#791F1F";
+      var bg=idx%2===0?"#fff":"#f9fafb";
+      H.push("<tr style='background:"+bg+"'><td style='font-weight:600;color:"+data.couleur+"'>"+e+"</td><td class='tr'>"+fN(ek.n)+"</td><td class='tr' style='font-weight:700;color:"+ec+"'>"+ek.taux.toFixed(1)+"%</td><td class='tr'>"+fN(ek.at)+"</td><td class='tr'>"+ek.ttrMoy.toFixed(1)+"j</td><td class='tr'>"+fmt(ek.coutTot)+"</td></tr>");
+    });
+    H.push("</tbody></table>");
+  }
 
+  // Évolution mensuelle avec WO en attente
+  if(mos.length){
+    H.push("<h2>Évolution mensuelle</h2>");
+    H.push("<table><thead><tr><th>Mois</th><th class='tr'>WO créés</th><th class='tr'>Clôturés</th><th class='tr'>WO en attente magasins</th><th class='tr'>Taux clôture</th><th class='tr'>Coût devis</th></tr></thead><tbody>");
+    mos.forEach(function(m,i){
+      var v=mMap[m];
+      var tx=v.tot?v.cl/v.tot*100:0;
+      var tc=tx>=70?"#085041":tx>=50?"#185FA5":tx>=35?"#633806":"#791F1F";
+      var bg=i%2===0?"#fff":"#f9fafb";
+      H.push("<tr style='background:"+bg+"'><td>"+mL(m)+" 2026</td><td class='tr'>"+fN(v.tot)+"</td><td class='tr'>"+fN(v.cl)+"</td><td class='tr' style='color:#791F1F;font-weight:600'>"+fN(v.at)+"</td><td class='tr' style='font-weight:700;color:"+tc+"'>"+tx.toFixed(1)+"%</td><td class='tr'>"+fmt(v.cout)+"</td></tr>");
+    });
+    H.push("</tbody></table>");
+  }
+
+  // Footer
+  H.push("<div class='footer'><span>Carrefour — Direction Technique France</span><span>Dashboard Maintenance Curative Nationale 2026</span></div>");
+  H.push("</div></body></html>");
+
+  var printHTML=H.join("");
   var win=window.open("","_blank");
-    win.document.write(printHTML)
+  win.document.write(printHTML);
   win.document.close();
-  setTimeout(function(){win.print();},800);
-  toast("Rapport PDF ouvert ✓");
+  setTimeout(function(){win.print();},600);
+  toast("Rapport PDF généré ✓");
 }
 
-// ── EXPORT EXCEL ──────────────────────────────────────────────
+
 function genererExcel(){
   var gid=document.getElementById("rap-groupe").value;
   if(!gid){toast("Sélectionnez un groupe",true);return;}
