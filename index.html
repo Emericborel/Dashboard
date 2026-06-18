@@ -1478,7 +1478,6 @@ function genererPDF(){
   var periodeLabel=periode==="Toute la période"?periode:mL(periode)+" 2026";
   var now=new Date().toLocaleDateString("fr-FR");
 
-  // Options cochées
   var showKPI   = document.getElementById("rap-kpi")    ? document.getElementById("rap-kpi").checked    : true;
   var showTTR   = document.getElementById("rap-ttr")    ? document.getElementById("rap-ttr").checked    : true;
   var showNPS2  = document.getElementById("rap-nps")    ? document.getElementById("rap-nps").checked    : true;
@@ -1486,8 +1485,9 @@ function genererPDF(){
   var showDet   = document.getElementById("rap-detail") ? document.getElementById("rap-detail").checked : true;
 
   var txC=kpi.taux>=70?"#085041":kpi.taux>=50?"#185FA5":kpi.taux>=35?"#633806":"#791F1F";
+  var perf=kpi.taux>=70?"Excellente performance":kpi.taux>=50?"Bonne performance":kpi.taux>=35?"Performance à améliorer":"Performance insuffisante";
 
-  // Calcul mensuel
+  // Mensuel
   var mMap={};
   data.wo.forEach(function(r){
     if(!r._mo)return;
@@ -1499,218 +1499,232 @@ function genererPDF(){
   data.quo.forEach(function(r){if(r._mo&&mMap[r._mo])mMap[r._mo].cout+=r._c;});
   var mos=Object.keys(mMap).sort();
 
-  // ── GÉNÉRATION DES GRAPHIQUES ──────────────────────────────
-  function makeChart(type,labels,datasets,opts){
+  // ── GRAPHIQUES ─────────────────────────────────────────────
+  function mkChart(type,labels,datasets,opts){
     var c=document.createElement("canvas");
-    c.width=560;c.height=220;
-    var ctx2=c.getContext("2d");
-    new Chart(ctx2,{type:type,
+    c.width=520;c.height=200;
+    new Chart(c.getContext("2d"),{type:type,
       data:{labels:labels,datasets:datasets},
       options:Object.assign({animation:false,responsive:false,
-        plugins:{legend:{labels:{font:{size:11},boxWidth:12}}}},opts||{})});
+        plugins:{legend:{labels:{font:{size:10},boxWidth:10}}}},opts||{})});
     return c.toDataURL("image/png");
   }
 
-  // Graphique 1 : Donut statuts WO
+  // Donut statuts
   var eMap={CL:0,AS:0,EC:0,AT:0,AN:0};
   data.wo.forEach(function(r){if(eMap[r._e]!==undefined)eMap[r._e]++;});
-  var eKeys=Object.keys(eMap).filter(function(k){return eMap[k]>0;});
-  var eLabels={CL:"Clôturés",AS:"Assignés",EC:"En cours",AT:"En attente",AN:"Annulés"};
-  var eColors={CL:"#1D9E75",AS:"#378ADD",EC:"#BA7517",AT:"#E24B4A",AN:"#888"};
-  var imgDonut=makeChart("doughnut",
-    eKeys.map(function(k){return eLabels[k];}),
-    [{data:eKeys.map(function(k){return eMap[k];}),
-      backgroundColor:eKeys.map(function(k){return eColors[k];}),borderWidth:2,borderColor:"#fff"}],
-    {cutout:"65%",plugins:{legend:{position:"right",labels:{font:{size:11},boxWidth:12}}}});
+  var eK=Object.keys(eMap).filter(function(k){return eMap[k]>0;});
+  var eL={CL:"Clôturés",AS:"Assignés",EC:"En cours",AT:"En attente",AN:"Annulés"};
+  var eC={CL:"#1D9E75",AS:"#378ADD",EC:"#BA7517",AT:"#E24B4A",AN:"#888"};
+  var imgDonut=mkChart("doughnut",eK.map(function(k){return eL[k];}),
+    [{data:eK.map(function(k){return eMap[k];}),
+      backgroundColor:eK.map(function(k){return eC[k];}),borderWidth:2,borderColor:"#fff"}],
+    {cutout:"65%",plugins:{legend:{position:"right",labels:{font:{size:10},boxWidth:10}}}});
 
-  // Graphique 2 : Taux clôture par entité (barres horiz.)
-  var entLabels=data.entites;
+  // Taux clôture par entité
   var entTaux=data.entites.map(function(e){
     var ew=data.wo.filter(function(r){return r._f===e;});
     var cl=ew.filter(function(r){return r._e==="CL";}).length;
     return ew.length?+(cl/ew.length*100).toFixed(1):0;
   });
-  var imgEntTaux=makeChart("bar",entLabels,
-    [{label:"Taux clôture %",data:entTaux,
-      backgroundColor:entTaux.map(function(v){return v>=70?"#1D9E75":v>=50?"#378ADD":v>=35?"#BA7517":"#E24B4A";}),
-      borderRadius:4}],
-    {indexAxis:"y",
-      scales:{x:{min:0,max:100,ticks:{callback:function(v){return v+"%";},font:{size:10}},grid:{color:"rgba(0,0,0,.07)"}},
-              y:{grid:{display:false},ticks:{font:{size:10}}}},
-      plugins:{legend:{display:false}}});
+  var imgTauxEnt=mkChart("bar",data.entites,
+    [{data:entTaux,backgroundColor:entTaux.map(function(v){return v>=70?"#1D9E75":v>=50?"#378ADD":v>=35?"#BA7517":"#E24B4A";}),borderRadius:4}],
+    {indexAxis:"y",plugins:{legend:{display:false}},
+     scales:{x:{min:0,max:100,ticks:{callback:function(v){return v+"%";},font:{size:9}},grid:{color:"rgba(0,0,0,.07)"}},
+             y:{grid:{display:false},ticks:{font:{size:9}}}}});
 
-  // Graphique 3 : Évolution mensuelle WO + taux clôture
-  var imgEvol=makeChart("bar",mos.map(mL),
-    [{label:"WO créés",data:mos.map(function(m){return mMap[m].tot;}),
-      backgroundColor:"rgba(55,138,221,.7)",borderRadius:3,yAxisID:"y"},
-     {label:"Taux clôture %",type:"line",
-      data:mos.map(function(m){return mMap[m].tot?+(mMap[m].cl/mMap[m].tot*100).toFixed(1):0;}),
-      borderColor:"#1D9E75",backgroundColor:"rgba(29,158,117,.1)",
-      tension:.3,fill:true,borderWidth:2,pointRadius:4,yAxisID:"y2"}],
-    {scales:{
-      y:{position:"left",title:{display:true,text:"WO",font:{size:10}},grid:{color:"rgba(0,0,0,.07)"},ticks:{font:{size:10}}},
-      y2:{position:"right",min:0,max:100,title:{display:true,text:"Taux %",font:{size:10}},
-          grid:{display:false},ticks:{callback:function(v){return v+"%";},font:{size:10}}}},
-     plugins:{legend:{position:"top",labels:{font:{size:10},boxWidth:10}}}});
+  // Évolution mensuelle
+  var imgEvol=mkChart("bar",mos.map(mL),
+    [{label:"WO créés",data:mos.map(function(m){return mMap[m].tot;}),backgroundColor:"rgba(55,138,221,.75)",borderRadius:3,yAxisID:"y"},
+     {label:"Taux clôture %",type:"line",data:mos.map(function(m){return mMap[m].tot?+(mMap[m].cl/mMap[m].tot*100).toFixed(1):0;}),
+      borderColor:"#1D9E75",backgroundColor:"rgba(29,158,117,.1)",tension:.3,fill:true,borderWidth:2,pointRadius:4,yAxisID:"y2"}],
+    {plugins:{legend:{position:"top",labels:{font:{size:10},boxWidth:10}}},
+     scales:{y:{position:"left",title:{display:true,text:"WO",font:{size:9}},grid:{color:"rgba(0,0,0,.07)"},ticks:{font:{size:9}}},
+             y2:{position:"right",min:0,max:100,grid:{display:false},ticks:{callback:function(v){return v+"%";},font:{size:9}}}}});
 
-  // Graphique 4 : WO en attente par mois
-  var imgAttente=makeChart("bar",mos.map(mL),
-    [{label:"WO en attente magasins",
-      data:mos.map(function(m){return mMap[m].at;}),
-      backgroundColor:"rgba(226,75,74,.7)",borderRadius:3}],
-    {scales:{x:{grid:{display:false},ticks:{font:{size:10}}},
-             y:{grid:{color:"rgba(0,0,0,.07)"},ticks:{font:{size:10}}}},
-     plugins:{legend:{display:false}}});
-
-  // Graphique 5 : TTR par entité (si coché)
-  var imgTTR="";
+  // TTR par entité
+  var imgTTR="",imgTTRdata=[];
   if(showTTR){
-    var entTTR=data.entites.map(function(e){
+    imgTTRdata=data.entites.map(function(e){
       var ew=data.wo.filter(function(r){return r._f===e&&r._ttr!=null;});
       return ew.length?+(ew.reduce(function(s,r){return s+r._ttr;},0)/ew.length).toFixed(1):0;
     });
-    imgTTR=makeChart("bar",entLabels,
-      [{label:"TTR moyen (j)",data:entTTR,
-        backgroundColor:entTTR.map(function(v){return v<=7?"#1D9E75":v<=15?"#378ADD":v<=30?"#BA7517":"#E24B4A";}),
-        borderRadius:4}],
-      {indexAxis:"y",
-        scales:{x:{ticks:{callback:function(v){return v+"j";},font:{size:10}},grid:{color:"rgba(0,0,0,.07)"}},
-                y:{grid:{display:false},ticks:{font:{size:10}}}},
-        plugins:{legend:{display:false}}});
+    imgTTR=mkChart("bar",data.entites,
+      [{data:imgTTRdata,backgroundColor:imgTTRdata.map(function(v){return v<=7?"#1D9E75":v<=15?"#378ADD":v<=30?"#BA7517":"#E24B4A";}),borderRadius:4}],
+      {indexAxis:"y",plugins:{legend:{display:false}},
+       scales:{x:{ticks:{callback:function(v){return v+"j";},font:{size:9}},grid:{color:"rgba(0,0,0,.07)"}},
+               y:{grid:{display:false},ticks:{font:{size:9}}}}});
   }
 
-  // Graphique 6 : NPS distribution (si coché)
+  // NPS distribution
   var imgNPS="";
   if(showNPS2&&kpi.npsN>0){
     var dist={};for(var ii=0;ii<=10;ii++)dist[ii]=0;
     data.nps.forEach(function(r){if(r._n>=0&&r._n<=10)dist[Math.round(r._n)]++;});
-    imgNPS=makeChart("bar",Object.keys(dist),
-      [{data:Object.values(dist),
-        backgroundColor:Object.keys(dist).map(function(k){return k>=9?"#1D9E75":k>=7?"#BA7517":"#E24B4A";}),
-        borderRadius:3}],
-      {scales:{x:{grid:{display:false},ticks:{font:{size:10}}},
-               y:{grid:{color:"rgba(0,0,0,.07)"},ticks:{font:{size:10}}}},
-       plugins:{legend:{display:false}}});
+    imgNPS=mkChart("bar",Object.keys(dist),
+      [{data:Object.values(dist),backgroundColor:Object.keys(dist).map(function(k){return k>=9?"#1D9E75":k>=7?"#BA7517":"#E24B4A";}),borderRadius:3}],
+      {plugins:{legend:{display:false}},
+       scales:{x:{grid:{display:false},ticks:{font:{size:9}}},y:{grid:{color:"rgba(0,0,0,.07)"},ticks:{font:{size:9}}}}});
   }
 
   // ── CSS ────────────────────────────────────────────────────
-  var css="body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;color:#1a1a2e;margin:0;padding:0}"
-    +"@media print{body{margin:0}@page{margin:12mm}}"
-    +".wrap{max-width:800px;margin:0 auto;padding:24px 32px}"
-    +".hdr{display:flex;align-items:center;justify-content:space-between;border-bottom:3px solid "+data.couleur+";padding-bottom:12px;margin-bottom:18px}"
-    +".logo{height:46px;object-fit:contain}"
-    +".gname{font-size:19px;font-weight:800;color:"+data.couleur+";margin-bottom:2px}"
-    +".gsub{font-size:10px;color:#888}"
-    +".meta{text-align:right;font-size:10px;color:#888;line-height:1.8}"
-    +".kg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}"
-    +".kb{border:1px solid #e2e4eb;border-radius:7px;padding:10px;border-top:3px solid "+data.couleur+"}"
-    +".kl{font-size:8px;color:#888;text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px}"
-    +".kv{font-size:17px;font-weight:700}"
-    +".ks{font-size:9px;color:#aaa;margin-top:2px}"
-    +".g2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}"
-    +".g1{margin-bottom:14px}"
-    +".chart-box{border:1px solid #e2e4eb;border-radius:7px;padding:10px}"
-    +".chart-title{font-size:10px;font-weight:600;color:#555;margin-bottom:8px}"
-    +".chart-box img{width:100%;height:auto}"
-    +"h2{font-size:12px;color:#1a1a2e;margin:16px 0 8px;border-bottom:2px solid #e2e4eb;padding-bottom:4px}"
-    +"table{width:100%;border-collapse:collapse;font-size:10px}"
-    +"th{padding:6px 8px;text-align:left;border-bottom:2px solid #e2e4eb;font-size:8px;text-transform:uppercase;color:#888;background:#f8f9fc}"
-    +"td{padding:6px 8px;border-bottom:1px solid #f0f2f8}"
-    +".tr{text-align:right}"
-    +".footer{margin-top:24px;padding-top:10px;border-top:1px solid #e2e4eb;font-size:9px;color:#aaa;display:flex;justify-content:space-between}";
+  var css=[
+    "body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;color:#1a1a2e;margin:0;padding:0}",
+    "@media print{body{margin:0}@page{margin:12mm 14mm}}",
+    ".wrap{max-width:820px;margin:0 auto;padding:24px 32px}",
+    // Header
+    ".hdr{display:flex;align-items:center;justify-content:space-between;padding-bottom:14px;margin-bottom:4px;border-bottom:3px solid "+data.couleur+"}",
+    ".logo{height:44px;object-fit:contain}",
+    ".gname{font-size:20px;font-weight:800;color:"+data.couleur+";margin-bottom:2px}",
+    ".gsub{font-size:10px;color:#888}",
+    ".meta{text-align:right;font-size:10px;color:#888;line-height:1.8}",
+    // Bandeau performance
+    ".perf{display:flex;align-items:center;justify-content:space-between;background:"+data.couleur+"18;border:1px solid "+data.couleur+"44;border-radius:8px;padding:12px 18px;margin:12px 0}",
+    ".perf-score{font-size:28px;font-weight:800;color:"+txC+";line-height:1}",
+    ".perf-label{font-size:10px;color:#888;margin-top:3px}",
+    ".perf-txt{font-size:11px;color:#555;max-width:480px;line-height:1.5}",
+    // KPIs
+    ".kg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}",
+    ".kb{border:1px solid #e2e4eb;border-radius:7px;padding:10px 12px;border-top:3px solid "+data.couleur+"}",
+    ".kl{font-size:8px;color:#888;text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px}",
+    ".kv{font-size:17px;font-weight:700}",
+    ".ks{font-size:9px;color:#aaa;margin-top:1px}",
+    // Grilles graphiques
+    ".g2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}",
+    ".g1{margin-bottom:10px}",
+    ".cbox{border:1px solid #e2e4eb;border-radius:7px;padding:10px 12px;background:#fafbff}",
+    ".ctitle{font-size:9px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}",
+    ".cbox img{width:100%;height:auto;display:block}",
+    // Blocs info
+    ".info-ttr{background:#f0f4ff;border:1px solid #c5d0f5;border-radius:7px;padding:10px 14px}",
+    ".info-nps{background:#f0fdf8;border:1px solid #b9ead8;border-radius:7px;padding:10px 14px}",
+    ".info-bc{background:#fff5f5;border:1px solid #f5c1c1;border-radius:7px;padding:10px 14px}",
+    ".info-title{font-size:10px;font-weight:700;margin-bottom:8px}",
+    ".stats{display:flex;gap:20px;flex-wrap:wrap}",
+    ".stat-val{font-size:18px;font-weight:700}",
+    ".stat-lbl{font-size:8px;color:#888;text-transform:uppercase;margin-bottom:2px}",
+    // Tableau
+    "h2{font-size:11px;color:#1a1a2e;margin:14px 0 7px;border-bottom:2px solid #e2e4eb;padding-bottom:4px;text-transform:uppercase;letter-spacing:.05em}",
+    "table{width:100%;border-collapse:collapse;font-size:10px}",
+    "th{padding:6px 8px;text-align:left;border-bottom:2px solid #e2e4eb;font-size:8px;text-transform:uppercase;color:#888;background:#f8f9fc}",
+    "td{padding:6px 8px;border-bottom:1px solid #f0f2f8}",
+    ".tr{text-align:right}",
+    ".pill{display:inline-block;padding:2px 6px;border-radius:6px;font-size:8px;font-weight:700}",
+    ".pg{background:#dcfce7;color:#085041}.pb{background:#dbeafe;color:#1e3a8a}.pa{background:#fef9c3;color:#633806}.pr{background:#fee2e2;color:#791F1F}",
+    ".footer{margin-top:20px;padding-top:10px;border-top:1px solid #e2e4eb;font-size:9px;color:#aaa;display:flex;justify-content:space-between}"
+  ].join("");
 
-  // ── CONSTRUCTION HTML ──────────────────────────────────────
+  // ── HTML ───────────────────────────────────────────────────
   var H=[];
   H.push("<!DOCTYPE html><html><head><meta charset='UTF-8'><title>Rapport "+data.nom+"</title><style>"+css+"</style></head><body><div class='wrap'>");
 
-  // Header
-  H.push("<div class='hdr'><div style='display:flex;align-items:center;gap:12px'>");
-  H.push("<img class='logo' src='https://emericborel.github.io/Tableau-de-bord/carrefour.png' alt='Carrefour' onerror=\"this.style.display='none'\">");
-  H.push("<div><div class='gname'>"+data.nom+"</div><div class='gsub'>"+data.entites.join(" + ")+"</div></div></div>");
-  H.push("<div class='meta'>Carrefour — Direction Technique France<br>Période : "+periodeLabel+"<br>Généré le "+now+"</div></div>");
+  // ① EN-TÊTE
+  H.push("<div class='hdr'>");
+  H.push("<div style='display:flex;align-items:center;gap:12px'>");
+  H.push("<img class='logo' src='https://emericborel.github.io/Tableau-de-bord/carrefour.png' onerror=\"this.style.display='none'\">");
+  H.push("<div><div class='gname'>"+data.nom+"</div><div class='gsub'>Rapport Maintenance Curative · "+data.entites.join(" + ")+"</div></div>");
+  H.push("</div><div class='meta'>Carrefour — Direction Technique France<br>Période : "+periodeLabel+"<br>Généré le "+now+"</div></div>");
 
-  // KPIs
+  // ② BANDEAU PERFORMANCE
+  H.push("<div class='perf'>");
+  H.push("<div><div class='perf-score'>"+kpi.taux.toFixed(1)+"%</div><div class='perf-label'>Taux de clôture</div></div>");
+  H.push("<div class='perf-txt'>"+perf+" · "+fN(kpi.cl)+" WO clôturés sur "+fN(kpi.n)+" · Objectif : 70%<br><span style='color:"+txC+";font-weight:600'>"+(kpi.taux>=70?"✓ Objectif atteint":"⚠ Écart : "+(70-kpi.taux).toFixed(1)+" pts à rattraper")+"</span></div>");
+  H.push("<div style='text-align:right'><div style='font-size:9px;color:#888;margin-bottom:3px'>WO EN ATTENTE MAGASINS</div><div style='font-size:22px;font-weight:800;color:#791F1F'>"+fN(kpi.at)+"</div><div style='font-size:9px;color:#888'>dont "+fN(kpi.tu)+" très urgents</div></div>");
+  H.push("</div>");
+
+  // ③ KPIs
   if(showKPI){
-    H.push("<h2>KPIs consolidés</h2><div class='kg'>");
+    H.push("<div class='kg'>");
     H.push("<div class='kb'><div class='kl'>WO Total</div><div class='kv'>"+fN(kpi.n)+"</div></div>");
-    H.push("<div class='kb'><div class='kl'>Taux de clôture</div><div class='kv' style='color:"+txC+"'>"+kpi.taux.toFixed(1)+"%</div><div class='ks'>"+fN(kpi.cl)+" clôturés</div></div>");
-    H.push("<div class='kb'><div class='kl'>WO en attente magasins</div><div class='kv' style='color:#791F1F'>"+fN(kpi.at)+"</div><div class='ks'>"+fN(kpi.tu)+" très urgents</div></div>");
+    H.push("<div class='kb'><div class='kl'>Clôturés</div><div class='kv' style='color:"+txC+"'>"+fN(kpi.cl)+"</div><div class='ks'>"+kpi.taux.toFixed(1)+"% du total</div></div>");
+    H.push("<div class='kb'><div class='kl'>En attente magasins</div><div class='kv' style='color:#791F1F'>"+fN(kpi.at)+"</div><div class='ks'>"+fN(kpi.tu)+" très urgents</div></div>");
     H.push("<div class='kb'><div class='kl'>Coût total devis</div><div class='kv'>"+fmt(kpi.coutTot)+"</div></div>");
     H.push("<div class='kb'><div class='kl'>Approuvés ERP</div><div class='kv'>"+fmt(kpi.coutApp)+"</div></div>");
-    if(kpi.npsN>0) H.push("<div class='kb'><div class='kl'>Score NPS</div><div class='kv' style='color:"+(kpi.npsScore>=30?"#085041":"#791F1F")+"'>"+(kpi.npsScore>0?"+":"")+kpi.npsScore.toFixed(1)+"</div><div class='ks'>"+fN(kpi.npsN)+" éval.</div></div>");
+    if(kpi.npsN>0) H.push("<div class='kb'><div class='kl'>Score NPS</div><div class='kv' style='color:"+(kpi.npsScore>=30?"#085041":"#791F1F")+"'>"+(kpi.npsScore>0?"+":"")+kpi.npsScore.toFixed(1)+"</div><div class='ks'>"+fN(kpi.npsN)+" évaluations</div></div>");
     H.push("</div>");
   }
 
-  // Graphiques ligne 1 : donut + taux entités
+  // ④ GRAPHIQUES — Ligne 1 : statuts + taux entités
   H.push("<div class='g2'>");
-  H.push("<div class='chart-box'><div class='chart-title'>Répartition statuts WO</div><img src='"+imgDonut+"'></div>");
-  H.push("<div class='chart-box'><div class='chart-title'>Taux clôture par entité</div><img src='"+imgEntTaux+"'></div>");
+  H.push("<div class='cbox'><div class='ctitle'>Répartition des statuts WO</div><img src='"+imgDonut+"'></div>");
+  H.push("<div class='cbox'><div class='ctitle'>Taux de clôture par entité</div><img src='"+imgTauxEnt+"'></div>");
   H.push("</div>");
 
-  // Graphique ligne 2 : évolution mensuelle (pleine largeur)
-  H.push("<div class='g1 chart-box'><div class='chart-title'>Évolution mensuelle — WO créés &amp; taux de clôture</div><img src='"+imgEvol+"'></div>");
+  // ④ GRAPHIQUES — Ligne 2 : évolution pleine largeur
+  H.push("<div class='g1 cbox'><div class='ctitle'>Évolution mensuelle — Volume WO &amp; taux de clôture</div><img src='"+imgEvol+"'></div>");
 
-  // Graphique ligne 3 : WO en attente par mois
-  H.push("<div class='g1 chart-box'><div class='chart-title'>WO en attente magasins — par mois</div><img src='"+imgAttente+"'></div>");
-
-  // TTR (si coché)
-  if(showTTR){
+  // ⑤ TTR + NPS côte à côte (si cochés)
+  if(showTTR||( showNPS2&&kpi.npsN>0)){
     H.push("<div class='g2'>");
-    H.push("<div class='chart-box'><div class='chart-title'>TTR moyen par entité (jours)</div><img src='"+imgTTR+"'></div>");
-    H.push("<div class='chart-box'><div class='chart-title'>TTR — Résumé</div>");
-    H.push("<div style='display:flex;gap:16px;padding:8px 0;font-size:11px'>");
-    H.push("<div><div style='color:#888;margin-bottom:2px;font-size:9px'>TTR MOYEN</div><div style='font-size:20px;font-weight:700'>"+kpi.ttrMoy.toFixed(1)+"j</div></div>");
-    H.push("<div><div style='color:#888;margin-bottom:2px;font-size:9px'>WO ANALYSÉS</div><div style='font-size:20px;font-weight:700'>"+fN(kpi.ttrN)+"</div></div>");
-    H.push("</div></div></div>");
+    if(showTTR){
+      H.push("<div>");
+      H.push("<div class='cbox' style='margin-bottom:8px'><div class='ctitle'>TTR moyen par entité (jours)</div><img src='"+imgTTR+"'></div>");
+      H.push("<div class='info-ttr'><div class='info-title' style='color:#185FA5'>⏱ Délai de résolution</div><div class='stats'>");
+      H.push("<div><div class='stat-lbl'>TTR moyen</div><div class='stat-val'>"+kpi.ttrMoy.toFixed(1)+"j</div></div>");
+      H.push("<div><div class='stat-lbl'>WO analysés</div><div class='stat-val'>"+fN(kpi.ttrN)+"</div></div>");
+      H.push("</div></div></div>");
+    }
+    if(showNPS2&&kpi.npsN>0){
+      H.push("<div>");
+      H.push("<div class='cbox' style='margin-bottom:8px'><div class='ctitle'>Distribution des notes NPS (0 → 10)</div><img src='"+imgNPS+"'></div>");
+      H.push("<div class='info-nps'><div class='info-title' style='color:#085041'>⭐ Satisfaction client</div><div class='stats'>");
+      H.push("<div><div class='stat-lbl'>Score NPS</div><div class='stat-val' style='color:"+(kpi.npsScore>=30?"#085041":"#791F1F")+"'>"+(kpi.npsScore>0?"+":"")+kpi.npsScore.toFixed(1)+"</div></div>");
+      H.push("<div><div class='stat-lbl'>Note moy.</div><div class='stat-val'>"+kpi.npsMoy.toFixed(2)+"/10</div></div>");
+      H.push("<div><div class='stat-lbl'>Promoteurs</div><div class='stat-val' style='color:#085041'>"+(kpi.npsProm/kpi.npsN*100).toFixed(1)+"%</div></div>");
+      H.push("</div></div></div>");
+    }
+    H.push("</div>");
   }
 
-  // NPS (si coché)
-  if(showNPS2&&kpi.npsN>0){
-    H.push("<div class='g2'>");
-    H.push("<div class='chart-box'><div class='chart-title'>Distribution NPS (0 → 10)</div><img src='"+imgNPS+"'></div>");
-    H.push("<div class='chart-box'><div class='chart-title'>NPS — Résumé</div>");
-    H.push("<div style='display:flex;gap:16px;padding:8px 0;flex-wrap:wrap;font-size:11px'>");
-    H.push("<div><div style='color:#888;margin-bottom:2px;font-size:9px'>SCORE NPS</div><div style='font-size:20px;font-weight:700;color:"+(kpi.npsScore>=30?"#085041":"#791F1F")+"'>"+(kpi.npsScore>0?"+":"")+kpi.npsScore.toFixed(1)+"</div></div>");
-    H.push("<div><div style='color:#888;margin-bottom:2px;font-size:9px'>NOTE MOY.</div><div style='font-size:20px;font-weight:700'>"+kpi.npsMoy.toFixed(2)+"/10</div></div>");
-    H.push("<div><div style='color:#888;margin-bottom:2px;font-size:9px'>PROMOTEURS</div><div style='font-size:20px;font-weight:700;color:#085041'>"+(kpi.npsProm/kpi.npsN*100).toFixed(1)+"%</div></div>");
-    H.push("</div></div></div>");
-  }
-
-  // Sans BC (si coché)
+  // ⑥ SANS BC
   if(showBC){
-    H.push("<div style='background:#fff5f5;border:1px solid #f5c1c1;border-radius:7px;padding:10px 14px;margin-bottom:12px'>");
-    H.push("<div style='font-size:10px;font-weight:700;color:#791F1F;margin-bottom:4px'>⚠ Risque sans BC — Devis approuvés sans bon de commande</div>");
-    H.push("<div style='font-size:18px;font-weight:700;color:#791F1F'>"+fmt(kpi.bcRisk)+"</div></div>");
+    H.push("<div class='info-bc'><div class='info-title' style='color:#791F1F'>⚠ Risque financier — Devis approuvés sans bon de commande</div>");
+    H.push("<div class='stats'><div><div class='stat-lbl'>Montant à risque</div><div class='stat-val' style='color:#791F1F'>"+fmt(kpi.bcRisk)+"</div></div></div></div>");
   }
 
-  // Détail par entité (si coché)
+  // ⑦ DÉTAIL PAR ENTITÉ
   if(showDet&&data.entites.length>1){
     H.push("<h2>Détail par entité</h2>");
-    H.push("<table><thead><tr><th>Entité</th><th class='tr'>WO Total</th><th class='tr'>Taux clôture</th><th class='tr'>En attente</th><th class='tr'>TTR moyen</th><th class='tr'>Coût devis</th></tr></thead><tbody>");
+    H.push("<table><thead><tr><th>Entité</th><th class='tr'>WO Total</th><th class='tr'>Taux clôture</th><th class='tr'>En attente</th><th class='tr'>TTR moyen</th><th class='tr'>Coût devis</th><th class='tr'>Sans BC</th></tr></thead><tbody>");
     data.entites.forEach(function(e,i){
       var ew=data.wo.filter(function(r){return r._f===e;});
       var eq=data.quo.filter(function(r){return r._f===e;});
       var ek=calcKPIs(ew,eq,[]);
-      var ec=ek.taux>=70?"#085041":ek.taux>=50?"#185FA5":ek.taux>=35?"#633806":"#791F1F";
-      H.push("<tr style='background:"+(i%2===0?"#fff":"#f9fafb")+"'><td style='font-weight:600;color:"+data.couleur+"'>"+e+"</td><td class='tr'>"+fN(ek.n)+"</td><td class='tr' style='font-weight:700;color:"+ec+"'>"+ek.taux.toFixed(1)+"%</td><td class='tr'>"+fN(ek.at)+"</td><td class='tr'>"+ek.ttrMoy.toFixed(1)+"j</td><td class='tr'>"+fmt(ek.coutTot)+"</td></tr>");
+      var pc=ek.taux>=70?"pg":ek.taux>=50?"pb":ek.taux>=35?"pa":"pr";
+      H.push("<tr style='background:"+(i%2===0?"#fff":"#f9fafb")+"'>");
+      H.push("<td style='font-weight:600;color:"+data.couleur+"'>"+e+"</td>");
+      H.push("<td class='tr'>"+fN(ek.n)+"</td>");
+      H.push("<td class='tr'><span class='pill "+pc+"'>"+ek.taux.toFixed(1)+"%</span></td>");
+      H.push("<td class='tr' style='color:#791F1F'>"+fN(ek.at)+"</td>");
+      H.push("<td class='tr'>"+ek.ttrMoy.toFixed(1)+"j</td>");
+      H.push("<td class='tr'>"+fmt(ek.coutTot)+"</td>");
+      H.push("<td class='tr' style='color:"+(ek.bcRisk>0?"#791F1F":"#aaa")+"'>"+fmt(ek.bcRisk)+"</td>");
+      H.push("</tr>");
     });
     H.push("</tbody></table>");
   }
 
-  // Tableau mensuel avec WO en attente
+  // ⑧ ÉVOLUTION MENSUELLE
   if(mos.length){
     H.push("<h2>Évolution mensuelle</h2>");
     H.push("<table><thead><tr><th>Mois</th><th class='tr'>WO créés</th><th class='tr'>Clôturés</th><th class='tr'>WO en attente magasins</th><th class='tr'>Taux clôture</th><th class='tr'>Coût devis</th></tr></thead><tbody>");
     mos.forEach(function(m,i){
       var v=mMap[m];var tx=v.tot?v.cl/v.tot*100:0;
-      var tc=tx>=70?"#085041":tx>=50?"#185FA5":tx>=35?"#633806":"#791F1F";
-      H.push("<tr style='background:"+(i%2===0?"#fff":"#f9fafb")+"'><td>"+mL(m)+" 2026</td><td class='tr'>"+fN(v.tot)+"</td><td class='tr'>"+fN(v.cl)+"</td><td class='tr' style='color:#791F1F;font-weight:600'>"+fN(v.at)+"</td><td class='tr' style='font-weight:700;color:"+tc+"'>"+tx.toFixed(1)+"%</td><td class='tr'>"+fmt(v.cout)+"</td></tr>");
+      var pc=tx>=70?"pg":tx>=50?"pb":tx>=35?"pa":"pr";
+      H.push("<tr style='background:"+(i%2===0?"#fff":"#f9fafb")+"'>");
+      H.push("<td><strong>"+mL(m)+" 2026</strong></td>");
+      H.push("<td class='tr'>"+fN(v.tot)+"</td>");
+      H.push("<td class='tr'>"+fN(v.cl)+"</td>");
+      H.push("<td class='tr' style='color:#791F1F;font-weight:600'>"+fN(v.at)+"</td>");
+      H.push("<td class='tr'><span class='pill "+pc+"'>"+tx.toFixed(1)+"%</span></td>");
+      H.push("<td class='tr'>"+fmt(v.cout)+"</td>");
+      H.push("</tr>");
     });
     H.push("</tbody></table>");
   }
 
-  // Footer
-  H.push("<div class='footer'><span>Carrefour — Direction Technique France</span><span>Dashboard Maintenance Curative Nationale 2026</span></div>");
+  // ⑨ FOOTER
+  H.push("<div class='footer'><span>Carrefour — Direction Technique France · Dashboard Maintenance Curative Nationale</span><span>"+now+"</span></div>");
   H.push("</div></body></html>");
 
   var win=window.open("","_blank");
