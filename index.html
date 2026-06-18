@@ -1496,95 +1496,145 @@ function genererPDF(){
   var monthsMap={};data.wo.forEach(function(r){if(r._mo){if(!monthsMap[r._mo])monthsMap[r._mo]={cl:0,tot:0,cout:0};monthsMap[r._mo].tot++;if(r._e==="CL")monthsMap[r._mo].cl++;}});
   data.quo.forEach(function(r){if(r._mo&&monthsMap[r._mo])monthsMap[r._mo].cout+=r._c;});
   var months=Object.keys(monthsMap).sort();
-  var mensuelTable=months.length?"<h2 style='color:#1a1a2e;font-size:14px;margin:20px 0 10px;border-bottom:2px solid #e2e4eb;padding-bottom:6px'>Évolution mensuelle</h2><table style='width:100%;border-collapse:collapse;font-size:11px'><thead><tr style='background:#f5f6fa'><th style='padding:8px;text-align:left;border-bottom:2px solid #e2e4eb'>Mois</th><th style='padding:8px;text-align:right;border-bottom:2px solid #e2e4eb'>WO créés</th><th style='padding:8px;text-align:right;border-bottom:2px solid #e2e4eb'>Clôturés</th><th style='padding:8px;text-align:right;border-bottom:2px solid #e2e4eb'>Taux clôture</th><th style='padding:8px;text-align:right;border-bottom:2px solid #e2e4eb'>Coût devis</th></tr></thead><tbody>"+months.map(function(m,i){var v=monthsMap[m];var tx=v.cl/v.tot*100;var txC=tx>=70?"#085041":tx>=50?"#185FA5":"#633806";return"<tr style='background:"+(i%2===0?"#fff":"#f9fafb")+"'><td style='padding:8px'>"+mL(m)+" 2026</td><td style='padding:8px;text-align:right'>"+fN(v.tot)+"</td><td style='padding:8px;text-align:right'>"+fN(v.cl)+"</td><td style='padding:8px;text-align:right;font-weight:700;color:"+txC+"'>"+tx.toFixed(1)+"%</td><td style='padding:8px;text-align:right'>"+fmt(v.cout)+"</td></tr>";}).join("")+"</tbody></table>":"";
+    var mensuelTable="";
+  if(mos3.length){
+    mensuelTable+="<h2>Évolution mensuelle</h2>";
+    mensuelTable+="<table><thead><tr>";
+    mensuelTable+="<th>Mois</th><th style='text-align:right'>WO créés</th><th style='text-align:right'>Clôturés</th>";
+    mensuelTable+="<th style='text-align:right'>WO en attente magasins</th>";
+    mensuelTable+="<th style='text-align:right'>Taux clôture</th><th style='text-align:right'>Coût devis</th>";
+    mensuelTable+="</tr></thead><tbody>";
+    mos3.forEach(function(m,i){
+      var v=monthsMap3[m];
+      var tx=v.cl/v.tot*100;
+      var txC=tx>=70?"#085041":tx>=50?"#185FA5":tx>=35?"#633806":"#791F1F";
+      var bg=i%2===0?"#fff":"#f9fafb";
+      mensuelTable+="<tr style='background:"+bg+"'>";
+      mensuelTable+="<td>"+mL(m)+" 2026</td>";
+      mensuelTable+="<td style='text-align:right'>"+fN(v.tot)+"</td>";
+      mensuelTable+="<td style='text-align:right'>"+fN(v.cl)+"</td>";
+      mensuelTable+="<td style='text-align:right;color:#791F1F;font-weight:600'>"+fN(v.at)+"</td>";
+      mensuelTable+="<td style='text-align:right;font-weight:700;color:"+txC+"'>"+tx.toFixed(1)+"%</td>";
+      mensuelTable+="<td style='text-align:right'>"+fmt(v.cout)+"</td>";
+      mensuelTable+="</tr>";
+    });
+    mensuelTable+="</tbody></table>";
+  }
 
   var npsSection=kpi.npsN>0?"<div style='background:#f0fdf8;border:1px solid #b9ead8;border-radius:8px;padding:12px 16px;margin-top:12px'><div style='font-size:11px;font-weight:700;color:#085041;margin-bottom:6px'>⭐ NPS — Satisfaction client</div><div style='display:grid;grid-template-columns:repeat(4,1fr);gap:8px;font-size:11px'><div><div style='color:#555'>Score NPS</div><div style='font-size:18px;font-weight:700;color:"+nC(kpi.npsScore)+"'>"+(kpi.npsScore>0?"+":"")+kpi.npsScore.toFixed(1)+"</div></div><div><div style='color:#555'>Évaluations</div><div style='font-size:18px;font-weight:700'>"+fN(kpi.npsN)+"</div></div><div><div style='color:#555'>Note moyenne</div><div style='font-size:18px;font-weight:700'>"+kpi.npsMoy.toFixed(2)+"/10</div></div><div><div style='color:#555'>% Promoteurs</div><div style='font-size:18px;font-weight:700;color:#085041'>"+(kpi.npsProm/kpi.npsN*100).toFixed(1)+"%</div></div></div></div>":"";
 
-  var printHTML="<!DOCTYPE html><html><head><meta charset='UTF-8'><title>Rapport "+data.nom+"</title><style>body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;color:#1a1a2e;margin:0;padding:0}@media print{body{margin:0}}.page{max-width:800px;margin:0 auto;padding:32px 40px}@media print{.page{padding:20px}}.header{display:flex;align-items:center;justify-content:space-between;border-bottom:3px solid "+data.couleur+";padding-bottom:16px;margin-bottom:24px}.logo-area{display:flex;align-items:center;gap:12px}.group-name{font-size:22px;font-weight:800;color:"+data.couleur+"}.subtitle{font-size:11px;color:#888;margin-top:2px}.meta{text-align:right;font-size:11px;color:#888}.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px}.kpi-box{border:1px solid #e2e4eb;border-radius:8px;padding:12px;border-top:3px solid "+data.couleur+"}.kpi-label{font-size:9px;color:#888;text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px}.kpi-value{font-size:18px;font-weight:700}.kpi-sub{font-size:10px;color:#aaa;margin-top:3px}h2{color:#1a1a2e}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:7px 10px;border-bottom:1px solid #f0f2f8}th{font-size:9px;text-transform:uppercase;letter-spacing:.05em;color:#888;background:#f8f9fc}.footer{margin-top:32px;padding-top:12px;border-top:1px solid #e2e4eb;font-size:10px;color:#aaa;display:flex;justify-content:space-between}@media print{.no-print{display:none}}</style></head><body><div class='page'>"
-    +"<div class='header'><div class='logo-area'><div><div class='group-name'>"+data.nom+"</div><div class='subtitle'>Rapport Maintenance Curative · "+data.entites.join(" + ")+"</div></div></div><div class='meta'><div>Carrefour — Direction Technique France</div><div>Période : "+periodeLabel+"</div><div>Généré le "+now+"</div></div></div>"
-    +"<h2 style='font-size:14px;margin:0 0 12px;border-bottom:2px solid #e2e4eb;padding-bottom:6px'>KPIs consolidés groupe</h2>"
-    +"<div class='kpi-grid'>"
-    +"<div class='kpi-box'><div class='kpi-label'>WO Total</div><div class='kpi-value'>"+fN(kpi.n)+"</div></div>"
-    +"<div class='kpi-box'><div class='kpi-label'>Taux clôture</div><div class='kpi-value' style='color:"+(kpi.taux>=70?"#085041":kpi.taux>=50?"#185FA5":"#791F1F")+"'>"+kpi.taux.toFixed(1)+"%</div><div class='kpi-sub'>"+fN(kpi.cl)+" clôturés</div></div>"
-    +"<div class='kpi-box'><div class='kpi-label'>En attente</div><div class='kpi-value'>"+fN(kpi.at)+"</div><div class='kpi-sub'>"+fN(kpi.tu)+" très urgents</div></div>"
-    +"<div class='kpi-box'><div class='kpi-label'>TTR moyen</div><div class='kpi-value'>"+kpi.ttrMoy.toFixed(1)+"j</div><div class='kpi-sub'>"+fN(kpi.ttrN)+" WO clôturés</div></div>"
-    +"<div class='kpi-box'><div class='kpi-label'>Coût total devis</div><div class='kpi-value'>"+fmt(kpi.coutTot)+"</div></div>"
-    +"<div class='kpi-box'><div class='kpi-label'>Approuvés ERP</div><div class='kpi-value'>"+fmt(kpi.coutApp)+"</div></div>"
-    +"<div class='kpi-box'><div class='kpi-label'>Risque sans BC</div><div class='kpi-value' style='color:#791F1F'>"+fmt(kpi.bcRisk)+"</div></div>"
-    +"<div class='kpi-box'><div class='kpi-label'>WO &gt;30j ouverts</div><div class='kpi-value'>"+fN(kpi.ag30)+"</div><div class='kpi-sub'>"+fN(kpi.ag60)+" &gt;60j</div></div>"
-    +"</div>"
-    +npsSection
-    +"<div style='display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px'>"
-    +"<div><h3 style='font-size:12px;color:#1a1a2e;margin:0 0 8px;border-bottom:1px solid #e2e4eb;padding-bottom:4px'>Répartition statuts WO</h3>__DONUT__</div>"
-    +"<div><h3 style='font-size:12px;color:#1a1a2e;margin:0 0 8px;border-bottom:1px solid #e2e4eb;padding-bottom:4px'>Taux clôture par entité</h3>__ENTITE_TAUX__</div>"
-    +"</div>"
-    +"<div style='margin-top:16px'><h3 style='font-size:12px;color:#1a1a2e;margin:0 0 8px;border-bottom:1px solid #e2e4eb;padding-bottom:4px'>Évolution mensuelle — WO créés &amp; taux clôture</h3>__EVOL__</div>"
-    +(data.entites.length>1?"<div style='margin-top:16px'><h3 style='font-size:12px;color:#1a1a2e;margin:0 0 8px;border-bottom:1px solid #e2e4eb;padding-bottom:4px'>TTR moyen par entité (jours)</h3>__ENTITE_TTR__</div>":"")
-    +(kpi.npsN>0?"<div style='margin-top:16px'><h3 style='font-size:12px;color:#1a1a2e;margin:0 0 8px;border-bottom:1px solid #e2e4eb;padding-bottom:4px'>Distribution NPS (0→10)</h3>__NPS_DIST__</div>":"")
-    +entiteDetail
-    +mensuelTable
+  var showKPI   = document.getElementById("rap-kpi") && document.getElementById("rap-kpi").checked;
+  var showTTR   = document.getElementById("rap-ttr") && document.getElementById("rap-ttr").checked;
+  var showNPS2  = document.getElementById("rap-nps") && document.getElementById("rap-nps").checked;
+  var showBC    = document.getElementById("rap-bc")  && document.getElementById("rap-bc").checked;
+  var showDet   = document.getElementById("rap-detail") && document.getElementById("rap-detail").checked;
+
+  // WO en attente par mois
+  var atMagMap={};
+  data.wo.filter(function(r){return r._e==="AT";}).forEach(function(r){
+    if(r._mo){if(!atMagMap[r._mo])atMagMap[r._mo]=0;atMagMap[r._mo]++;}
+  });
+
+  // Mensuel
+  var monthsMap3={};
+  data.wo.forEach(function(r){
+    if(r._mo){
+      if(!monthsMap3[r._mo])monthsMap3[r._mo]={cl:0,tot:0,at:0,cout:0};
+      monthsMap3[r._mo].tot++;
+      if(r._e==="CL")monthsMap3[r._mo].cl++;
+      if(r._e==="AT")monthsMap3[r._mo].at++;
+    }
+  });
+  data.quo.forEach(function(r){if(r._mo&&monthsMap3[r._mo])monthsMap3[r._mo].cout+=r._c;});
+  var mos3=Object.keys(monthsMap3).sort();
+
+  var txColor3=kpi.taux>=70?"#085041":kpi.taux>=50?"#185FA5":kpi.taux>=35?"#633806":"#791F1F";
+
+  // CSS commun
+  var css=[
+    "body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;color:#1a1a2e;margin:0;padding:0}",
+    "@media print{body{margin:0}@page{margin:15mm}}",
+    ".page{max-width:800px;margin:0 auto;padding:28px 36px}",
+    ".header{display:flex;align-items:center;justify-content:space-between;border-bottom:3px solid "+data.couleur+";padding-bottom:14px;margin-bottom:20px}",
+    ".logo-area{display:flex;align-items:center;gap:14px}",
+    ".logo-area img{height:50px;object-fit:contain}",
+    ".gname{font-size:20px;font-weight:800;color:"+data.couleur+"}",
+    ".gsub{font-size:11px;color:#888;margin-top:3px}",
+    ".meta{text-align:right;font-size:11px;color:#888;line-height:1.7}",
+    ".kg{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px}",
+    ".kb{border:1px solid #e2e4eb;border-radius:8px;padding:12px;border-top:3px solid "+data.couleur+"}",
+    ".kl{font-size:9px;color:#888;text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px}",
+    ".kv{font-size:18px;font-weight:700}",
+    ".ks{font-size:10px;color:#aaa;margin-top:2px}",
+    "h2{color:#1a1a2e;font-size:13px;margin:18px 0 10px;border-bottom:2px solid #e2e4eb;padding-bottom:5px}",
+    "table{width:100%;border-collapse:collapse;font-size:11px}",
+    "th{padding:7px 10px;text-align:left;border-bottom:2px solid #e2e4eb;font-size:9px;text-transform:uppercase;color:#888;background:#f8f9fc}",
+    "td{padding:7px 10px;border-bottom:1px solid #f0f2f8}",
+    ".footer{margin-top:28px;padding-top:12px;border-top:1px solid #e2e4eb;font-size:10px;color:#aaa;display:flex;justify-content:space-between}"
+  ].join("");
+
+  // Build HTML
+  var parts=[];
+  parts.push("<!DOCTYPE html><html><head><meta charset='UTF-8'><title>Rapport "+data.nom+"</title><style>"+css+"</style></head><body><div class='page'>");
+
+  // Header avec logo Carrefour
+  parts.push("<div class='header'>");
+  parts.push("<div class='logo-area'>");
+  parts.push("<img src='https://emericborel.github.io/Tableau-de-bord/carrefour.png' alt='Carrefour' onerror=\"this.style.display='none'\">");
+  parts.push("<div><div class='gname'>"+data.nom+"</div><div class='gsub'>"+data.entites.join(" + ")+"</div></div>");
+  parts.push("</div>");
+  parts.push("<div class='meta'><div>Carrefour — Direction Technique France</div><div>Période : "+periodeLabel+"</div><div>Généré le "+now+"</div></div>");
+  parts.push("</div>");
+
+  // KPIs (sans TTR moyen, sans Risque sans BC)
+  if(showKPI){
+    parts.push("<h2>KPIs consolidés groupe</h2><div class='kg'>");
+    parts.push("<div class='kb'><div class='kl'>WO Total</div><div class='kv'>"+fN(kpi.n)+"</div></div>");
+    parts.push("<div class='kb'><div class='kl'>Taux clôture</div><div class='kv' style='color:"+txColor3+"'>"+kpi.taux.toFixed(1)+"%</div><div class='ks'>"+fN(kpi.cl)+" clôturés</div></div>");
+    parts.push("<div class='kb'><div class='kl'>WO en attente magasins</div><div class='kv' style='color:#791F1F'>"+fN(kpi.at)+"</div><div class='ks'>"+fN(kpi.tu)+" très urgents</div></div>");
+    parts.push("<div class='kb'><div class='kl'>Coût total devis</div><div class='kv'>"+fmt(kpi.coutTot)+"</div></div>");
+    parts.push("<div class='kb'><div class='kl'>Approuvés ERP</div><div class='kv'>"+fmt(kpi.coutApp)+"</div></div>");
+    if(kpi.npsN>0) parts.push("<div class='kb'><div class='kl'>Score NPS</div><div class='kv' style='color:"+(kpi.npsScore>=30?"#085041":"#791F1F")+"'>"+(kpi.npsScore>0?"+":"")+kpi.npsScore.toFixed(1)+"</div><div class='ks'>"+fN(kpi.npsN)+" évaluations</div></div>");
+    parts.push("</div>");
+  }
+
+  // TTR (si coché)
+  if(showTTR){
+    parts.push("<div style='background:#f0f4ff;border:1px solid #c5d0f5;border-radius:8px;padding:12px 16px;margin-bottom:14px'>");
+    parts.push("<div style='font-size:11px;font-weight:700;color:#185FA5;margin-bottom:6px'>⏱ Délai TTR</div>");
+    parts.push("<div style='display:grid;grid-template-columns:repeat(3,1fr);gap:8px;font-size:11px'>");
+    parts.push("<div><div style='color:#555'>TTR moyen</div><div style='font-size:18px;font-weight:700'>"+kpi.ttrMoy.toFixed(1)+"j</div></div>");
+    parts.push("<div><div style='color:#555'>WO analysés</div><div style='font-size:18px;font-weight:700'>"+fN(kpi.ttrN)+"</div></div>");
+    parts.push("</div></div>");
+  }
+
+  // Sans BC (si coché)
+  if(showBC){
+    parts.push("<div style='background:#fff5f5;border:1px solid #f5c1c1;border-radius:8px;padding:12px 16px;margin-bottom:14px'>");
+    parts.push("<div style='font-size:11px;font-weight:700;color:#791F1F;margin-bottom:6px'>⚠ Risque sans BC</div>");
+    parts.push("<div style='font-size:18px;font-weight:700;color:#791F1F'>"+fmt(kpi.bcRisk)+"</div>");
+    parts.push("<div style='font-size:10px;color:#aaa;margin-top:3px'>Devis approuvés ERP sans bon de commande</div>");
+    parts.push("</div>");
+  }
+
+  // NPS (si coché et disponible)
+  if(showNPS2&&kpi.npsN>0){
+    parts.push("<div style='background:#f0fdf8;border:1px solid #b9ead8;border-radius:8px;padding:12px 16px;margin-bottom:14px'>");
+    parts.push("<div style='font-size:11px;font-weight:700;color:#085041;margin-bottom:6px'>⭐ NPS — Satisfaction client</div>");
+    parts.push("<div style='display:grid;grid-template-columns:repeat(4,1fr);gap:8px;font-size:11px'>");
+    parts.push("<div><div style='color:#555'>Score NPS</div><div style='font-size:18px;font-weight:700;color:"+(kpi.npsScore>=30?"#085041":"#791F1F")+"'>"+(kpi.npsScore>0?"+":"")+kpi.npsScore.toFixed(1)+"</div></div>");
+    parts.push("<div><div style='color:#555'>Évaluations</div><div style='font-size:18px;font-weight:700'>"+fN(kpi.npsN)+"</div></div>");
+    parts.push("<div><div style='color:#555'>Note moyenne</div><div style='font-size:18px;font-weight:700'>"+kpi.npsMoy.toFixed(2)+"/10</div></div>");
+    parts.push("<div><div style='color:#555'>% Promoteurs</div><div style='font-size:18px;font-weight:700;color:#085041'>"+(kpi.npsProm/kpi.npsN*100).toFixed(1)+"%</div></div>");
+    parts.push("</div></div>");
+  }
+
+  var printHTML=parts.join("")+entiteDetail+mensuelTable
     +"<div class='footer'><span>Carrefour — Direction Technique France</span><span>Dashboard Maintenance Curative Nationale 2026</span></div>"
     +"</div></body></html>";
 
-  // Build canvas charts as base64 images
-  function buildChartImg(type, labels, datasets, opts){
-    var canvas=document.createElement("canvas");
-    canvas.width=600;canvas.height=220;
-    var ctx2=canvas.getContext("2d");
-    new Chart(ctx2,{type:type,data:{labels:labels,datasets:datasets},options:Object.assign({animation:false,responsive:false,plugins:{legend:{labels:{font:{size:11}}}}},opts||{})});
-    return canvas.toDataURL("image/png");
-  }
-
-  // Chart 1: Donut statuts WO
-  var etats={};["CL","AS","EC","AT","AN"].forEach(function(k){etats[k]=0;});
-  data.wo.forEach(function(r){if(etats[r._e]!==undefined)etats[r._e]++;});
-  var eL={CL:"Clôturés",AS:"Assignés",EC:"En cours",AT:"En attente",AN:"Annulés"};
-  var eC={CL:"#1D9E75",AS:"#378ADD",EC:"#BA7517",AT:"#E24B4A",AN:"#888"};
-  var eKeys=Object.keys(etats).filter(function(k){return etats[k]>0;});
-  var donutImg=buildChartImg("doughnut",eKeys.map(function(k){return eL[k];}),
-    [{data:eKeys.map(function(k){return etats[k];}),backgroundColor:eKeys.map(function(k){return eC[k];}),borderWidth:2,borderColor:"#fff"}],
-    {cutout:"65%",plugins:{legend:{position:"right",labels:{boxWidth:12,padding:8,font:{size:11}}}}});
-
-  // Chart 2: Évolution mensuelle barres + taux
-  var monthsMap2={};data.wo.forEach(function(r){if(r._mo){if(!monthsMap2[r._mo])monthsMap2[r._mo]={cl:0,tot:0,cout:0};monthsMap2[r._mo].tot++;if(r._e==="CL")monthsMap2[r._mo].cl++;}});
-  data.quo.forEach(function(r){if(r._mo&&monthsMap2[r._mo])monthsMap2[r._mo].cout+=r._c;});
-  var mos2=Object.keys(monthsMap2).sort();
-  var evolImg=buildChartImg("bar",mos2.map(mL),[
-    {label:"WO créés",data:mos2.map(function(m){return monthsMap2[m].tot;}),backgroundColor:"rgba(55,138,221,.7)",yAxisID:"y",borderRadius:3},
-    {label:"Taux clôture %",data:mos2.map(function(m){return+(monthsMap2[m].cl/monthsMap2[m].tot*100).toFixed(1);}),type:"line",borderColor:"#1D9E75",backgroundColor:"rgba(29,158,117,.1)",yAxisID:"y2",tension:.3,fill:true,borderWidth:2,pointRadius:4},
-  ],{scales:{y:{position:"left",title:{display:true,text:"WO",font:{size:10}},grid:{color:"rgba(0,0,0,.08)"}},y2:{position:"right",min:0,max:100,title:{display:true,text:"Taux %",font:{size:10}},grid:{display:false},ticks:{callback:function(v){return v+"%";}}}},plugins:{legend:{position:"top",labels:{font:{size:11}}}}});
-
-  // Chart 3: Comparaison entités barres horizontales
-  var entiteLabels=data.entites;
-  var entiteKPIs=data.entites.map(function(e){var eWO=data.wo.filter(function(r){return r._f===e;});var eCl=eWO.filter(function(r){return r._e==="CL";}).length;return eWO.length?+(eCl/eWO.length*100).toFixed(1):0;});
-  var entiteImg=buildChartImg("bar",entiteLabels,[
-    {label:"Taux clôture %",data:entiteKPIs,backgroundColor:entiteKPIs.map(function(v){return v>=70?"#1D9E75":v>=50?"#378ADD":v>=35?"#BA7517":"#E24B4A";}),borderRadius:4}
-  ],{indexAxis:"y",scales:{x:{min:0,max:100,ticks:{callback:function(v){return v+"%";}},grid:{color:"rgba(0,0,0,.08)"}},y:{grid:{display:false}}},plugins:{legend:{display:false}}});
-
-  // Chart 4: TTR comparaison entités
-  var entiteTTR=data.entites.map(function(e){var eWO=data.wo.filter(function(r){return r._f===e&&r._ttr!==null&&r._ttr!==undefined;});return eWO.length?+(eWO.reduce(function(s,r){return s+r._ttr;},0)/eWO.length).toFixed(1):0;});
-  var ttrImg=buildChartImg("bar",entiteLabels,[
-    {label:"TTR moyen (jours)",data:entiteTTR,backgroundColor:entiteTTR.map(function(v){return v<=7?"#1D9E75":v<=15?"#378ADD":v<=30?"#BA7517":"#E24B4A";}),borderRadius:4}
-  ],{indexAxis:"y",scales:{x:{ticks:{callback:function(v){return v+"j";}},grid:{color:"rgba(0,0,0,.08)"}},y:{grid:{display:false}}},plugins:{legend:{display:false}}});
-
-  // Chart 5: NPS distribution
-  var npsImg="";
-  if(kpi.npsN>0){
-    var dist2={};for(var ii=0;ii<=10;ii++)dist2[ii]=0;
-    data.nps.forEach(function(r){if(r._n>=0&&r._n<=10)dist2[Math.round(r._n)]++;});
-    npsImg=buildChartImg("bar",Object.keys(dist2),[
-      {data:Object.values(dist2),backgroundColor:Object.keys(dist2).map(function(k){return k>=9?"#1D9E75":k>=7?"#BA7517":"#E24B4A";}),borderRadius:3}
-    ],{scales:{x:{grid:{display:false}},y:{grid:{color:"rgba(0,0,0,.08)"}}},plugins:{legend:{display:false}}});
-  }
-
   var win=window.open("","_blank");
-  win.document.write(printHTML
-    .replace("__DONUT__", donutImg?("<img src='"+donutImg+"' style='width:100%;max-height:200px;object-fit:contain'>"):"")
-    .replace("__EVOL__", evolImg?("<img src='"+evolImg+"' style='width:100%;max-height:200px;object-fit:contain'>"):"")
-    .replace("__ENTITE_TAUX__", entiteImg?("<img src='"+entiteImg+"' style='width:100%;max-height:160px;object-fit:contain'>"):"")
-    .replace("__ENTITE_TTR__", ttrImg?("<img src='"+ttrImg+"' style='width:100%;max-height:160px;object-fit:contain'>"):"")
-    .replace("__NPS_DIST__", npsImg?("<img src='"+npsImg+"' style='width:100%;max-height:160px;object-fit:contain'>"):"")
-  );
+    win.document.write(printHTML)
   win.document.close();
   setTimeout(function(){win.print();},800);
   toast("Rapport PDF ouvert ✓");
@@ -1852,106 +1902,278 @@ function testerScript(){
 }
 
 function envoyerRapport(){
-  var val = document.getElementById("send-groupe").value;
-  if(!val){ toast("Sélectionnez un groupe ou prestataire", true); return; }
-  if(!SCRIPT_URL){ toast("Configurez d'abord l'URL Apps Script dans l'onglet Contacts", true); return; }
+  var val=document.getElementById("send-groupe").value;
+  if(!val){ toast("Sélectionnez un groupe ou prestataire",true); return; }
+  if(!SCRIPT_URL){ toast("Configurez d'abord l'URL Apps Script",true); return; }
 
-  // Trouver le contact et son email
-  var email = "", email2 = "", nomGroupe = "", gid = "", objectif = 70;
+  var email="",email2="",nomGroupe="",gid="",objectif=70;
   if(val.startsWith("cnt:")){
-    var ci = parseInt(val.slice(4));
-    var c = CONTACTS[ci];
-    if(!c){ toast("Contact introuvable", true); return; }
-    email = c.email; email2 = c.email2||""; nomGroupe = c.nom; objectif = c.taux_ref||70;
-    gid = "__"+c.nom;
+    var ci=parseInt(val.slice(4)); var c=CONTACTS[ci];
+    if(!c){ toast("Contact introuvable",true); return; }
+    email=c.email; email2=c.email2||""; nomGroupe=c.nom; objectif=c.taux_ref||70; gid="__"+c.nom;
   } else if(val.startsWith("grp:")){
-    gid = val.slice(4);
-    var g = GROUPES.find(function(x){return x.id===gid;});
-    if(!g){ toast("Groupe introuvable", true); return; }
-    nomGroupe = g.nom;
-    // Chercher email dans contacts
-    var cFound = CONTACTS.find(function(x){return x.groupe===g.nom||x.nom===g.nom;});
-    if(cFound){ email=cFound.email; email2=cFound.email2||""; objectif=cFound.taux_ref||70; }
-    else { email = prompt("Email destinataire pour "+g.nom+":");}
-    if(!email){ toast("Email requis", true); return; }
+    gid=val.slice(4); var g=GROUPES.find(function(x){return x.id===gid;});
+    if(g){ nomGroupe=g.nom; }
+    var cF=CONTACTS.find(function(x){return x.groupe===g.nom||x.nom===g.nom;});
+    if(cF){ email=cF.email; email2=cF.email2||""; objectif=cF.taux_ref||70; }
+    else { email=prompt("Email pour "+nomGroupe+":"); if(!email) return; }
   }
 
-  var periode = document.getElementById("send-periode").value||"";
-  var periodeLabel = periode?mL(periode)+" 2026":"Toute la période";
-  var objet = (document.getElementById("send-objet").value||"Rapport performance maintenance")
-    .replace("{groupe}", nomGroupe).replace("{periode}", periodeLabel);
+  var periode=document.getElementById("send-periode").value||"";
+  var periodeLabel=periode?mL(periode)+" 2026":"Toute la période";
+  var data=getGroupeData(gid);
+  var kpi=calcKPIs(data.wo,data.quo,data.nps);
+  var msgPerf=getMessagePerformance(kpi.taux,objectif);
+  var msgTemplate=(document.getElementById("send-message").value||"")
+    .replace("{groupe}",nomGroupe).replace("{periode}",periodeLabel)
+    .replace("{message_performance}",msgPerf);
+  var objet=(document.getElementById("send-objet").value||"Rapport")
+    .replace("{groupe}",nomGroupe).replace("{periode}",periodeLabel);
 
-  // Calcul taux pour message
-  var data = getGroupeData(gid);
-  var kpi = calcKPIs(data.wo, data.quo, data.nps);
-  var msgPerf = getMessagePerformance(kpi.taux, objectif);
-  var message = (document.getElementById("send-message").value||"")
-    .replace("{groupe}", nomGroupe).replace("{periode}", periodeLabel)
-    .replace("{message_performance}", msgPerf);
+  var st=document.getElementById("send-status");
+  if(st) st.innerHTML="<span style='color:var(--amber)'>⏳ Envoi…</span>";
 
-  var st = document.getElementById("send-status");
-  if(st) st.innerHTML = "<span style='color:var(--amber)'>⏳ Génération des pièces jointes…</span>";
+  var params=new URLSearchParams({
+    action:"sendRapport", to:email, cc:email2,
+    nomGroupe:nomGroupe, periode:periodeLabel,
+    taux:kpi.taux.toFixed(1), objectif:objectif,
+    objet:objet, message:msgTemplate,
+    wo_total:kpi.n, wo_cl:kpi.cl, wo_at:kpi.at, wo_tu:kpi.tu,
+    ttr_moy:kpi.ttrMoy.toFixed(1),
+    cout_total:fmt(kpi.coutTot), bc_risk:fmt(kpi.bcRisk),
+    nps_score:kpi.npsN>0?kpi.npsScore.toFixed(1):"N/A",
+  });
 
-  // Générer Excel en base64
-  var excelB64 = "";
-  if(document.getElementById("send-excel").checked){
-    var wb = buildExcelWB(data, kpi);
-    var wbout = XLSX.write(wb, {bookType:"xlsx", type:"base64"});
-    excelB64 = wbout;
-  }
+  var iframe=document.getElementById("hidden-iframe-send");
+  if(!iframe){ iframe=document.createElement("iframe"); iframe.id="hidden-iframe-send"; iframe.name="hidden-iframe-send"; iframe.style.display="none"; document.body.appendChild(iframe); }
+  iframe.src=SCRIPT_URL+"?"+params.toString();
 
-  // Générer PDF HTML
-  var pdfHtml = "";
-  if(document.getElementById("send-pdf").checked){
-    pdfHtml = buildPDFHtml(data, kpi, periodeLabel);
-  }
-
-  if(st) st.innerHTML = "<span style='color:var(--amber)'>⏳ Envoi en cours…</span>";
-
-  // Appel Apps Script
-  var payload = {
-    action: "sendRapport",
-    to: email,
-    cc: email2,
-    objet: objet,
-    message: message,
-    nomGroupe: nomGroupe,
-    periode: periodeLabel,
-    kpi: {
-      n: kpi.n, cl: kpi.cl, taux: kpi.taux.toFixed(1),
-      at: kpi.at, tu: kpi.tu, ttrMoy: kpi.ttrMoy.toFixed(1),
-      cout: fmt(kpi.coutTot), bcRisk: fmt(kpi.bcRisk),
-      npsScore: kpi.npsN>0?kpi.npsScore.toFixed(1):"N/A"
-    },
-    excelB64: excelB64,
-    excelNom: "Rapport_"+nomGroupe.replace(/\s/g,"_")+"_"+new Date().toISOString().slice(0,10)+".xlsx",
-    pdfHtml: pdfHtml
-  };
-
-  var form2 = document.createElement("form");
-  form2.method = "POST";
-  form2.action = SCRIPT_URL;
-  form2.target = "hidden-iframe-send";
-  form2.style.display = "none";
-  var inp2 = document.createElement("input");
-  inp2.type = "hidden"; inp2.name = "payload";
-  inp2.value = JSON.stringify(payload);
-  form2.appendChild(inp2);
-  var iframe2 = document.getElementById("hidden-iframe-send");
-  if(!iframe2){
-    iframe2 = document.createElement("iframe");
-    iframe2.name = "hidden-iframe-send";
-    iframe2.style.display = "none";
-    document.body.appendChild(iframe2);
-  }
-  document.body.appendChild(form2);
-  form2.submit();
   setTimeout(function(){
-    if(st) st.innerHTML = "<span style='color:var(--green)'>✅ Rapport envoyé à "+email+"</span>";
+    if(st) st.innerHTML="<span style='color:var(--green)'>✅ Rapport envoyé à "+email+"</span>";
     toast("Rapport envoyé à "+email+" ✓");
-    document.body.removeChild(form2);
+  },3000);
+}
+
+
+function buildExcelWB(data, kpi){
+  var wb = XLSX.utils.book_new();
+  var kpiRows=[
+    ["RAPPORT MAINTENANCE CURATIVE — "+data.nom],
+    ["WO Total",kpi.n],["Clôturés",kpi.cl],["%",+(kpi.taux.toFixed(1))],
+    ["En attente",kpi.at],["TU ouverts",kpi.tu],
+    ["TTR moyen (j)",+(kpi.ttrMoy.toFixed(1))],
+    ["Coût devis",kpi.coutTot],["Sans BC",kpi.bcRisk],
+    ["NPS",kpi.npsN>0?+(kpi.npsScore.toFixed(1)):"N/A"]
+  ];
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(kpiRows), "KPIs");
+  var woRows=[["N° WO","Statut","Prestataire","Magasin","Région","Priorité","Mois","Âge","TTR"]];
+  data.wo.slice(0,5000).forEach(function(r){woRows.push([r["Numéro"]||"",r["État"]||"",r._f,r._m,r._r,r._p,r._mo,r._age>=0?r._age:"",r._ttr!=null?+(r._ttr.toFixed(1)):""]);});
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(woRows), "WO Détail");
+  return wb;
+}
+
+function buildPDFHtml(data, kpi, periodeLabel){
+  var txColor = kpi.taux>=70?"#085041":kpi.taux>=50?"#185FA5":kpi.taux>=35?"#633806":"#791F1F";
+  return "<!DOCTYPE html><html><head><meta charset=UTF-8><style>body{font-family:system-ui;color:#1a1a2e;margin:0;padding:0}.p{padding:28px 36px;max-width:750px;margin:0 auto}.hdr{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid "+data.couleur+";padding-bottom:14px;margin-bottom:20px}.gn{font-size:20px;font-weight:800;color:"+data.couleur+"}.gs{font-size:11px;color:#888;margin-top:3px}.meta{text-align:right;font-size:11px;color:#888}.kg{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px}.k{border:1px solid #e2e4eb;border-radius:7px;padding:10px;border-top:3px solid "+data.couleur+"}.kl{font-size:9px;color:#888;text-transform:uppercase;margin-bottom:4px}.kv{font-size:16px;font-weight:700}.ks{font-size:9px;color:#bbb;margin-top:2px}</style></head><body><div class=p>"
+    +"<div class=hdr><div><div class=gn>"+data.nom+"</div><div class=gs>"+data.entites.join(" + ")+"</div></div><div class=meta>Carrefour DTF<br>"+periodeLabel+"<br>"+new Date().toLocaleDateString("fr-FR")+"</div></div>"
+    +"<div class=kg>"
+    +"<div class=k><div class=kl>WO Total</div><div class=kv>"+fN(kpi.n)+"</div></div>"
+    +"<div class=k><div class=kl>Taux clôture</div><div class=kv style=color:"+txColor+">"+kpi.taux.toFixed(1)+"%</div><div class=ks>"+fN(kpi.cl)+" clôturés</div></div>"
+    +"<div class=k><div class=kl>En attente</div><div class=kv>"+fN(kpi.at)+"</div><div class=ks>"+fN(kpi.tu)+" TU</div></div>"
+    +"<div class=k><div class=kl>TTR moyen</div><div class=kv>"+kpi.ttrMoy.toFixed(1)+"j</div></div>"
+    +"<div class=k><div class=kl>Coût devis</div><div class=kv>"+fmt(kpi.coutTot)+"</div></div>"
+    +"<div class=k><div class=kl>Sans BC</div><div class=kv style=color:#791F1F>"+fmt(kpi.bcRisk)+"</div></div>"
+    +(kpi.npsN>0?"<div class=k><div class=kl>NPS</div><div class=kv style=color:"+nC(kpi.npsScore)+">"+(kpi.npsScore>0?"+":"")+kpi.npsScore.toFixed(1)+"</div></div>":"")
+    +"</div></div></body></html>";
+}
+
+
+function ouvrirConfigSplash(){ /* plus nécessaire */ }
+function saveSplashUrl(){
+  var url = (document.getElementById("splash-script-url").value||"").trim();
+  if(url){ SCRIPT_URL = url; localStorage.setItem("mc_script_url", url); }
+  var st = document.getElementById("splash-url-status");
+  if(st){ st.textContent = "✅ Sauvegardé"; setTimeout(function(){if(st)st.textContent="";},3000); }
+  // Sync avec l'onglet contacts si ouvert
+  var urlEl = document.getElementById("apps-script-url");
+  if(urlEl && url) urlEl.value = url;
+}
+// Charger SCRIPT_URL depuis localStorage au démarrage
+(function(){
+  SCRIPT_URL = localStorage.getItem("mc_script_url")||"";
+  // Remplir le champ au chargement
+  window.addEventListener("load", function(){
+    var inp = document.getElementById("splash-script-url");
+    if(inp && SCRIPT_URL) inp.value = SCRIPT_URL;
+    if(SCRIPT_URL){
+      var st = document.getElementById("splash-url-status");
+      if(st) st.textContent = "✅ URL configurée";
+    }
+  });
+})();
+
+// ── MODAL CONTACTS (accessible depuis splash) ─────────────────
+function ouvrirModalContacts(){
+  document.getElementById("modal-contacts").style.display="block";
+  var inp = document.getElementById("modal-script-url");
+  if(inp && SCRIPT_URL) inp.value = SCRIPT_URL;
+  renderModalContacts();
+  renderModalGroupes();
+}
+function fermerModalContacts(){
+  document.getElementById("modal-contacts").style.display="none";
+  // Sync avec l'onglet contacts si données chargées
+  if(WO.length) renderContacts();
+}
+function saveModalUrl(){
+  var url=(document.getElementById("modal-script-url").value||"").trim();
+  if(url){ SCRIPT_URL=url; localStorage.setItem("mc_script_url",url); }
+  // Sync splash input aussi
+  var si=document.getElementById("splash-script-url"); if(si&&url) si.value=url;
+  var ai=document.getElementById("apps-script-url"); if(ai&&url) ai.value=url;
+  var st=document.getElementById("modal-url-status");
+  if(st){st.textContent="✅ URL sauvegardée";setTimeout(function(){if(st)st.textContent="";},3000);}
+}
+function renderModalContacts(){
+  var el=document.getElementById("modal-contacts-list");
+  var cnt=document.getElementById("modal-contacts-count");
+  if(!el)return;
+  if(cnt) cnt.textContent=CONTACTS.length+" contact(s)";
+  if(!CONTACTS.length){el.innerHTML="<p style='color:var(--t3);font-size:11px;padding:8px'>Aucun contact.</p>";return;}
+  el.innerHTML=CONTACTS.map(function(c,i){
+    return"<div style='padding:9px 11px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;border-left:3px solid "+(c.couleur||"var(--blue)")+"'>"
+      +"<div style='display:flex;align-items:center;justify-content:space-between'>"
+      +"<div style='font-size:11px;font-weight:700'>"+c.nom+"</div>"
+      +"<div style='display:flex;gap:4px'>"
+      +"<button onclick='editContact("+i+");renderModalContacts()' style='padding:2px 7px;background:rgba(55,138,221,.12);color:#90c4f5;border:1px solid rgba(55,138,221,.2);border-radius:5px;font-size:10px;cursor:pointer'>✏</button>"
+      +"<button onclick='deleteContact("+i+");renderModalContacts()' style='padding:2px 7px;background:rgba(226,75,74,.1);color:var(--red);border:1px solid rgba(226,75,74,.2);border-radius:5px;font-size:10px;cursor:pointer'>✕</button>"
+      +"</div></div>"
+      +"<div style='font-size:10px;color:var(--t2);margin-top:3px'>📧 "+c.email+"</div>"
+      +(c.groupe?"<div style='font-size:9px;color:var(--t3);margin-top:2px'>Groupe: "+c.groupe+(c.auto_send?" · ✓ Auto":"")+"</div>":"")
+      +"</div>";
+  }).join("");
+}
+function filterModalContacts(q){
+  var el=document.getElementById("modal-contacts-list"); if(!el)return;
+  q=q.toLowerCase();
+  var filtered=q?CONTACTS.filter(function(c){return c.nom.toLowerCase().includes(q)||c.email.toLowerCase().includes(q);}) : CONTACTS;
+  el.innerHTML=filtered.map(function(c,i){
+    var ri=CONTACTS.indexOf(c);
+    return"<div style='padding:9px 11px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;border-left:3px solid "+(c.couleur||"var(--blue)")+"'>"
+      +"<div style='font-size:11px;font-weight:700'>"+c.nom+"</div>"
+      +"<div style='font-size:10px;color:var(--t2)'>📧 "+c.email+"</div>"
+      +"</div>";
+  }).join("");
+}
+function renderModalGroupes(){
+  var el=document.getElementById("modal-groupes-list"); if(!el)return;
+  if(!GROUPES.length){el.innerHTML="<p style='color:var(--t3);font-size:11px;padding:4px'>Aucun groupe.</p>";return;}
+  el.innerHTML=GROUPES.map(function(g,i){
+    return"<div style='padding:8px 10px;border:1px solid var(--border);border-radius:7px;margin-bottom:5px;border-left:3px solid "+g.couleur+"'>"
+      +"<div style='display:flex;align-items:center;justify-content:space-between'>"
+      +"<div style='font-size:11px;font-weight:700;color:"+g.couleur+"'>"+g.nom+"</div>"
+      +"<button onclick='deleteGroupe("+i+");renderModalGroupes()' style='padding:2px 7px;background:rgba(226,75,74,.1);color:var(--red);border:1px solid rgba(226,75,74,.2);border-radius:5px;font-size:10px;cursor:pointer'>✕</button>"
+      +"</div>"
+      +"<div style='font-size:9px;color:var(--t3);margin-top:2px'>"+g.entites.join(" · ")+"</div>"
+      +"</div>";
+  }).join("");
+}
+
+function updateRapEmailInfo(gid){
+  var el = document.getElementById("rap-email-info"); if(!el) return;
+  // Chercher contact correspondant
+  var nomGroupe = "";
+  var email = "";
+  if(gid && gid.startsWith("__")){
+    nomGroupe = gid.slice(2);
+  } else {
+    var g = GROUPES.find(function(x){return x.id===gid;});
+    if(g) nomGroupe = g.nom;
+  }
+  // Chercher dans CONTACTS
+  var c = CONTACTS.find(function(x){
+    return x.nom===nomGroupe || x.groupe===nomGroupe ||
+           (gid&&gid.startsWith("__")&&x.nom===gid.slice(2));
+  });
+  if(c){
+    el.innerHTML = "📧 <strong>"+c.email+"</strong>"+(c.email2?" · CC: "+c.email2:"")
+      +"<br><span style='font-size:10px;color:var(--t3)'>Objectif: "+c.taux_ref+"% · "+(c.auto_send?"✓ Envoi auto actif":"Envoi auto désactivé")+"</span>";
+  } else if(!SCRIPT_URL){
+    el.innerHTML = "<span style='color:var(--red)'>⚠ Configurez d'abord l'URL Apps Script dans Contacts</span>";
+  } else {
+    el.innerHTML = "<span style='color:var(--amber)'>⚠ Aucun contact trouvé pour ce groupe — l'email sera demandé à l'envoi</span>";
+  }
+}
+
+function envoyerDepuisRapports(){
+  var gid = document.getElementById("rap-groupe").value;
+  if(!gid){ toast("Sélectionnez un groupe d'abord", true); return; }
+  if(!SCRIPT_URL){ toast("Configurez l'URL Apps Script dans Contacts", true); return; }
+
+  var nomGroupe="", email="", email2="", objectif=70;
+  if(gid.startsWith("__")) nomGroupe=gid.slice(2);
+  else { var g=GROUPES.find(function(x){return x.id===gid;}); if(g) nomGroupe=g.nom; }
+
+  var c=CONTACTS.find(function(x){ return x.nom===nomGroupe||x.groupe===nomGroupe||(gid.startsWith("__")&&x.nom===gid.slice(2)); });
+  if(c){ email=c.email; email2=c.email2||""; objectif=c.taux_ref||70; }
+  else { email=prompt("Email destinataire pour "+nomGroupe+" :"); if(!email) return; }
+
+  var periode=document.getElementById("rap-periode").value||"";
+  var periodeLabel=periode?mL(periode)+" 2026":"Toute la période";
+  var data=getGroupeData(gid);
+  var kpi=calcKPIs(data.wo,data.quo,data.nps);
+  var msgPerf=getMessagePerformance(kpi.taux,objectif);
+  var message="Bonjour,\n\nVeuillez trouver ci-joint votre rapport de performance maintenance curative pour la période "+periodeLabel+".\n\n"+msgPerf+"\n\nCordialement,\nDirection Technique France — Carrefour";
+  var objet="Rapport performance maintenance — "+nomGroupe+" — "+periodeLabel;
+
+  var st=document.getElementById("rap-send-status");
+  if(st) st.innerHTML="<span style='color:var(--amber)'>⏳ Envoi en cours…</span>";
+
+  // Construire URL avec paramètres (pas de body, pas de CORS)
+  var params=new URLSearchParams({
+    action     : "sendRapport",
+    to         : email,
+    cc         : email2,
+    nomGroupe  : nomGroupe,
+    periode    : periodeLabel,
+    taux       : kpi.taux.toFixed(1),
+    objectif   : objectif,
+    objet      : objet,
+    message    : message,
+    wo_total   : kpi.n,
+    wo_cl      : kpi.cl,
+    wo_at      : kpi.at,
+    wo_tu      : kpi.tu,
+    ttr_moy    : kpi.ttrMoy.toFixed(1),
+    cout_total : fmt(kpi.coutTot),
+    bc_risk    : fmt(kpi.bcRisk),
+    nps_score  : kpi.npsN>0?kpi.npsScore.toFixed(1):"N/A",
+  });
+
+  // Ouvrir dans iframe caché
+  var url = SCRIPT_URL + "?" + params.toString();
+  var iframe = document.getElementById("hidden-iframe-send");
+  if(!iframe){
+    iframe=document.createElement("iframe");
+    iframe.id="hidden-iframe-send";
+    iframe.name="hidden-iframe-send";
+    iframe.style.display="none";
+    document.body.appendChild(iframe);
+  }
+  iframe.onload=function(){
+    try{
+      // Essayer de lire la réponse
+    }catch(e){}
+  };
+  iframe.src=url;
+
+  // Afficher succès après délai
+  setTimeout(function(){
+    if(st) st.innerHTML="<span style='color:var(--green)'>✅ Rapport envoyé à "+email+"</span>";
+    toast("✅ Rapport envoyé à "+email);
   }, 3000);
 }
+
 
 function buildExcelWB(data, kpi){
   var wb = XLSX.utils.book_new();
