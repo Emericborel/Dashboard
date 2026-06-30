@@ -460,7 +460,12 @@ tr:hover td{background:rgba(255,255,255,.025)}
         <div class="card">
           <div class="ct" style="margin-bottom:12px">Générer un rapport</div>
           <div style="display:flex;flex-direction:column;gap:10px">
-            <div class="fl"><label>Groupe</label>
+            <div class="fl"><label>Territoire / Région</label>
+              <select class="fs" id="rap-territoire" style="width:100%" onchange="buildRapportSelects();previewRapport()">
+                <option value="">🌍 Toutes régions (National)</option>
+              </select>
+            </div>
+            <div class="fl"><label>Groupe / Prestataire</label>
               <select class="fs" id="rap-groupe" style="width:100%" onchange="previewRapport()"><option value="">Sélectionner un groupe…</option></select>
             </div>
             <div class="fl"><label>Période</label>
@@ -1309,6 +1314,11 @@ var GROUPES = [
 function renderRapports(){
   buildGroupesUI();
   buildRapportSelects();
+  // Listener territoire (une seule fois)
+  var selT=document.getElementById("rap-territoire");
+  if(selT && !selT.dataset.bound){
+    selT.dataset.bound="1";
+  }
 }
 
 function buildGroupesUI(){
@@ -1328,20 +1338,64 @@ function buildGroupesUI(){
 }
 
 function buildRapportSelects(){
+  // ── Territoire ──
+  var selT=document.getElementById("rap-territoire");
+  if(selT && selT.options.length<=1){
+    var regs=[...new Set(WO.map(function(r){return r._r;}).filter(function(v){return v&&v!=="INCONNU";}))].sort();
+    regs.forEach(function(r){var o=document.createElement("option");o.value=r;o.textContent="📍 "+r.replace(/_/g," ");selT.appendChild(o);});
+  }
+  var territoire=selT?selT.value:"";
+
+  // ── Groupe / Prestataire (filtré par territoire si sélectionné) ──
   var sel=document.getElementById("rap-groupe");if(!sel)return;
+  var prevVal=sel.value;
   while(sel.options.length>1)sel.remove(1);
-  GROUPES.forEach(function(g){var o=document.createElement("option");o.value=g.id;o.textContent=g.nom+" ("+g.entites.length+" entités)";sel.appendChild(o);});
-  // Prestataires individuels avec >50 WO
-  var pCount={};WO.forEach(function(r){if(r._f&&r._f!=="Inconnu")pCount[r._f]=(pCount[r._f]||0)+1;});
-  var prests=Object.entries(pCount).filter(function(e){return e[1]>=50;}).sort(function(a,b){return b[1]-a[1];}).map(function(e){return e[0];});
-  var grp=document.createElement("optgroup");grp.label="Prestataires individuels (≥50 WO)";
-  prests.forEach(function(p){var o=document.createElement("option");o.value="__"+p;o.textContent=p+" ("+fN(pCount[p])+" WO)";grp.appendChild(o);});
-  sel.appendChild(grp);
-  // Période
+
+  // WO du territoire sélectionné (ou tout si national)
+  var woScope = territoire ? WO.filter(function(r){return r._r===territoire;}) : WO;
+
+  // Prestataires actifs dans ce territoire (>=10 WO si régional, >=50 si national)
+  var pCount={};woScope.forEach(function(r){if(r._f&&r._f!=="Inconnu")pCount[r._f]=(pCount[r._f]||0)+1;});
+  var seuil = territoire ? 10 : 50;
+  var prestsActifs = new Set(Object.keys(pCount).filter(function(p){return pCount[p]>=seuil;}));
+
+  // Groupes — n'afficher que ceux ayant au moins une entité active dans le territoire
+  var groupesValides = GROUPES.filter(function(g){
+    return g.entites.some(function(e){return prestsActifs.has(e)||pCount[e]>0;});
+  });
+  if(groupesValides.length){
+    var og=document.createElement("optgroup");
+    og.label=territoire?"Groupes actifs en "+territoire.replace(/_/g," "):"Groupes configurés";
+    groupesValides.forEach(function(g){
+      var nbWO=g.entites.reduce(function(s,e){return s+(pCount[e]||0);},0);
+      var o=document.createElement("option");o.value=g.id;
+      o.textContent=g.nom+" ("+fN(nbWO)+" WO"+(territoire?" en région":"")+")";
+      og.appendChild(o);
+    });
+    sel.appendChild(og);
+  }
+
+  // Prestataires individuels
+  var prests=Object.entries(pCount).filter(function(e){return e[1]>=seuil;}).sort(function(a,b){return b[1]-a[1];}).map(function(e){return e[0];});
+  if(prests.length){
+    var grp=document.createElement("optgroup");
+    grp.label="Prestataires individuels (≥"+seuil+" WO"+(territoire?" en région":"")+")";
+    prests.forEach(function(p){var o=document.createElement("option");o.value="__"+p;o.textContent=p+" ("+fN(pCount[p])+" WO)";grp.appendChild(o);});
+    sel.appendChild(grp);
+  }
+
+  // Restaurer la sélection si toujours valide
+  if(prevVal){
+    var stillValid=Array.from(sel.options).some(function(o){return o.value===prevVal;});
+    if(stillValid) sel.value=prevVal;
+  }
+
+  // ── Période ──
   var selP=document.getElementById("rap-periode");if(!selP)return;
-  while(selP.options.length>1)selP.remove(1);
-  var months=[...new Set(WO.map(function(r){return r._mo;}).filter(Boolean))].sort();
-  months.forEach(function(m){var o=document.createElement("option");o.value=m;o.textContent=mL(m)+" 2026";selP.appendChild(o);});
+  if(selP.options.length<=1){
+    var months=[...new Set(WO.map(function(r){return r._mo;}).filter(Boolean))].sort();
+    months.forEach(function(m){var o=document.createElement("option");o.value=m;o.textContent=mL(m)+" 2026";selP.appendChild(o);});
+  }
 }
 
 function addGroupe(){
@@ -1373,23 +1427,32 @@ function getGroupeData(gid){
   var isIndiv=gid.startsWith("__");
   var nom=isIndiv?gid.slice(2):(g?g.nom:"");
   var entites=isIndiv?[gid.slice(2)]:(g?g.entites:[]);
-  var periode=document.getElementById("rap-periode").value||"";
+  var periode=document.getElementById("rap-periode")?document.getElementById("rap-periode").value||"":"";
+  var territoire=document.getElementById("rap-territoire")?document.getElementById("rap-territoire").value||"":"";
+
   var woG=WO.filter(function(r){
     if(entites.indexOf(r._f)<0)return false;
     if(periode&&r._mo!==periode)return false;
+    if(territoire&&r._r!==territoire)return false;
     return true;
   });
   var quoG=QUO.filter(function(r){
     if(entites.indexOf(r._f)<0)return false;
     if(periode&&r._mo!==periode)return false;
+    if(territoire&&r._r!==territoire)return false;
     return true;
   });
   var npsG=NPS.filter(function(r){
     if(entites.indexOf(r._f)<0)return false;
     if(periode&&r._mo!==periode)return false;
+    if(territoire&&r._r!==territoire)return false;
     return true;
   });
-  return{nom:nom,entites:entites,couleur:g?g.couleur:"#378ADD",wo:woG,quo:quoG,nps:npsG};
+
+  // Nom enrichi avec territoire si filtré
+  var nomAffiche = territoire ? nom+" — "+territoire.replace(/_/g," ") : nom;
+
+  return{nom:nomAffiche, nomBase:nom, territoire:territoire, entites:entites, couleur:g?g.couleur:"#378ADD", wo:woG, quo:quoG, nps:npsG};
 }
 
 function calcKPIs(wo,quo,nps){
@@ -1429,7 +1492,7 @@ function previewRapport(){
   if(!prev)return;
   prev.style.display="block";
   title.textContent="Rapport — "+data.nom;
-  sub.textContent=data.entites.join(" + ")+" · "+fN(kpi.n)+" WO";
+  sub.textContent=data.entites.join(" + ")+" · "+fN(kpi.n)+" WO"+(data.territoire?" · 📍 "+data.territoire.replace(/_/g," "):" · 🌍 National");
   // KPIs grid
   var kpiHTML="<div class='kg' style='grid-template-columns:repeat(auto-fit,minmax(130px,1fr));margin-bottom:14px'>"
     +"<div class='kpi' style='border-top-color:"+data.couleur+"'><div class='kl'>WO Total</div><div class='kv'>"+fN(kpi.n)+"</div></div>"
@@ -1631,7 +1694,7 @@ function genererPDF(){
   // ① EN-TÊTE
   H.push("<div class='hdr'><div style='display:flex;align-items:center;gap:12px'>");
   H.push("<img class='logo' src='https://emericborel.github.io/Tableau-de-bord/carrefour.png' onerror=\"this.style.display='none'\">");
-  H.push("<div><div class='gname'>"+data.nom+"</div><div class='gsub'>Rapport Maintenance Curative · "+data.entites.join(" + ")+"</div></div>");
+  H.push("<div><div class='gname'>"+data.nomBase+(data.territoire?" — "+data.territoire.replace(/_/g," "):"")+"</div><div class='gsub'>Rapport Maintenance Curative · "+data.entites.join(" + ")+(data.territoire?" · Périmètre régional":" · Périmètre national")+"</div></div>");
   H.push("</div><div class='meta'>Carrefour — Direction Technique France<br><strong>Période : "+periodeLabel+"</strong><br>Généré le "+now+"</div></div>");
 
   // ② BANDEAU PERFORMANCE
@@ -1750,6 +1813,7 @@ function genererExcel(){
   var kpiRows=[
     ["RAPPORT MAINTENANCE CURATIVE — "+data.nom],
     ["Généré le",new Date().toLocaleDateString("fr-FR")],
+    ["Territoire",data.territoire?data.territoire.replace(/_/g," "):"National (toutes régions)"],
     ["Entités",data.entites.join(", ")],
     [],
     ["INDICATEUR","VALEUR","CONTEXTE"],
@@ -1809,7 +1873,7 @@ function genererExcel(){
   ws5["!cols"]=[{wch:14},{wch:10},{wch:10},{wch:14},{wch:12},{wch:12},{wch:12},{wch:14}];
   XLSX.utils.book_append_sheet(wb,ws5,"Évolution Mensuelle");
 
-  XLSX.writeFile(wb,"Rapport_"+data.nom.replace(/\s/g,"_")+"_"+new Date().toISOString().slice(0,10)+".xlsx");
+  XLSX.writeFile(wb,"Rapport_"+(data.territoire?data.territoire+"_":"")+data.nomBase.replace(/\s/g,"_")+"_"+new Date().toISOString().slice(0,10)+".xlsx");
   toast("Excel exporté ✓ ("+data.entites.length+" entités, "+fN(data.wo.length)+" WO)");
 }
 
@@ -2222,7 +2286,8 @@ function envoyerDepuisRapports(){
   var kpi=calcKPIs(data.wo,data.quo,data.nps);
   var msgPerf=getMessagePerformance(kpi.taux,objectif);
   var message="Bonjour,\n\nVeuillez trouver ci-joint votre rapport de performance maintenance curative pour la période "+periodeLabel+".\n\n"+msgPerf+"\n\nCordialement,\nDirection Technique France — Carrefour";
-  var objet="Rapport performance maintenance — "+nomGroupe+" — "+periodeLabel;
+  var territoireLabel=document.getElementById("rap-territoire")?document.getElementById("rap-territoire").value:"";
+  var objet="Rapport performance maintenance — "+nomGroupe+(territoireLabel?" — "+territoireLabel.replace(/_/g," "):"")+" — "+periodeLabel;
 
   var st=document.getElementById("rap-send-status");
   if(st) st.innerHTML="<span style='color:var(--amber)'>⏳ Envoi en cours…</span>";
