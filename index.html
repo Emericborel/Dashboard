@@ -2272,69 +2272,183 @@ function envoyerDepuisRapports(){
   if(!gid){ toast("Sélectionnez un groupe d'abord", true); return; }
   if(!SCRIPT_URL){ toast("Configurez l'URL Apps Script dans Contacts", true); return; }
 
-  var nomGroupe="", email="", email2="", objectif=70;
+  var nomGroupe="", email="", email2="", objectif=85;
   if(gid.startsWith("__")) nomGroupe=gid.slice(2);
   else { var g=GROUPES.find(function(x){return x.id===gid;}); if(g) nomGroupe=g.nom; }
 
-  var c=CONTACTS.find(function(x){ return x.nom===nomGroupe||x.groupe===nomGroupe||(gid.startsWith("__")&&x.nom===gid.slice(2)); });
-  if(c){ email=c.email; email2=c.email2||""; objectif=c.taux_ref||70; }
+  var c=CONTACTS.find(function(x){
+    return x.nom===nomGroupe||x.groupe===nomGroupe||(gid.startsWith("__")&&x.nom===gid.slice(2));
+  });
+  if(c){ email=c.email; email2=c.email2||""; objectif=c.taux_ref||85; }
   else { email=prompt("Email destinataire pour "+nomGroupe+" :"); if(!email) return; }
 
   var periode=document.getElementById("rap-periode").value||"";
-  var periodeLabel=periode?mL(periode)+" 2026":"Toute la période";
+  var territoire=document.getElementById("rap-territoire")?document.getElementById("rap-territoire").value||"":"";
+  var periodeLabel=periode?mL(periode)+" 2026":"";
+  if(!periodeLabel){
+    var woScope=territoire?WO.filter(function(r){return r._r===territoire;}):WO;
+    var allM=[...new Set(woScope.map(function(r){return r._mo;}).filter(Boolean))].sort();
+    periodeLabel=allM.length>=2?"De "+mL(allM[0])+" 2026 à "+mL(allM[allM.length-1])+" 2026":allM.length===1?mL(allM[0])+" 2026":"Toute la période";
+  }
+
   var data=getGroupeData(gid);
   var kpi=calcKPIs(data.wo,data.quo,data.nps);
   var msgPerf=getMessagePerformance(kpi.taux,objectif);
-  var message="Bonjour,\n\nVeuillez trouver ci-joint votre rapport de performance maintenance curative pour la période "+periodeLabel+".\n\n"+msgPerf+"\n\nCordialement,\nDirection Technique France — Carrefour";
-  var territoireLabel=document.getElementById("rap-territoire")?document.getElementById("rap-territoire").value:"";
-  var objet="Rapport performance maintenance — "+nomGroupe+(territoireLabel?" — "+territoireLabel.replace(/_/g," "):"")+" — "+periodeLabel;
+  var message="Bonjour,\n\nVeuillez trouver ci-joint votre rapport de performance maintenance curative pour la période "+periodeLabel+(territoire?" — Région : "+territoire.replace(/_/g," "):"")+".\n\n"+msgPerf+"\n\nCordialement,\nDirection Technique France — Carrefour";
+  var objet="Rapport performance maintenance — "+nomGroupe+(territoire?" — "+territoire.replace(/_/g," "):"")+(" — "+periodeLabel);
 
   var st=document.getElementById("rap-send-status");
+  if(st) st.innerHTML="<span style='color:var(--amber)'>⏳ Génération du rapport PDF…</span>";
+
+  // Générer le HTML du rapport
+  var pdfHTML=genererPDFHtml(data,kpi,periodeLabel);
+
+  // Encoder en base64
+  var pdfB64="";
+  try {
+    pdfB64=btoa(unescape(encodeURIComponent(pdfHTML)));
+  } catch(e){ pdfB64=""; }
+
   if(st) st.innerHTML="<span style='color:var(--amber)'>⏳ Envoi en cours…</span>";
 
-  // Construire URL avec paramètres (pas de body, pas de CORS)
-  var params=new URLSearchParams({
-    action     : "sendRapport",
-    to         : email,
-    cc         : email2,
-    nomGroupe  : nomGroupe,
-    periode    : periodeLabel,
-    taux       : kpi.taux.toFixed(1),
-    objectif   : objectif,
-    objet      : objet,
-    message    : message,
-    wo_total   : kpi.n,
-    wo_cl      : kpi.cl,
-    wo_at      : kpi.at,
-    wo_tu      : kpi.tu,
-    ttr_moy    : kpi.ttrMoy.toFixed(1),
-    cout_total : fmt(kpi.coutTot),
-    bc_risk    : fmt(kpi.bcRisk),
-    nps_score  : kpi.npsN>0?kpi.npsScore.toFixed(1):"N/A",
+  // POST via formulaire caché (supporte les gros payloads, pas limité comme GET)
+  var form=document.createElement("form");
+  form.method="POST";
+  form.action=SCRIPT_URL;
+  form.target="iframe-post-send";
+  form.style.display="none";
+
+  var fields={
+    action:"sendRapport", to:email, cc:email2,
+    objet:objet, message:message,
+    nomGroupe:nomGroupe, territoire:territoire, periode:periodeLabel,
+    taux:kpi.taux.toFixed(1), objectif:String(objectif),
+    wo_total:String(kpi.n), wo_cl:String(kpi.cl),
+    wo_at:String(kpi.at), wo_tu:String(kpi.tu),
+    ttr_moy:kpi.ttrMoy.toFixed(1),
+    cout_total:fmt(kpi.coutTot), bc_risk:fmt(kpi.bcRisk),
+    nps_score:kpi.npsN>0?kpi.npsScore.toFixed(1):"N/A",
+    pdfB64:pdfB64
+  };
+
+  Object.keys(fields).forEach(function(k){
+    var inp=document.createElement("input");
+    inp.type="hidden"; inp.name=k; inp.value=fields[k];
+    form.appendChild(inp);
   });
 
-  // Ouvrir dans iframe caché
-  var url = SCRIPT_URL + "?" + params.toString();
-  var iframe = document.getElementById("hidden-iframe-send");
+  // Créer iframe cible
+  var iframe=document.getElementById("iframe-post-send");
   if(!iframe){
     iframe=document.createElement("iframe");
-    iframe.id="hidden-iframe-send";
-    iframe.name="hidden-iframe-send";
+    iframe.id="iframe-post-send";
+    iframe.name="iframe-post-send";
     iframe.style.display="none";
     document.body.appendChild(iframe);
   }
-  iframe.onload=function(){
-    try{
-      // Essayer de lire la réponse
-    }catch(e){}
-  };
-  iframe.src=url;
 
-  // Afficher succès après délai
+  document.body.appendChild(form);
+  form.submit();
+
+  // Nettoyage + feedback
   setTimeout(function(){
-    if(st) st.innerHTML="<span style='color:var(--green)'>✅ Rapport envoyé à "+email+"</span>";
+    try{ document.body.removeChild(form); }catch(e){}
+    if(st) st.innerHTML="<span style='color:var(--green)'>✅ Rapport envoyé à "+email+" (PDF en pièce jointe)</span>";
     toast("✅ Rapport envoyé à "+email);
-  }, 3000);
+  },4000);
+}
+
+
+// Génère le HTML du rapport (sans ouvrir de fenêtre — pour envoi email)
+function genererPDFHtml(data, kpi, periodeLabel){
+  var now=new Date().toLocaleDateString("fr-FR");
+  var OBJECTIF=85;
+  var txC=kpi.taux>=OBJECTIF?"#085041":kpi.taux>=60?"#185FA5":kpi.taux>=40?"#633806":"#791F1F";
+  var perf=kpi.taux>=OBJECTIF?"Excellente performance":kpi.taux>=60?"Bonne performance":kpi.taux>=40?"Performance à améliorer":"Performance insuffisante";
+
+  var mMap={};
+  data.wo.forEach(function(r){
+    if(!r._mo)return;
+    if(!mMap[r._mo])mMap[r._mo]={tot:0,cl:0,at:0,cout:0};
+    mMap[r._mo].tot++;
+    if(r._e==="CL")mMap[r._mo].cl++;
+    if(r._e==="AT")mMap[r._mo].at++;
+  });
+  data.quo.forEach(function(r){if(r._mo&&mMap[r._mo])mMap[r._mo].cout+=r._c;});
+  var mos=Object.keys(mMap).sort();
+
+  var css="body{font-family:Arial,sans-serif;color:#1a1a2e;margin:0;padding:24px}"
+    +".hdr{display:flex;justify-content:space-between;border-bottom:3px solid "+data.couleur+";padding-bottom:12px;margin-bottom:16px}"
+    +".gname{font-size:20px;font-weight:800;color:"+data.couleur+"}"
+    +".gsub{font-size:10px;color:#888;margin-top:3px}"
+    +".meta{text-align:right;font-size:10px;color:#888;line-height:1.8}"
+    +".perf{display:flex;align-items:center;gap:16px;background:"+data.couleur+"12;border:1px solid "+data.couleur+"33;border-radius:8px;padding:12px 18px;margin-bottom:14px}"
+    +".score{font-size:30px;font-weight:800;color:"+txC+"}"
+    +".kg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}"
+    +".kb{border:1px solid #e2e4eb;border-radius:7px;padding:10px;border-top:3px solid "+data.couleur+"}"
+    +".kl{font-size:8px;color:#888;text-transform:uppercase;margin-bottom:3px}"
+    +".kv{font-size:16px;font-weight:700}"
+    +".ks{font-size:9px;color:#aaa}"
+    +"h2{font-size:11px;text-transform:uppercase;border-bottom:2px solid #e2e4eb;padding-bottom:4px;margin:14px 0 8px}"
+    +"table{width:100%;border-collapse:collapse;font-size:10px}"
+    +"th{padding:6px 8px;background:#f8f9fc;border-bottom:2px solid #e2e4eb;font-size:8px;text-transform:uppercase;color:#888}"
+    +"td{padding:6px 8px;border-bottom:1px solid #f0f2f8}"
+    +".tr{text-align:right}"
+    +".pill{display:inline-block;padding:2px 6px;border-radius:4px;font-size:8px;font-weight:700}"
+    +".pg{background:#dcfce7;color:#085041}.pb{background:#dbeafe;color:#1e3a8a}.pa{background:#fef9c3;color:#633806}.pr{background:#fee2e2;color:#791F1F}"
+    +".footer{margin-top:20px;padding-top:8px;border-top:1px solid #e2e4eb;font-size:9px;color:#aaa;display:flex;justify-content:space-between}";
+
+  var H=[];
+  H.push("<!DOCTYPE html><html><head><meta charset='UTF-8'><style>"+css+"</style></head><body>");
+  H.push("<div class='hdr'><div><div class='gname'>"+data.nomBase+(data.territoire?" — "+data.territoire.replace(/_/g," "):"")+"</div><div class='gsub'>Rapport Maintenance Curative · "+data.entites.join(" + ")+(data.territoire?" · Périmètre régional":" · National")+"</div></div>");
+  H.push("<div class='meta'>Carrefour — Direction Technique France<br><strong>"+periodeLabel+"</strong><br>"+now+"</div></div>");
+
+  H.push("<div class='perf'><div style='text-align:center'><div class='score'>"+kpi.taux.toFixed(1)+"%</div><div style='font-size:9px;color:#888;text-transform:uppercase'>Taux de clôture</div><div style='font-size:9px;color:"+txC+";font-weight:700;margin-top:3px'>"+(kpi.taux>=OBJECTIF?"✓ Objectif atteint":"↑ Objectif : "+OBJECTIF+"%")+"</div></div>");
+  H.push("<div style='flex:1;font-size:11px;color:#444;line-height:1.6'><strong>"+perf+"</strong><br>"+fN(kpi.cl)+" WO clôturés sur "+fN(kpi.n)+" · Écart : <span style='color:"+txC+";font-weight:600'>"+(kpi.taux-OBJECTIF).toFixed(1)+" pts</span></div>");
+  H.push("<div style='text-align:right'><div style='font-size:8px;color:#888;text-transform:uppercase'>WO en attente</div><div style='font-size:24px;font-weight:800;color:#791F1F'>"+fN(kpi.at)+"</div><div style='font-size:9px;color:#888'>dont "+fN(kpi.tu)+" TU</div></div></div>");
+
+  H.push("<div class='kg'>");
+  H.push("<div class='kb'><div class='kl'>WO Total</div><div class='kv'>"+fN(kpi.n)+"</div></div>");
+  H.push("<div class='kb'><div class='kl'>Clôturés</div><div class='kv' style='color:"+txC+"'>"+fN(kpi.cl)+"</div><div class='ks'>"+kpi.taux.toFixed(1)+"%</div></div>");
+  H.push("<div class='kb'><div class='kl'>En attente</div><div class='kv' style='color:#791F1F'>"+fN(kpi.at)+"</div><div class='ks'>"+fN(kpi.tu)+" TU</div></div>");
+  H.push("<div class='kb'><div class='kl'>Coût total</div><div class='kv'>"+fmt(kpi.coutTot)+"</div></div>");
+  H.push("<div class='kb'><div class='kl'>Approuvés ERP</div><div class='kv'>"+fmt(kpi.coutApp)+"</div></div>");
+  if(kpi.npsN>0) H.push("<div class='kb'><div class='kl'>Score NPS</div><div class='kv' style='color:"+(kpi.npsScore>=30?"#085041":"#791F1F")+"'>"+(kpi.npsScore>0?"+":"")+kpi.npsScore.toFixed(1)+"</div><div class='ks'>"+fN(kpi.npsN)+" éval.</div></div>");
+  H.push("</div>");
+
+  if(data.entites.length>1){
+    H.push("<h2>Détail par entité</h2>");
+    H.push("<table><thead><tr><th>Entité</th><th class='tr'>WO</th><th class='tr'>Taux</th><th class='tr'>Attente</th><th class='tr'>TTR</th><th class='tr'>Coût</th></tr></thead><tbody>");
+    data.entites.forEach(function(e,i){
+      var ew=data.wo.filter(function(r){return r._f===e;});
+      var eq=data.quo.filter(function(r){return r._f===e;});
+      var ek=calcKPIs(ew,eq,[]);
+      var pc=ek.taux>=OBJECTIF?"pg":ek.taux>=60?"pb":ek.taux>=40?"pa":"pr";
+      H.push("<tr style='background:"+(i%2===0?"#fff":"#f9fafb")+"'>");
+      H.push("<td style='font-weight:600;color:"+data.couleur+"'>"+e+"</td><td class='tr'>"+fN(ek.n)+"</td>");
+      H.push("<td class='tr'><span class='pill "+pc+"'>"+ek.taux.toFixed(1)+"%</span></td>");
+      H.push("<td class='tr'>"+fN(ek.at)+"</td><td class='tr'>"+ek.ttrMoy.toFixed(1)+"j</td><td class='tr'>"+fmt(ek.coutTot)+"</td></tr>");
+    });
+    H.push("</tbody></table>");
+  }
+
+  if(mos.length){
+    H.push("<h2>Évolution mensuelle</h2>");
+    H.push("<table><thead><tr><th>Mois</th><th class='tr'>WO créés</th><th class='tr'>Clôturés</th><th class='tr'>En attente</th><th class='tr'>Taux</th><th class='tr'>Coût</th></tr></thead><tbody>");
+    mos.forEach(function(m,i){
+      var v=mMap[m];var tx=v.tot?v.cl/v.tot*100:0;
+      var pc=tx>=OBJECTIF?"pg":tx>=60?"pb":tx>=40?"pa":"pr";
+      H.push("<tr style='background:"+(i%2===0?"#fff":"#f9fafb")+"'>");
+      H.push("<td><strong>"+mL(m)+" 2026</strong></td><td class='tr'>"+fN(v.tot)+"</td><td class='tr'>"+fN(v.cl)+"</td>");
+      H.push("<td class='tr' style='color:#791F1F'>"+fN(v.at)+"</td>");
+      H.push("<td class='tr'><span class='pill "+pc+"'>"+tx.toFixed(1)+"%</span></td><td class='tr'>"+fmt(v.cout)+"</td></tr>");
+    });
+    H.push("</tbody></table>");
+  }
+
+  H.push("<div class='footer'><span>Carrefour — Direction Technique France</span><span>"+periodeLabel+"</span></div>");
+  H.push("</body></html>");
+  return H.join("");
 }
 
 
@@ -2354,7 +2468,6 @@ function envoyerDepuisRapports(){
 })();
 
 // ── MODAL CONTACTS (accessible depuis splash) ─────────────────
-
 
 </script>
 </body>
