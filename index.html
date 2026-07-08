@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>Dashboard Maintenance Curative — Carrefour 2026</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
@@ -588,6 +591,7 @@ Direction Technique France — Carrefour</textarea>
 var WO=[], QUO=[], NPS=[];
 var F={reg:"",type:"",prest:"",mag:"",mois:""};
 var CHARTS={};
+var _woProc=false, _quoProc=false, _npsProc=false;
 var TAB="overview";
 var FILES={wo:null,quo:null,nps:null};
 var BUDGETS={};
@@ -680,13 +684,25 @@ function readExcel(file,cb){
   var r=new FileReader();
   r.onload=function(e){
     var wb=XLSX.read(e.target.result,{type:"array",cellDates:true});
-    var ws=wb.Sheets[wb.SheetNames[0]];
-    cb(XLSX.utils.sheet_to_json(ws,{defval:""}));
+    // Lire TOUTES les feuilles et fusionner les données
+    var allRows=[];
+    var headers=null;
+    wb.SheetNames.forEach(function(sheetName){
+      var ws=wb.Sheets[sheetName];
+      var rows=XLSX.utils.sheet_to_json(ws,{defval:""});
+      if(rows.length>0){
+        allRows=allRows.concat(rows);
+      }
+    });
+    cb(allRows);
   };
   r.readAsArrayBuffer(file);
 }
 
 function processFiles(){
+  // Forcer la réinitialisation des données précédentes
+  WO=[]; QUO=[]; NPS=[];
+  _woProc=false; _quoProc=false; _npsProc=false;
   document.getElementById("btngo").disabled=true;
   document.getElementById("pbar").style.display="block";
   var pf=document.getElementById("pfill");
@@ -713,7 +729,19 @@ function processFiles(){
 }
 
 function reload(){
+  // Réinitialiser TOUTES les données
+  WO=[]; QUO=[]; NPS=[];
+  _woProc=false; _quoProc=false; _npsProc=false;
   FILES={wo:null,quo:null,nps:null};
+  BUDGETS={};
+  // Réinitialiser les filtres
+  F={reg:"",type:"",prest:"",mag:"",mois:""};
+  // Vider les sélecteurs de filtres
+  ["f-reg","f-type","f-prest","f-mag","f-mois"].forEach(function(id){
+    var el=document.getElementById(id);
+    if(el) while(el.options.length>1) el.remove(1);
+  });
+  // Réinitialiser l'UI
   document.getElementById("app").classList.remove("show");
   var sp=document.getElementById("splash");
   sp.classList.remove("hide");
@@ -721,6 +749,7 @@ function reload(){
   document.getElementById("btngo").disabled=false;
   document.getElementById("pbar").style.display="none";
   document.getElementById("pfill").style.width="0";
+  document.getElementById("h-period").textContent="—";
   updateSplashUI();
 }
 
@@ -2268,26 +2297,26 @@ function updateRapEmailInfo(gid){
 }
 
 function envoyerDepuisRapports(){
-  var gid = document.getElementById("rap-groupe").value;
-  if(!gid){ toast("Sélectionnez un groupe d'abord", true); return; }
-  if(!SCRIPT_URL){ toast("Configurez l'URL Apps Script dans Contacts", true); return; }
+  var gid=document.getElementById("rap-groupe").value;
+  if(!gid){toast("Sélectionnez un groupe d'abord",true);return;}
+  if(!SCRIPT_URL){toast("Configurez l'URL Apps Script dans Contacts",true);return;}
 
-  var nomGroupe="", email="", email2="", objectif=85;
+  var nomGroupe="",email="",email2="",objectif=85;
   if(gid.startsWith("__")) nomGroupe=gid.slice(2);
-  else { var g=GROUPES.find(function(x){return x.id===gid;}); if(g) nomGroupe=g.nom; }
+  else{var g=GROUPES.find(function(x){return x.id===gid;});if(g)nomGroupe=g.nom;}
 
   var c=CONTACTS.find(function(x){
     return x.nom===nomGroupe||x.groupe===nomGroupe||(gid.startsWith("__")&&x.nom===gid.slice(2));
   });
-  if(c){ email=c.email; email2=c.email2||""; objectif=c.taux_ref||85; }
-  else { email=prompt("Email destinataire pour "+nomGroupe+" :"); if(!email) return; }
+  if(c){email=c.email;email2=c.email2||"";objectif=c.taux_ref||85;}
+  else{email=prompt("Email destinataire pour "+nomGroupe+" :");if(!email)return;}
 
-  var periode=document.getElementById("rap-periode").value||"";
   var territoire=document.getElementById("rap-territoire")?document.getElementById("rap-territoire").value||"":"";
+  var periode=document.getElementById("rap-periode").value||"";
   var periodeLabel=periode?mL(periode)+" 2026":"";
   if(!periodeLabel){
-    var woScope=territoire?WO.filter(function(r){return r._r===territoire;}):WO;
-    var allM=[...new Set(woScope.map(function(r){return r._mo;}).filter(Boolean))].sort();
+    var woS=territoire?WO.filter(function(r){return r._r===territoire;}):WO;
+    var allM=[...new Set(woS.map(function(r){return r._mo;}).filter(Boolean))].sort();
     periodeLabel=allM.length>=2?"De "+mL(allM[0])+" 2026 à "+mL(allM[allM.length-1])+" 2026":allM.length===1?mL(allM[0])+" 2026":"Toute la période";
   }
 
@@ -2298,65 +2327,74 @@ function envoyerDepuisRapports(){
   var objet="Rapport performance maintenance — "+nomGroupe+(territoire?" — "+territoire.replace(/_/g," "):"")+(" — "+periodeLabel);
 
   var st=document.getElementById("rap-send-status");
-  if(st) st.innerHTML="<span style='color:var(--amber)'>⏳ Génération du rapport PDF…</span>";
+  if(st)st.innerHTML="<span style='color:var(--amber)'>⏳ Envoi en cours…</span>";
 
-  // Générer le HTML du rapport
-  var pdfHTML=genererPDFHtml(data,kpi,periodeLabel);
-
-  // Encoder en base64
-  var pdfB64="";
-  try {
-    pdfB64=btoa(unescape(encodeURIComponent(pdfHTML)));
-  } catch(e){ pdfB64=""; }
-
-  if(st) st.innerHTML="<span style='color:var(--amber)'>⏳ Envoi en cours…</span>";
-
-  // POST via formulaire caché (supporte les gros payloads, pas limité comme GET)
-  var form=document.createElement("form");
-  form.method="POST";
-  form.action=SCRIPT_URL;
-  form.target="iframe-post-send";
-  form.style.display="none";
-
-  var fields={
-    action:"sendRapport", to:email, cc:email2,
-    objet:objet, message:message,
-    nomGroupe:nomGroupe, territoire:territoire, periode:periodeLabel,
-    taux:kpi.taux.toFixed(1), objectif:String(objectif),
-    wo_total:String(kpi.n), wo_cl:String(kpi.cl),
-    wo_at:String(kpi.at), wo_tu:String(kpi.tu),
-    ttr_moy:kpi.ttrMoy.toFixed(1),
-    cout_total:fmt(kpi.coutTot), bc_risk:fmt(kpi.bcRisk),
-    nps_score:kpi.npsN>0?kpi.npsScore.toFixed(1):"N/A",
-    pdfB64:pdfB64
-  };
-
-  Object.keys(fields).forEach(function(k){
-    var inp=document.createElement("input");
-    inp.type="hidden"; inp.name=k; inp.value=fields[k];
-    form.appendChild(inp);
+  // Construire les données à envoyer via URL params (GET)
+  // Le PDF est généré côté Apps Script depuis les KPIs
+  var params=new URLSearchParams({
+    action    :"sendRapport",
+    to        :email,
+    cc        :email2,
+    objet     :objet,
+    message   :message,
+    nomGroupe :nomGroupe,
+    territoire:territoire,
+    periode   :periodeLabel,
+    taux      :kpi.taux.toFixed(1),
+    objectif  :String(objectif),
+    wo_total  :String(kpi.n),
+    wo_cl     :String(kpi.cl),
+    wo_at     :String(kpi.at),
+    wo_tu     :String(kpi.tu),
+    ttr_moy   :kpi.ttrMoy.toFixed(1),
+    cout_total:fmt(kpi.coutTot),
+    bc_risk   :fmt(kpi.bcRisk),
+    nps_score :kpi.npsN>0?kpi.npsScore.toFixed(1):"N/A",
+    // Données mensuelles encodées (pour que Apps Script génère le PDF)
+    mois_data :encodeMoisData(data,kpi),
+    entites_data:encodeEntitesData(data,kpi),
   });
 
-  // Créer iframe cible
-  var iframe=document.getElementById("iframe-post-send");
+  var iframe=document.getElementById("iframe-get-send");
   if(!iframe){
     iframe=document.createElement("iframe");
-    iframe.id="iframe-post-send";
-    iframe.name="iframe-post-send";
+    iframe.id="iframe-get-send";
     iframe.style.display="none";
     document.body.appendChild(iframe);
   }
+  iframe.src=SCRIPT_URL+"?"+params.toString();
 
-  document.body.appendChild(form);
-  form.submit();
-
-  // Nettoyage + feedback
   setTimeout(function(){
-    try{ document.body.removeChild(form); }catch(e){}
-    if(st) st.innerHTML="<span style='color:var(--green)'>✅ Rapport envoyé à "+email+" (PDF en pièce jointe)</span>";
+    if(st)st.innerHTML="<span style='color:var(--green)'>✅ Rapport envoyé à "+email+"</span>";
     toast("✅ Rapport envoyé à "+email);
   },4000);
 }
+
+function encodeMoisData(data,kpi){
+  var mMap={};
+  data.wo.forEach(function(r){
+    if(!r._mo)return;
+    if(!mMap[r._mo])mMap[r._mo]={tot:0,cl:0,at:0,cout:0};
+    mMap[r._mo].tot++;
+    if(r._e==="CL")mMap[r._mo].cl++;
+    if(r._e==="AT")mMap[r._mo].at++;
+  });
+  data.quo.forEach(function(r){if(r._mo&&mMap[r._mo])mMap[r._mo].cout+=r._c;});
+  return Object.keys(mMap).sort().map(function(m){
+    var v=mMap[m];
+    return m+":"+v.tot+":"+v.cl+":"+v.at+":"+Math.round(v.cout/1000);
+  }).join("|");
+}
+
+function encodeEntitesData(data,kpi){
+  return data.entites.map(function(e){
+    var ew=data.wo.filter(function(r){return r._f===e;});
+    var eq=data.quo.filter(function(r){return r._f===e;});
+    var ek=calcKPIs(ew,eq,[]);
+    return e+":"+ek.n+":"+ek.taux.toFixed(1)+":"+ek.at+":"+ek.ttrMoy.toFixed(1)+":"+Math.round(ek.coutTot/1000);
+  }).join("|");
+}
+
 
 
 // Génère le HTML du rapport (sans ouvrir de fenêtre — pour envoi email)
@@ -2451,8 +2489,6 @@ function genererPDFHtml(data, kpi, periodeLabel){
   return H.join("");
 }
 
-
-
 // Charger SCRIPT_URL depuis localStorage au démarrage
 (function(){
   SCRIPT_URL = localStorage.getItem("mc_script_url")||"";
@@ -2468,6 +2504,8 @@ function genererPDFHtml(data, kpi, periodeLabel){
 })();
 
 // ── MODAL CONTACTS (accessible depuis splash) ─────────────────
+
+
 
 </script>
 </body>
