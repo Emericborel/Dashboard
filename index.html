@@ -155,6 +155,18 @@ tr:hover td{background:rgba(255,255,255,.025)}
   <div class="sp-title">Dashboard Maintenance Curative</div>
   <div style="font-size:14px;font-weight:600;color:rgba(232,234,240,.7);margin-top:-6px;margin-bottom:4px">Carrefour — Direction Technique France</div>
   <div class="sp-sub">2026 · Données traitées localement dans votre navigateur</div>
+  <!-- Chargement automatique depuis Google Sheet -->
+  <div id="auto-load-box" style="width:100%;max-width:480px;background:rgba(29,158,117,.06);border:1px solid rgba(29,158,117,.2);border-radius:10px;padding:12px 14px;display:none">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+      <div style="font-size:11px;font-weight:600;color:#5DCAA5">⚡ Chargement automatique disponible</div>
+      <div id="auto-last-update" style="font-size:10px;color:var(--t3)"></div>
+    </div>
+    <div id="auto-stats" style="font-size:10px;color:var(--t2);margin-bottom:10px"></div>
+    <button onclick="chargerDepuisSheet()" style="width:100%;padding:9px;background:var(--green);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">
+      ⚡ Charger les données automatiquement
+    </button>
+    <div style="font-size:9px;color:var(--t3);margin-top:6px;text-align:center">Données mises à jour chaque lundi à 07h00 par le pipeline Apps Script</div>
+  </div>
 
   <!-- Config URL Apps Script — toujours visible -->
   <div id="config-splash" style="width:100%;max-width:480px;background:rgba(55,138,221,.06);border:1px solid rgba(55,138,221,.15);border-radius:10px;padding:12px 14px">
@@ -2489,6 +2501,7 @@ function genererPDFHtml(data, kpi, periodeLabel){
   return H.join("");
 }
 
+
 // Charger SCRIPT_URL depuis localStorage au démarrage
 (function(){
   SCRIPT_URL = localStorage.getItem("mc_script_url")||"";
@@ -2506,7 +2519,92 @@ function genererPDFHtml(data, kpi, periodeLabel){
 // ── MODAL CONTACTS (accessible depuis splash) ─────────────────
 
 
+// ── CHARGEMENT AUTOMATIQUE DEPUIS GOOGLE SHEET ─────────────────
+var PIPELINE_URL = ""; // Sera rempli depuis SCRIPT_URL
 
+function verifierDonneesAuto(){
+  // Utiliser la même URL Apps Script que pour les emails
+  var url = localStorage.getItem("mc_script_url") || "";
+  if(!url) return;
+  
+  // Vérifier si des données sont disponibles dans le Sheet
+  var pingUrl = url + "?action=getMeta";
+  var box = document.getElementById("auto-load-box");
+  
+  fetch(pingUrl)
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      if(data.status === "ok" && data.wo > 0){
+        // Données disponibles !
+        if(box) box.style.display = "block";
+        var lastUpdate = document.getElementById("auto-last-update");
+        var stats = document.getElementById("auto-stats");
+        if(lastUpdate) lastUpdate.textContent = "Mis à jour : " + data.updated;
+        if(stats) stats.textContent = 
+          fN(data.wo) + " WO · " + fN(data.quo) + " devis · " + 
+          (data.nps > 0 ? fN(data.nps) + " NPS" : "NPS non disponible");
+      }
+    })
+    .catch(function(e){
+      // Pas de données auto disponibles — mode normal
+    });
+}
+
+function chargerDepuisSheet(){
+  var url = localStorage.getItem("mc_script_url") || "";
+  if(!url){ toast("Configurez d'abord l'URL Apps Script", true); return; }
+
+  var btn = document.querySelector("[onclick='chargerDepuisSheet()']");
+  if(btn){ btn.disabled = true; btn.textContent = "⏳ Chargement en cours…"; }
+
+  var baseUrl = url + "?action=getData&type=";
+
+  // Charger WO
+  fetch(baseUrl + "WO")
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      if(data.status !== "ok") throw new Error("WO: " + data.message);
+      WO = data.rows;
+      return fetch(baseUrl + "QUO");
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      if(data.status !== "ok") throw new Error("QUO: " + data.message);
+      QUO = data.rows;
+      return fetch(baseUrl + "NPS");
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      NPS = data.status === "ok" ? data.rows : [];
+      // Traiter les données
+      buildData();
+      buildFilters();
+      // Afficher le dashboard
+      document.getElementById("splash").classList.add("hide");
+      var app = document.getElementById("app");
+      app.classList.add("show");
+      renderAll();
+      toast("✅ " + fN(WO.length) + " WO · " + fN(QUO.length) + " devis chargés automatiquement");
+    })
+    .catch(function(e){
+      if(btn){ btn.disabled = false; btn.textContent = "⚡ Charger les données automatiquement"; }
+      toast("Erreur : " + e.message, true);
+    });
+}
+
+// Vérifier au démarrage si des données auto sont disponibles
+window.addEventListener("load", function(){
+  // Charger URL depuis localStorage
+  SCRIPT_URL = localStorage.getItem("mc_script_url") || "";
+  var inp = document.getElementById("splash-script-url");
+  if(inp && SCRIPT_URL) inp.value = SCRIPT_URL;
+  if(SCRIPT_URL){
+    var st = document.getElementById("splash-url-status");
+    if(st) st.textContent = "✅ URL configurée";
+    // Vérifier si données auto disponibles
+    setTimeout(verifierDonneesAuto, 500);
+  }
+});
 </script>
 </body>
 </html>
