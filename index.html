@@ -165,6 +165,9 @@ tr:hover td{background:rgba(255,255,255,.025)}
     <button onclick="chargerDepuisSheet()" style="width:100%;padding:9px;background:var(--green);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">
       ⚡ Charger les données automatiquement
     </button>
+    <button onclick="verifierDonneesAuto()" style="width:100%;padding:6px;background:transparent;color:var(--t3);border:1px solid var(--border);border-radius:8px;font-size:10px;cursor:pointer;margin-top:4px">
+      🔄 Actualiser
+    </button>
     <div style="font-size:9px;color:var(--t3);margin-top:6px;text-align:center">Données mises à jour chaque lundi à 07h00 par le pipeline Apps Script</div>
   </div>
 
@@ -2196,7 +2199,12 @@ function saveSplashUrl(){
   var url = (document.getElementById("splash-script-url").value||"").trim();
   if(url){ SCRIPT_URL = url; localStorage.setItem("mc_script_url", url); }
   var st = document.getElementById("splash-url-status");
-  if(st){ st.textContent = "✅ Sauvegardé"; setTimeout(function(){if(st)st.textContent="";},3000); }
+  if(st){ st.textContent = "✅ Sauvegardé — vérification des données..."; }
+  // Vérifier immédiatement si données auto disponibles
+  setTimeout(function(){
+    verifierDonneesAuto();
+    if(st) setTimeout(function(){st.textContent="✅ URL configurée";},3000);
+  }, 500);
   // Sync avec l'onglet contacts si ouvert
   var urlEl = document.getElementById("apps-script-url");
   if(urlEl && url) urlEl.value = url;
@@ -2502,9 +2510,6 @@ function genererPDFHtml(data, kpi, periodeLabel){
 }
 
 
-
-
-
 // Charger SCRIPT_URL depuis localStorage au démarrage
 (function(){
   SCRIPT_URL = localStorage.getItem("mc_script_url")||"";
@@ -2522,19 +2527,21 @@ function genererPDFHtml(data, kpi, periodeLabel){
 // ── MODAL CONTACTS (accessible depuis splash) ─────────────────
 
 
+
+
 // ── CHARGEMENT AUTOMATIQUE DEPUIS GOOGLE SHEET ─────────────────
 var PIPELINE_URL = ""; // Sera rempli depuis SCRIPT_URL
 
 function verifierDonneesAuto(){
-  // Utiliser la même URL Apps Script que pour les emails
-  var url = localStorage.getItem("mc_script_url") || "";
+  var url = SCRIPT_URL || localStorage.getItem("mc_script_url") || "";
   if(!url) return;
+  Logger.log && Logger.log("verifierDonneesAuto: " + url);
   
   // Vérifier si des données sont disponibles dans le Sheet
-  var pingUrl = url + "?action=getMeta";
   var box = document.getElementById("auto-load-box");
-  
-  fetch(pingUrl)
+  if(box) box.style.display = "none"; // Reset avant vérification
+
+  fetch(url + "?action=getMeta&t=" + Date.now(), {mode:"cors"})
     .then(function(r){ return r.json(); })
     .then(function(data){
       // Compatible avec les 2 formats (status/statut, updated/mis à jour)
