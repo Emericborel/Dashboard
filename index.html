@@ -2502,6 +2502,9 @@ function genererPDFHtml(data, kpi, periodeLabel){
 }
 
 
+
+
+
 // Charger SCRIPT_URL depuis localStorage au démarrage
 (function(){
   SCRIPT_URL = localStorage.getItem("mc_script_url")||"";
@@ -2534,15 +2537,18 @@ function verifierDonneesAuto(){
   fetch(pingUrl)
     .then(function(r){ return r.json(); })
     .then(function(data){
-      if(data.status === "ok" && data.wo > 0){
-        // Données disponibles !
+      // Compatible avec les 2 formats (status/statut, updated/mis à jour)
+      var ok = data.status === "ok" || data.statut === "ok";
+      var wo = parseInt(data.wo) || 0;
+      var updated = data.updated || data["mis à jour"] || "";
+      if(ok && wo > 0){
         if(box) box.style.display = "block";
         var lastUpdate = document.getElementById("auto-last-update");
         var stats = document.getElementById("auto-stats");
-        if(lastUpdate) lastUpdate.textContent = "Mis à jour : " + data.updated;
-        if(stats) stats.textContent = 
-          fN(data.wo) + " WO · " + fN(data.quo) + " devis · " + 
-          (data.nps > 0 ? fN(data.nps) + " NPS" : "NPS non disponible");
+        if(lastUpdate) lastUpdate.textContent = "Mis à jour : " + updated;
+        if(stats) stats.textContent =
+          fN(wo) + " WO · " + fN(parseInt(data.quo)||0) + " devis · " +
+          (parseInt(data.nps)>0 ? fN(parseInt(data.nps)) + " NPS" : "NPS non disponible");
       }
     })
     .catch(function(e){
