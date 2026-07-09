@@ -2512,12 +2512,6 @@ function genererPDFHtml(data, kpi, periodeLabel){
 
 
 
-
-
-
-
-
-
 // Charger SCRIPT_URL depuis localStorage au démarrage
 (function(){
   SCRIPT_URL = localStorage.getItem("mc_script_url")||"";
@@ -2537,102 +2531,93 @@ function genererPDFHtml(data, kpi, periodeLabel){
 
 
 
-
-
-
-
-
-
-
 // ── CHARGEMENT AUTOMATIQUE DEPUIS GOOGLE SHEET ─────────────────
 var PIPELINE_URL = ""; // Sera rempli depuis SCRIPT_URL
 
 function verifierDonneesAuto(){
   var url = SCRIPT_URL || localStorage.getItem("mc_script_url") || "";
   if(!url) return;
-  Logger.log && Logger.log("verifierDonneesAuto: " + url);
-  
-  // Vérifier si des données sont disponibles dans le Sheet
   var box = document.getElementById("auto-load-box");
-  if(box) box.style.display = "none"; // Reset avant vérification
 
-  fetch(url + "?action=getMeta&t=" + Date.now(), {mode:"cors"})
-    .then(function(r){ return r.json(); })
-    .then(function(data){
-      // Compatible avec les 2 formats (status/statut, updated/mis à jour)
-      var ok = data.status === "ok" || data.statut === "ok";
-      var wo = parseInt(data.wo) || 0;
-      var updated = data.updated || data["mis à jour"] || "";
-      if(ok && wo > 0){
-        if(box) box.style.display = "block";
-        var lastUpdate = document.getElementById("auto-last-update");
-        var stats = document.getElementById("auto-stats");
-        if(lastUpdate) lastUpdate.textContent = "Mis à jour : " + updated;
-        if(stats) stats.textContent =
-          fN(wo) + " WO · " + fN(parseInt(data.quo)||0) + " devis · " +
-          (parseInt(data.nps)>0 ? fN(parseInt(data.nps)) + " NPS" : "NPS non disponible");
-      }
-    })
-    .catch(function(e){
-      // Pas de données auto disponibles — mode normal
-    });
+  // JSONP via balise script — seule méthode sans CORS
+  var cbName = "_GS_META_" + Date.now();
+  var sc = document.createElement("script");
+  sc.id = "_meta_sc";
+
+  window[cbName] = function(data){
+    try{ document.head.removeChild(sc); }catch(e){}
+    delete window[cbName];
+    var ok  = data.status==="ok" || data.statut==="ok";
+    var wo  = parseInt(data.wo)||0;
+    var upd = data.updated || data["mis à jour"] || "";
+    if(ok && wo>0){
+      if(box) box.style.display="block";
+      var el=document.getElementById("auto-last-update");
+      var st=document.getElementById("auto-stats");
+      if(el) el.textContent="Mis à jour : "+upd;
+      if(st) st.textContent=fN(wo)+" WO · "+fN(parseInt(data.quo)||0)+" devis · "+(parseInt(data.nps)>0?fN(parseInt(data.nps))+" NPS":"NPS non disponible");
+    }
+  };
+
+  sc.onerror = function(){
+    try{ document.head.removeChild(sc); }catch(e){}
+    delete window[cbName];
+    // Afficher quand même le bouton si URL configurée (mode optimiste)
+    if(box && url) box.style.display="block";
+    var el=document.getElementById("auto-last-update");
+    var st=document.getElementById("auto-stats");
+    if(el) el.textContent="";
+    if(st) st.textContent="Cliquez pour charger les données";
+  };
+
+  sc.src = url + "?action=getMeta&callback=" + cbName;
+  document.head.appendChild(sc);
 }
 
 function chargerDepuisSheet(){
-  var url = localStorage.getItem("mc_script_url") || "";
-  if(!url){ toast("Configurez d'abord l'URL Apps Script", true); return; }
+  var url = SCRIPT_URL || localStorage.getItem("mc_script_url") || "";
+  if(!url){ toast("Configurez l'URL Apps Script", true); return; }
 
   var btn = document.querySelector("[onclick='chargerDepuisSheet()']");
-  if(btn){ btn.disabled = true; btn.textContent = "⏳ Chargement en cours…"; }
+  if(btn){ btn.disabled=true; btn.textContent="⏳ Chargement…"; }
 
-  var baseUrl = url + "?action=getData&type=";
+  WO=[]; QUO=[]; NPS=[];
 
-  // Charger WO
-  fetch(baseUrl + "WO")
-    .then(function(r){ return r.json(); })
-    .then(function(data){
-      if(data.status !== "ok") throw new Error("WO: " + data.message);
-      WO = data.rows;
-      return fetch(baseUrl + "QUO");
-    })
-    .then(function(r){ return r.json(); })
-    .then(function(data){
-      if(data.status !== "ok") throw new Error("QUO: " + data.message);
-      QUO = data.rows;
-      return fetch(baseUrl + "NPS");
-    })
-    .then(function(r){ return r.json(); })
-    .then(function(data){
-      NPS = data.status === "ok" ? data.rows : [];
-      // Traiter les données
-      buildData();
-      buildFilters();
-      // Afficher le dashboard
-      document.getElementById("splash").classList.add("hide");
-      var app = document.getElementById("app");
-      app.classList.add("show");
-      renderAll();
-      toast("✅ " + fN(WO.length) + " WO · " + fN(QUO.length) + " devis chargés automatiquement");
-    })
-    .catch(function(e){
-      if(btn){ btn.disabled = false; btn.textContent = "⚡ Charger les données automatiquement"; }
-      toast("Erreur : " + e.message, true);
-    });
-}
-
-// Vérifier au démarrage si des données auto sont disponibles
-window.addEventListener("load", function(){
-  // Charger URL depuis localStorage
-  SCRIPT_URL = localStorage.getItem("mc_script_url") || "";
-  var inp = document.getElementById("splash-script-url");
-  if(inp && SCRIPT_URL) inp.value = SCRIPT_URL;
-  if(SCRIPT_URL){
-    var st = document.getElementById("splash-url-status");
-    if(st) st.textContent = "✅ URL configurée";
-    // Vérifier si données auto disponibles
-    setTimeout(verifierDonneesAuto, 500);
+  function chargerType(type, cb){
+    var cbName = "_GS_DATA_"+type+"_"+Date.now();
+    var sc = document.createElement("script");
+    window[cbName] = function(data){
+      try{ document.head.removeChild(sc); }catch(e){}
+      delete window[cbName];
+      cb(data);
+    };
+    sc.onerror = function(){
+      try{ document.head.removeChild(sc); }catch(e){}
+      delete window[cbName];
+      cb({status:"error", rows:[]});
+    };
+    sc.src = url + "?action=getData&type="+type+"&callback="+cbName+"&t="+Date.now();
+    document.head.appendChild(sc);
   }
-});
-</script>
-</body>
-</html>
+
+  chargerType("WO", function(d){
+    WO = (d.status==="ok"||d.statut==="ok") ? (d.rows||[]) : [];
+    chargerType("QUO", function(d2){
+      QUO = (d2.status==="ok"||d2.statut==="ok") ? (d2.rows||[]) : [];
+      chargerType("NPS", function(d3){
+        NPS = (d3.status==="ok"||d3.statut==="ok") ? (d3.rows||[]) : [];
+        if(WO.length===0){
+          toast("Aucune donnée WO — vérifiez l'URL Apps Script", true);
+          if(btn){ btn.disabled=false; btn.textContent="⚡ Charger les données automatiquement"; }
+          return;
+        }
+        try{ buildData(); buildFilters(); }catch(e){ console.log(e); }
+        document.getElementById("splash").classList.add("hide");
+        document.getElementById("app").classList.add("show");
+        try{ renderAll(); }catch(e){}
+        toast("✅ "+fN(WO.length)+" WO · "+fN(QUO.length)+" devis chargés");
+        if(btn){ btn.disabled=false; btn.textContent="⚡ Charger les données automatiquement"; }
+      });
+    });
+  });
+}
