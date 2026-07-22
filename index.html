@@ -2632,53 +2632,7 @@ function verifierDonneesAuto(){
   document.head.appendChild(sc);
 }
 
-function chargerDepuisSheet(){
-  var url = SCRIPT_URL || localStorage.getItem("mc_script_url") || "";
-  if(!url){ toast("Configurez l'URL Apps Script", true); return; }
 
-  var btn = document.querySelector("[onclick='chargerDepuisSheet()']");
-  if(btn){ btn.disabled=true; btn.textContent="⏳ Chargement…"; }
-
-  WO=[]; QUO=[]; NPS=[];
-
-  function chargerType(type, cb){
-    var cbName = "_GS_DATA_"+type+"_"+Date.now();
-    var sc = document.createElement("script");
-    window[cbName] = function(data){
-      try{ document.head.removeChild(sc); }catch(e){}
-      delete window[cbName];
-      cb(data);
-    };
-    sc.onerror = function(){
-      try{ document.head.removeChild(sc); }catch(e){}
-      delete window[cbName];
-      cb({status:"error", rows:[]});
-    };
-    sc.src = url + "?action=getData&type="+type+"&callback="+cbName+"&t="+Date.now();
-    document.head.appendChild(sc);
-  }
-
-  chargerType("WO", function(d){
-    WO = (d.status==="ok"||d.statut==="ok") ? (d.rows||[]) : [];
-    chargerType("QUO", function(d2){
-      QUO = (d2.status==="ok"||d2.statut==="ok") ? (d2.rows||[]) : [];
-      chargerType("NPS", function(d3){
-        NPS = (d3.status==="ok"||d3.statut==="ok") ? (d3.rows||[]) : [];
-        if(WO.length===0){
-          toast("Aucune donnée WO — vérifiez l'URL Apps Script", true);
-          if(btn){ btn.disabled=false; btn.textContent="⚡ Charger les données automatiquement"; }
-          return;
-        }
-        try{ buildData(); buildFilters(); }catch(e){ console.log(e); }
-        document.getElementById("splash").classList.add("hide");
-        document.getElementById("app").classList.add("show");
-        try{ renderAll(); }catch(e){}
-        toast("✅ "+fN(WO.length)+" WO · "+fN(QUO.length)+" devis chargés");
-        if(btn){ btn.disabled=false; btn.textContent="⚡ Charger les données automatiquement"; }
-      });
-    });
-  });
-}
 
 
 // ══════════════════════════════════════════════════════════════
