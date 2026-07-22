@@ -155,6 +155,17 @@ tr:hover td{background:rgba(255,255,255,.025)}
   <div class="sp-title">Dashboard Maintenance Curative</div>
   <div style="font-size:14px;font-weight:600;color:rgba(232,234,240,.7);margin-top:-6px;margin-bottom:4px">Carrefour — Direction Technique France</div>
   <div class="sp-sub">2026 · Données traitées localement dans votre navigateur</div>
+  <!-- Sélection région sur l'écran d'accueil -->
+  <div id="region-selector-box" style="width:100%;max-width:480px;background:rgba(55,138,221,.06);border:1px solid rgba(55,138,221,.15);border-radius:10px;padding:12px 14px;display:none;margin-bottom:10px">
+    <div style="font-size:11px;font-weight:600;color:var(--blue);margin-bottom:8px">📍 Choisissez votre vue</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <button onclick="setRegionView('')" id="btn-national" style="padding:10px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">🌍 Vue Nationale</button>
+      <select id="region-select-splash" class="fs" onchange="setRegionView(this.value)" style="font-size:12px;font-weight:600">
+        <option value="">📍 Choisir une région...</option>
+      </select>
+    </div>
+  </div>
+
   <!-- Chargement automatique depuis Google Sheet -->
   <div id="auto-load-box" style="width:100%;max-width:480px;background:rgba(29,158,117,.06);border:1px solid rgba(29,158,117,.2);border-radius:10px;padding:12px 14px;display:none">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
@@ -275,6 +286,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
     <div class="tab" onclick="go('recurrence')">🔁 Récurrence</div>
     <div class="tab" onclick="go('bc')">⚠ Sans BC</div>
     <div class="tab" onclick="go('nps')">⭐ NPS</div>
+    <div class="tab" onclick="go('alertes')">⚠️ Alertes</div>
     <div class="tab" onclick="go('rapports')">📋 Rapports</div>
     <div class="tab" onclick="go('contacts')" style="border-left:1px solid var(--border);margin-left:auto">📧 Contacts</div>
   </div>
@@ -378,8 +390,10 @@ tr:hover td{background:rgba(255,255,255,.025)}
           <div id="b-ttr" style="max-height:480px;overflow-y:auto"></div>
         </div>
         <div class="card">
-          <div class="ct">Distribution TTR</div><div class="cw" style="height:160px"><canvas id="c-ttr-dist"></canvas></div>
-          <div class="ct" style="margin-top:14px">TTR par région</div><div id="b-ttr-reg" style="margin-top:8px"></div>
+          <div class="ch"><div><div class="ct">Distribution TTR (jours)</div><div class="cs">Répartition des délais de résolution</div></div></div>
+          <div class="cw" style="height:200px"><canvas id="c-ttr-dist"></canvas></div>
+          <div class="ct" style="margin-top:16px">TTR moyen par région</div>
+          <div id="b-ttr-reg" style="margin-top:8px"></div>
         </div>
       </div>
       <div class="g2">
@@ -461,6 +475,29 @@ tr:hover td{background:rgba(255,255,255,.025)}
       <div class="g2">
         <div class="card"><div class="ct">Évolution NPS mensuel</div><div class="cw"><canvas id="c-nps-month"></canvas></div></div>
         <div class="card"><div class="ct">Top prestataires — NPS (min. 5 évaluations)</div><div id="b-nps-prest"></div></div>
+      </div>
+    </div>
+
+    <!-- ALERTES -->
+    <div class="page" id="page-alertes">
+      <div style="padding:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+          <h2 style="margin:0;font-size:15px;color:var(--text)">⚠️ Alertes opérationnelles</h2>
+          <div style="font-size:10px;color:var(--t3)" id="alerte-date"></div>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+          <select id="al-reg" class="fs" style="min-width:160px" onchange="renderAlertes()">
+            <option value="">🌍 Toutes régions</option>
+          </select>
+          <select id="al-prest" class="fs" style="min-width:160px" onchange="renderAlertes()">
+            <option value="">Tous prestataires</option>
+          </select>
+          <button onclick="exporterAlertes()" style="padding:6px 14px;background:var(--green);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">📥 Excel</button>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px" id="alerte-kpis"></div>
+        <div id="alerte-wo-at"></div>
+        <div id="alerte-wo-tu" style="margin-top:16px"></div>
+        <div id="alerte-quo" style="margin-top:16px"></div>
       </div>
     </div>
 
@@ -803,6 +840,7 @@ function buildData(){
     r._sf=String(r["Sous Famille d'Équipement"]||"").trim();
     r._bc=!!(r["Bons de commande référencé"]&&String(r["Bons de commande référencé"]).trim());
     r._mo=toMonth(r["Créé"]);
+    r._age=(r["Créé"])?Math.floor((new Date()-new Date(r["Créé"]))/86400000):-1;
   });
   NPS.forEach(function(r){
     r._n=N(r["Valeur"]||0);
@@ -885,6 +923,7 @@ function fNPS(){
 // NAVIGATION
 // ═══════════════════════════════════════════════════════════════
 function go(tab){
+  if(tab==="alertes") setTimeout(renderAlertes,50);
   TAB=tab;
   document.querySelectorAll(".tab").forEach(function(t,i){t.classList.toggle("active",TABS[i]===tab);});
   document.querySelectorAll(".page").forEach(function(p){p.classList.remove("active");});
@@ -893,6 +932,11 @@ function go(tab){
 }
 
 function renderAll(){
+  // Init alertes si onglet actif
+  if(document.getElementById("page-alertes") && 
+     document.getElementById("page-alertes").classList.contains("active")){
+    renderAlertes();
+  }
   var fn={overview:renderOV,taux:renderTaux,magasins:renderMag,devis:renderDevis,
           ttr:renderTTR,aging:renderAging,budget:renderBudget,
           recurrence:renderRec,bc:renderBC,nps:renderNPS,rapports:renderRapports,contacts:renderContacts};
@@ -2509,6 +2553,15 @@ function genererPDFHtml(data, kpi, periodeLabel){
   return H.join("");
 }
 
+
+
+
+
+
+
+
+
+
 // Charger SCRIPT_URL depuis localStorage au démarrage
 (function(){
   SCRIPT_URL = localStorage.getItem("mc_script_url")||"";
@@ -2524,6 +2577,15 @@ function genererPDFHtml(data, kpi, periodeLabel){
 })();
 
 // ── MODAL CONTACTS (accessible depuis splash) ─────────────────
+
+
+
+
+
+
+
+
+
 
 
 // ── CHARGEMENT AUTOMATIQUE DEPUIS GOOGLE SHEET ─────────────────
@@ -2617,6 +2679,376 @@ function chargerDepuisSheet(){
   });
 }
 
+
+// ══════════════════════════════════════════════════════════════
+// REGION VIEW — sélection région dès l'accueil
+// ══════════════════════════════════════════════════════════════
+var REGION_ACTIVE = "";
+
+function initRegionSelector(){
+  var regs=[...new Set(WO.map(function(r){return r._r;}).filter(function(v){return v&&v!=="INCONNU";}))].sort();
+  var sel=document.getElementById("region-select-splash");
+  var selAl=document.getElementById("al-reg");
+  var selAlP=document.getElementById("al-prest");
+  if(!sel) return;
+  // Remplir sélecteur splash
+  while(sel.options.length>1) sel.remove(1);
+  regs.forEach(function(r){
+    var o=document.createElement("option");
+    o.value=r; o.textContent="📍 "+r.replace(/_/g," ");
+    sel.appendChild(o);
+  });
+  // Remplir sélecteur région alertes
+  if(selAl){
+    while(selAl.options.length>1) selAl.remove(1);
+    regs.forEach(function(r){
+      var o=document.createElement("option");
+      o.value=r; o.textContent="📍 "+r.replace(/_/g," ");
+      selAl.appendChild(o);
+    });
+  }
+  // Remplir sélecteur prestataire alertes
+  if(selAlP){
+    var prests=[...new Set(WO.map(function(r){return r._f;}).filter(function(v){return v&&v!=="Inconnu";}))].sort();
+    while(selAlP.options.length>1) selAlP.remove(1);
+    prests.forEach(function(p){
+      var o=document.createElement("option");
+      o.value=p; o.textContent=p;
+      selAlP.appendChild(o);
+    });
+  }
+  // Afficher le sélecteur région
+  var box=document.getElementById("region-selector-box");
+  if(box) box.style.display="block";
+}
+
+function setRegionView(region){
+  REGION_ACTIVE = region;
+  // Mettre à jour les filtres globaux
+  F.reg = region;
+  // Mettre à jour le filtre région du dashboard
+  var fReg=document.getElementById("f-reg");
+  if(fReg) fReg.value=region;
+  // Afficher info région active
+  var hp=document.getElementById("h-period");
+  if(hp&&region) hp.textContent=region.replace(/_/g," ");
+  // Masquer splash et afficher app
+  document.getElementById("splash").classList.add("hide");
+  document.getElementById("app").classList.add("show");
+  renderAll();
+  // Afficher badge région dans le header
+  var badge=document.getElementById("region-badge");
+  if(!badge){
+    badge=document.createElement("div");
+    badge.id="region-badge";
+    badge.style.cssText="position:fixed;top:8px;right:160px;background:var(--blue);color:#fff;padding:3px 10px;border-radius:12px;font-size:10px;font-weight:700;z-index:9999;cursor:pointer";
+    badge.onclick=function(){
+      document.getElementById("app").classList.remove("show");
+      document.getElementById("splash").classList.remove("hide");
+    };
+    document.body.appendChild(badge);
+  }
+  badge.textContent = region ? "📍 "+region.replace(/_/g," ") : "🌍 National";
+  badge.style.display="block";
+  toast(region?"Vue filtrée : "+region.replace(/_/g," "):"Vue nationale — toutes régions");
+}
+
+// ══════════════════════════════════════════════════════════════
+// ALERTES
+// ══════════════════════════════════════════════════════════════
+function renderAlertes(){
+  var reg   = (document.getElementById("al-reg")   ? document.getElementById("al-reg").value   : "") || REGION_ACTIVE;
+  var prest = document.getElementById("al-prest")  ? document.getElementById("al-prest").value  : "";
+  var today = new Date();
+  var SEUIL = 7;
+
+  // Mettre à jour la liste prestataires selon la région choisie
+  var selP = document.getElementById("al-prest");
+  if(selP){
+    var prevPrest = selP.value;
+    var woScope = reg ? WO.filter(function(r){return r._r===reg;}) : WO;
+    var prests = [...new Set(woScope.map(function(r){return r._f;}).filter(function(v){return v&&v!=="Inconnu";}))].sort();
+    while(selP.options.length>1) selP.remove(1);
+    prests.forEach(function(p){
+      var o=document.createElement("option");
+      o.value=p; o.textContent=p;
+      selP.appendChild(o);
+    });
+    if(prevPrest && prests.indexOf(prevPrest)>=0) selP.value=prevPrest;
+    else prest="";
+  }
+
+  // Filtrer WO
+  var woF = WO.filter(function(r){
+    if(reg   && r._r !== reg)   return false;
+    if(prest && r._f !== prest) return false;
+    return true;
+  });
+
+  // Filtrer QUO
+  var quoF = QUO.filter(function(r){
+    if(reg   && r._r !== reg)   return false;
+    if(prest && r._f !== prest) return false;
+    return true;
+  });
+
+  // 1. WO en attente d'approbation depuis >7j
+  var woAT = woF.filter(function(r){
+    return r._e==="AT" && r._age >= SEUIL;
+  }).sort(function(a,b){ return b._age-a._age; });
+
+  // 2. WO très urgents ouverts depuis >7j (non clôturés, non annulés)
+  var woTU = woF.filter(function(r){
+    return r._p==="TU" && r._e!=="CL" && r._e!=="AN" && r._age >= SEUIL;
+  }).sort(function(a,b){ return b._age-a._age; });
+
+  // 3. Devis Approuvés ERP (BC transmis) — WO non clôturé depuis >7j
+  // Approuvé ERP = BC déjà transmis au prestataire → il doit clôturer le WO
+  var quoNA = quoF.filter(function(r){
+    return r._s==="APP" && r._age >= SEUIL && r._c > 0;
+  }).sort(function(a,b){ return b._age-a._age; });
+
+  // 3b. Devis en attente d'approbation depuis >7j (pas encore BC)
+  var quoAT = quoF.filter(function(r){
+    return (r._s==="AT"||r._s==="ATDA"||r._s==="OUV") && r._age >= SEUIL && r._c > 0;
+  }).sort(function(a,b){ return b._age-a._age; });
+
+  // Mettre à jour la date
+  var dateEl=document.getElementById("alerte-date");
+  if(dateEl) dateEl.textContent="Calculé le "+today.toLocaleDateString("fr-FR");
+
+  // ── KPIs ──
+  var kpisEl=document.getElementById("alerte-kpis");
+  if(kpisEl){
+    kpisEl.style.gridTemplateColumns="repeat(4,1fr)";
+    kpisEl.innerHTML=
+      alerteKpi("⏳ WO Attente approbation >"+SEUIL+"j", woAT.length, "#BA7517", "#633806") +
+      alerteKpi("🚨 WO Très urgents ouverts >"+SEUIL+"j", woTU.length, "#E24B4A", "#791F1F") +
+      alerteKpi("✅ BC transmis — WO à clôturer >"+SEUIL+"j", quoNA.length, "#1D9E75", "#085041") +
+      alerteKpi("📄 Devis en attente approbation >"+SEUIL+"j", quoAT.length, "#378ADD", "#185FA5");
+  }
+
+  // ── TABLEAU WO EN ATTENTE ──
+  var el1=document.getElementById("alerte-wo-at");
+  if(el1) el1.innerHTML = alerteTableau(
+    "⏳ WO en attente d'approbation depuis plus de "+SEUIL+" jours",
+    "#BA7517",
+    woAT,
+    ["Numéro","Compte","Region","Groupe d'affectation","Priorité","Créé","_age"],
+    ["N° WO","Magasin","Région","Prestataire","Priorité","Date création","Jours"]
+  );
+
+  // ── TABLEAU WO TRÈS URGENTS ──
+  var el2=document.getElementById("alerte-wo-tu");
+  if(el2) el2.innerHTML = alerteTableau(
+    "🚨 WO très urgents ouverts depuis plus de "+SEUIL+" jours",
+    "#E24B4A",
+    woTU,
+    ["Numéro","Compte","Region","Groupe d'affectation","État","Créé","_age"],
+    ["N° WO","Magasin","Région","Prestataire","Statut","Date création","Jours"]
+  );
+
+  // ── TABLEAU DEVIS APPROUVÉS ERP (BC transmis) ──
+  var el3=document.getElementById("alerte-quo");
+  if(el3) el3.innerHTML =
+    alerteTableau(
+      "✅ BC transmis — WO à clôturer depuis plus de "+SEUIL+" jours",
+      "#1D9E75",
+      quoNA,
+      ["Numéro","Compte","Region","Groupe d'affectation","Statut du devis","Coût total","_age"],
+      ["N° Devis","Magasin","Région","Prestataire","Statut","Montant","Jours"]
+    ) +
+    alerteTableau(
+      "📄 Devis en attente d'approbation depuis plus de "+SEUIL+" jours",
+      "#378ADD",
+      quoAT,
+      ["Numéro","Compte","Region","Groupe d'affectation","Statut du devis","Coût total","_age"],
+      ["N° Devis","Magasin","Région","Prestataire","Statut","Montant","Jours"]
+    );
+}
+
+function alerteKpi(label, val, bg, color){
+  return "<div style='background:"+bg+"18;border:1px solid "+bg+"44;border-radius:8px;padding:12px;text-align:center'>"
+    +"<div style='font-size:9px;color:"+bg+";font-weight:700;text-transform:uppercase;margin-bottom:6px'>"+label+"</div>"
+    +"<div style='font-size:28px;font-weight:800;color:"+color+"'>"+fN(val)+"</div>"
+    +"</div>";
+}
+
+function alerteTableau(titre, couleur, rows, cols, headers){
+  if(!rows || rows.length===0){
+    return "<div style='background:rgba(29,158,117,.06);border:1px solid rgba(29,158,117,.2);border-radius:8px;padding:12px 16px;margin-bottom:8px'>"
+      +"<div style='font-size:12px;font-weight:700;color:#1D9E75'>✅ "+titre.replace(/[⏳🚨📄]/g,"").trim()+" — Aucune alerte</div>"
+      +"</div>";
+  }
+  var html="<div style='margin-bottom:8px'>"
+    +"<div style='display:flex;align-items:center;justify-content:space-between;background:"+couleur+"18;border:1px solid "+couleur+"44;border-radius:8px 8px 0 0;padding:10px 14px'>"
+    +"<div style='font-size:12px;font-weight:700;color:"+couleur+"'>"+titre+"</div>"
+    +"<div style='font-size:11px;color:var(--t2);font-weight:600'>"+fN(rows.length)+" alertes</div>"
+    +"</div>"
+    +"<div style='overflow-x:auto;border:1px solid "+couleur+"22;border-top:none;border-radius:0 0 8px 8px'>"
+    +"<table style='width:100%;border-collapse:collapse;font-size:11px'>"
+    +"<thead><tr style='background:var(--card2)'>";
+  headers.forEach(function(h){
+    html+="<th style='padding:7px 10px;text-align:left;font-size:9px;text-transform:uppercase;color:var(--t3);font-weight:600;white-space:nowrap'>"+h+"</th>";
+  });
+  html+="</tr></thead><tbody>";
+  var shown = Math.min(rows.length, 100);
+  for(var i=0;i<shown;i++){
+    var r=rows[i];
+    var bg=i%2===0?"var(--card)":"var(--card2)";
+    html+="<tr style='background:"+bg+"'>";
+    cols.forEach(function(c){
+      var v="";
+      if(c==="_age"){
+        v="<span style='font-weight:700;color:"+(r._age>=30?"#E24B4A":r._age>=14?"#BA7517":"#378ADD")+"'>"+r._age+"j</span>";
+      } else if(c==="Créé"){
+        var d=r["Créé"];
+        v=d?new Date(d).toLocaleDateString("fr-FR"):"—";
+      } else if(c==="Coût total"){
+        v=r[c]?fmt(N(r[c])):"—";
+      } else {
+        v=String(r[c]||"").substring(0,40)||"—";
+      }
+      html+="<td style='padding:6px 10px;border-bottom:1px solid var(--border);white-space:nowrap'>"+v+"</td>";
+    });
+    html+="</tr>";
+  }
+  if(rows.length>100) html+="<tr><td colspan='"+cols.length+"' style='padding:8px;text-align:center;color:var(--t3);font-size:10px'>... et "+(rows.length-100)+" autres alertes</td></tr>";
+  html+="</tbody></table></div></div>";
+  return html;
+}
+
+function exporterAlertes(){
+  var reg   = document.getElementById("al-reg")   ? document.getElementById("al-reg").value   : "";
+  var prest = document.getElementById("al-prest") ? document.getElementById("al-prest").value : "";
+  var SEUIL = 7;
+  var woF=WO.filter(function(r){ return (!reg||r._r===reg)&&(!prest||r._f===prest); });
+  var quoF=QUO.filter(function(r){ return (!reg||r._r===reg)&&(!prest||r._f===prest); });
+  var woAT=woF.filter(function(r){ return r._e==="AT"&&r._age>=SEUIL; });
+  var woTU=woF.filter(function(r){ return r._p==="TU"&&r._e!=="CL"&&r._e!=="AN"&&r._age>=SEUIL; });
+  var quoNA=quoF.filter(function(r){ return r._s!=="AP"&&r._s!=="AN"&&r._age>=SEUIL&&r._c>0; });
+  var wb=XLSX.utils.book_new();
+  function addSheet(name,rows,cols){
+    if(!rows.length) return;
+    var data=[cols];
+    rows.forEach(function(r){ data.push(cols.map(function(c){ return c==="_age"?r._age:String(r[c]||""); })); });
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(data),name);
+  }
+  // Recalculer pour l'export
+  var SEUIL_EX=7;
+  var woFEx=WO.filter(function(r){return(!reg||r._r===reg)&&(!prest||r._f===prest);});
+  var quoFEx=QUO.filter(function(r){return(!reg||r._r===reg)&&(!prest||r._f===prest);});
+  var woATEx=woFEx.filter(function(r){return r._e==="AT"&&r._age>=SEUIL_EX;});
+  var woTUEx=woFEx.filter(function(r){return r._p==="TU"&&r._e!=="CL"&&r._e!=="AN"&&r._age>=SEUIL_EX;});
+  var quoNAEx=quoFEx.filter(function(r){return r._s==="APP"&&r._age>=SEUIL_EX&&r._c>0;});
+  var quoATEx=quoFEx.filter(function(r){return(r._s==="AT"||r._s==="ATDA"||r._s==="OUV")&&r._age>=SEUIL_EX&&r._c>0;});
+  addSheet("WO Attente Approbation",woATEx,["Numéro","Compte","Region","Groupe d'affectation","Priorité","Créé","_age"]);
+  addSheet("WO Très Urgents",woTUEx,["Numéro","Compte","Region","Groupe d'affectation","État","Créé","_age"]);
+  addSheet("BC Transmis WO à Clôturer",quoNAEx,["Numéro","Compte","Region","Groupe d'affectation","Statut du devis","Coût total","_age"]);
+  addSheet("Devis En Attente Approbation",quoATEx,["Numéro","Compte","Region","Groupe d'affectation","Statut du devis","Coût total","_age"]);
+  var date=new Date().toISOString().slice(0,10);
+  XLSX.writeFile(wb,"Alertes_Maintenance"+(reg?"_"+reg:"")+"_"+date+".xlsx");
+  toast("Export Excel alertes généré ✓");
+}
+
+// ── STABILITÉ DU CHARGEMENT AUTOMATIQUE ──────────────────────
+function chargerDepuisSheetAvecProgress(){
+  var url=SCRIPT_URL||localStorage.getItem("mc_script_url")||"";
+  if(!url){toast("Configurez l'URL Apps Script",true);return;}
+
+  // Créer une modal de progression
+  var modal=document.createElement("div");
+  modal.id="_load_modal";
+  modal.style.cssText="position:fixed;inset:0;background:rgba(10,12,28,.9);z-index:99999;display:flex;align-items:center;justify-content:center";
+  modal.innerHTML="<div style='background:var(--card);border:1px solid var(--border);border-radius:12px;padding:28px 36px;min-width:320px;text-align:center'>"
+    +"<div style='font-size:18px;font-weight:700;color:var(--text);margin-bottom:16px'>⚡ Chargement automatique</div>"
+    +"<div id='_load_step' style='font-size:12px;color:var(--t2);margin-bottom:14px'>Initialisation...</div>"
+    +"<div style='background:var(--card2);border-radius:8px;height:8px;overflow:hidden'>"
+    +"<div id='_load_bar' style='height:100%;background:var(--green);width:0%;transition:width .3s;border-radius:8px'></div>"
+    +"</div>"
+    +"<div id='_load_pct' style='font-size:11px;color:var(--t3);margin-top:8px'>0%</div>"
+    +"</div>";
+  document.body.appendChild(modal);
+
+  function setProgress(pct, msg){
+    var bar=document.getElementById("_load_bar");
+    var pctEl=document.getElementById("_load_pct");
+    var step=document.getElementById("_load_step");
+    if(bar) bar.style.width=pct+"%";
+    if(pctEl) pctEl.textContent=pct+"%";
+    if(step) step.textContent=msg;
+  }
+
+  WO=[]; QUO=[]; NPS=[];
+  setProgress(5,"Connexion à Apps Script...");
+
+  function chargerType(type, pctStart, pctEnd, label, cb){
+    setProgress(pctStart, "Chargement "+label+"...");
+    var cbName="_GS_DATA_"+type+"_"+Date.now();
+    var sc=document.createElement("script");
+    var timeout=setTimeout(function(){
+      try{document.head.removeChild(sc);}catch(e){}
+      delete window[cbName];
+      cb({status:"error",rows:[]});
+      setProgress(pctEnd, "⚠️ "+label+" : timeout");
+    }, 60000);
+    window[cbName]=function(data){
+      clearTimeout(timeout);
+      try{document.head.removeChild(sc);}catch(e){}
+      delete window[cbName];
+      setProgress(pctEnd, "✅ "+label+" chargé — "+fN((data.rows||[]).length)+" lignes");
+      cb(data);
+    };
+    sc.onerror=function(){
+      clearTimeout(timeout);
+      try{document.head.removeChild(sc);}catch(e){}
+      delete window[cbName];
+      setProgress(pctEnd,"⚠️ "+label+" : erreur de connexion");
+      cb({status:"error",rows:[]});
+    };
+    sc.src=url+"?action=getData&type="+type+"&callback="+cbName+"&t="+Date.now();
+    document.head.appendChild(sc);
+  }
+
+  chargerType("WO",10,50,"WO Curatif (38 000+ lignes)",function(d){
+    WO=(d.status==="ok"||d.statut==="ok")?(d.rows||[]):[];
+    chargerType("QUO",55,80,"Devis National",function(d2){
+      QUO=(d2.status==="ok"||d2.statut==="ok")?(d2.rows||[]):[];
+      chargerType("NPS",83,95,"NPS National",function(d3){
+        NPS=(d3.status==="ok"||d3.statut==="ok")?(d3.rows||[]):[];
+        setProgress(98,"Traitement des données...");
+        setTimeout(function(){
+          try{buildData();buildFilters();}catch(e){console.log("buildData error:",e);}
+          // Initialiser région
+          initRegionSelector();
+          // Init alertes filtres
+          setProgress(100,"✅ Chargement terminé !");
+          setTimeout(function(){
+            var m=document.getElementById("_load_modal");
+            if(m) document.body.removeChild(m);
+            if(WO.length===0){
+              toast("⚠️ Aucune donnée WO reçue",true);
+              return;
+            }
+            // Afficher sélecteur région AVANT le dashboard
+            var box=document.getElementById("region-selector-box");
+            if(box) box.style.display="block";
+            // Ne pas aller directement au dashboard — laisser choisir la région
+            document.getElementById("splash").classList.remove("hide");
+            document.getElementById("app").classList.remove("show");
+            toast("✅ "+fN(WO.length)+" WO · "+fN(QUO.length)+" devis · "+fN(NPS.length)+" NPS chargés");
+          },800);
+        },100);
+      });
+    });
+  });
+}
+
+// Hook: remplacer chargerDepuisSheet par la version avec progress
+var _origCharger = typeof chargerDepuisSheet === "function" ? chargerDepuisSheet : null;
+function chargerDepuisSheet(){
+  chargerDepuisSheetAvecProgress();
+}
 
 </script>
 </body>
