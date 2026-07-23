@@ -642,6 +642,7 @@ Direction Technique France — Carrefour</textarea>
 // ÉTAT GLOBAL
 // ═══════════════════════════════════════════════════════════════
 var WO=[], QUO=[], NPS=[];
+var SCRIPT_URL = localStorage.getItem("mc_script_url") || "";
 var F={reg:"",type:"",prest:"",mag:"",mois:""};
 var CHARTS={};
 var _woProc=false, _quoProc=false, _npsProc=false;
@@ -1971,7 +1972,7 @@ function genererExcel(){
 // CONTACTS & ENVOI EMAIL
 // ═══════════════════════════════════════════════════════════════
 var CONTACTS = JSON.parse(localStorage.getItem("mc_contacts")||"[]");
-var SCRIPT_URL = localStorage.getItem("mc_script_url")||"";
+// SCRIPT_URL initialisé en haut
 
 function saveContacts(){ localStorage.setItem("mc_contacts", JSON.stringify(CONTACTS)); }
 function saveScriptUrl(){
