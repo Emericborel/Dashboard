@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Dashboard Maintenance Curative — Carrefour 2026</title>
+<title>Dashboard Maintenance Curative & Préventive — Carrefour 2026</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
 <style>
@@ -152,7 +152,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
 <!-- SPLASH -->
 <div id="splash">
   <img src="carrefour.png" alt="Carrefour" style="height:90px;object-fit:contain;margin-bottom:4px;filter:drop-shadow(0 4px 16px rgba(0,0,0,.4))">
-  <div class="sp-title">Dashboard Maintenance Curative</div>
+  <div class="sp-title">Dashboard Maintenance Curative & Préventive</div>
   <div style="font-size:14px;font-weight:600;color:rgba(232,234,240,.7);margin-top:-6px;margin-bottom:4px">Carrefour — Direction Technique France</div>
   <div class="sp-sub">2026 · Données traitées localement dans votre navigateur</div>
   <!-- Sélection région sur l'écran d'accueil -->
@@ -267,7 +267,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
     <div class="h-logo" style="display:flex;align-items:center;gap:10px">
       <img src="carrefour.png" alt="Carrefour" style="height:30px;object-fit:contain">
       <div>
-        <div style="font-size:13px;font-weight:700;line-height:1.2">Maintenance Curative Nationale</div>
+        <div style="font-size:13px;font-weight:700;line-height:1.2">Maintenance Curative & Préventive Nationale</div>
         <div style="font-size:9px;color:rgba(232,234,240,.4);font-weight:400">Direction Technique France</div>
       </div>
     </div>
@@ -287,6 +287,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
     <div class="tab" onclick="go('recurrence')">🔁 Récurrence</div>
     <div class="tab" onclick="go('bc')">⚠ Sans BC</div>
     <div class="tab" onclick="go('nps')">⭐ NPS</div>
+    <div class="tab" onclick="go('prev')">🔧 Préventif</div>
     <div class="tab" onclick="go('alertes')">⚠️ Alertes</div>
     <div class="tab" onclick="go('rapports')">📋 Rapports</div>
     <div class="tab" onclick="go('contacts')" style="border-left:1px solid var(--border);margin-left:auto">📧 Contacts</div>
@@ -479,6 +480,37 @@ tr:hover td{background:rgba(255,255,255,.025)}
       </div>
     </div>
 
+    <!-- PRÉVENTIF -->
+    <div class="page" id="page-prev">
+      <div style="padding:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+          <h2 style="margin:0;font-size:15px;color:var(--text)">🔧 Maintenance Préventive</h2>
+          <div style="display:flex;gap:8px">
+            <button onclick="exporterPrev()" style="padding:6px 14px;background:var(--green);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">📥 Excel</button>
+          </div>
+        </div>
+        <!-- Filtres -->
+        <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+          <select id="pv-reg"   class="fs" style="min-width:160px" onchange="renderPrev()"><option value="">🌍 Toutes régions</option></select>
+          <select id="pv-prest" class="fs" style="min-width:160px" onchange="renderPrev()"><option value="">Tous prestataires</option></select>
+          <select id="pv-type"  class="fs" style="min-width:130px" onchange="renderPrev()"><option value="">Tous types</option><option value="Hyper">Hyper</option><option value="Market">Market</option></select>
+          <select id="pv-mois"  class="fs" style="min-width:130px" onchange="renderPrev()"><option value="">Tous mois</option></select>
+        </div>
+        <!-- KPIs -->
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:14px" id="pv-kpis"></div>
+        <!-- Graphiques -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+          <div class="card"><div class="ct">Statuts WO Préventif</div><div class="cw" style="height:180px"><canvas id="pv-c-statuts"></canvas></div></div>
+          <div class="card"><div class="ct">Taux de clôture par prestataire</div><div class="cw" style="height:180px"><canvas id="pv-c-taux"></canvas></div></div>
+        </div>
+        <div class="card" style="margin-bottom:14px"><div class="ct">Évolution mensuelle — WO Préventif</div><div class="cw" style="height:180px"><canvas id="pv-c-evol"></canvas></div></div>
+        <!-- Tableaux détail -->
+        <div id="pv-table-at" style="margin-bottom:14px"></div>
+        <div id="pv-table-appro" style="margin-bottom:14px"></div>
+        <div id="pv-table-prest" style="margin-bottom:14px"></div>
+      </div>
+    </div>
+
     <!-- ALERTES -->
     <div class="page" id="page-alertes">
       <div style="padding:16px">
@@ -647,7 +679,7 @@ var F={reg:"",type:"",prest:"",mag:"",mois:""};
 var CHARTS={};
 var _woProc=false, _quoProc=false, _npsProc=false;
 var TAB="overview";
-var FILES={wo:null,quo:null,nps:null};
+var FILES={wo:null,quo:null,nps:null,prev:null};
 var BUDGETS={};
 var TABS=["overview","taux","magasins","devis","ttr","aging","budget","recurrence","bc","nps","rapports","contacts"];
 
@@ -699,19 +731,28 @@ function onDrop(e){e.preventDefault();offDrag();handleFiles(e.dataTransfer.files
 function onFiles(e){handleFiles(e.target.files);}
 
 function handleFiles(files){
-  var nonNPS=[];
+  var unmatched=[];
   for(var i=0;i<files.length;i++){
     var f=files[i],nl=f.name.toLowerCase();
-    if(nl.includes("nps")) FILES.nps=f;
-    else if(nl.includes("quo")||nl.includes("devis")) FILES.quo=f;
-    else if(nl.includes("wo")||nl.includes("curatif")) FILES.wo=f;
-    else nonNPS.push(f); // fichier non reconnu
+    // IMPORTANT: tester PREV avant WO car "WO préventif" contient "wo"
+    if(nl.includes("nps")) {
+      FILES.nps=f;
+    } else if(nl.includes("quo")||nl.includes("devis")) {
+      FILES.quo=f;
+    } else if(nl.includes("prev")||nl.includes("préventif")||nl.includes("preventif")) {
+      FILES.prev=f;
+    } else if(nl.includes("curatif")||(nl.includes("wo")&&!nl.includes("prev"))) {
+      FILES.wo=f;
+    } else {
+      unmatched.push(f);
+    }
   }
-  // Assignation intelligente des fichiers non reconnus
-  nonNPS.forEach(function(f){
+  // Assignation des fichiers non reconnus dans l'ordre
+  unmatched.forEach(function(f){
     if(!FILES.wo) FILES.wo=f;
     else if(!FILES.quo) FILES.quo=f;
     else if(!FILES.nps) FILES.nps=f;
+    else if(!FILES.prev) FILES.prev=f;
   });
   updateSplashUI();
 }
@@ -719,9 +760,10 @@ function handleFiles(files){
 function updateSplashUI(){
   var list=document.getElementById("flist");
   list.innerHTML=[
-    {key:"wo",icon:"📋",label:"WO Curatif National",req:true},
-    {key:"quo",icon:"📄",label:"QUO National",req:true},
-    {key:"nps",icon:"⭐",label:"NPS National",req:false},
+    {key:"wo",  icon:"📋",label:"WO Curatif National",     req:true},
+    {key:"quo", icon:"📄",label:"QUO National",             req:true},
+    {key:"prev",icon:"🔧",label:"WO Préventif National",   req:false},
+    {key:"nps", icon:"⭐",label:"NPS National",             req:false},
   ].map(function(item){
     var f=FILES[item.key];
     var status=f
@@ -766,17 +808,22 @@ function processFiles(){
     readExcel(FILES.quo,function(quo){
       pf.style.width="70%";QUO=quo;
       readExcel(FILES.nps,function(nps){
-        pf.style.width="90%";NPS=nps;
-        setTimeout(function(){
-          pf.style.width="100%";
-          buildData();
-          buildFilters();
-          document.getElementById("splash").classList.add("hide");
-          var app=document.getElementById("app");
-          app.classList.add("show");
-          renderAll();
-          toast("✓ "+fN(WO.length)+" WO · "+fN(QUO.length)+" devis chargés"+(NPS.length?" · "+fN(NPS.length)+" NPS":""));
-        },300);
+        pf.style.width="80%";NPS=nps;
+        readExcel(FILES.prev,function(prevRows){
+          pf.style.width="95%";
+          if(prevRows&&prevRows.length>0){ try{parsePREV(prevRows);}catch(e){console.log(e);} }
+          setTimeout(function(){
+            pf.style.width="100%";
+            buildData();
+            buildFilters();
+            initRegionSelector();
+            document.getElementById("splash").classList.add("hide");
+            var app=document.getElementById("app");
+            app.classList.add("show");
+            renderAll();
+            toast("✓ "+fN(WO.length)+" WO · "+fN(QUO.length)+" devis"+(NPS.length?" · "+fN(NPS.length)+" NPS":"")+(PREV.length?" · "+fN(PREV.length)+" Préventif":""));
+          },300);
+        });
       });
     });
   });
@@ -786,7 +833,7 @@ function reload(){
   // Réinitialiser TOUTES les données
   WO=[]; QUO=[]; NPS=[];
   _woProc=false; _quoProc=false; _npsProc=false;
-  FILES={wo:null,quo:null,nps:null};
+  FILES={wo:null,quo:null,nps:null,prev:null};
   BUDGETS={};
   // Réinitialiser les filtres
   F={reg:"",type:"",prest:"",mag:"",mois:""};
@@ -925,6 +972,7 @@ function fNPS(){
 // NAVIGATION
 // ═══════════════════════════════════════════════════════════════
 function go(tab){
+  if(tab==="prev") setTimeout(renderPrev,50);
   if(tab==="alertes") setTimeout(renderAlertes,50);
   TAB=tab;
   document.querySelectorAll(".tab").forEach(function(t,i){t.classList.toggle("active",TABS[i]===tab);});
@@ -2599,7 +2647,8 @@ function verifierDonneesAuto(){
       var el=document.getElementById("auto-last-update");
       var st=document.getElementById("auto-stats");
       if(el) el.textContent="Mis à jour : "+upd;
-      if(st) st.textContent=fN(wo)+" WO · "+fN(parseInt(data.quo)||0)+" devis · "+(parseInt(data.nps)>0?fN(parseInt(data.nps))+" NPS":"NPS non disponible");
+      var prevCount = parseInt(data.prev)||0;
+      if(st) st.textContent=fN(wo)+" WO · "+fN(parseInt(data.quo)||0)+" devis · "+(parseInt(data.nps)>0?fN(parseInt(data.nps))+" NPS ·":"")+" "+(prevCount>0?fN(prevCount)+" Préventif":"");
     }
   };
 
@@ -3127,6 +3176,256 @@ function appliquerRegionURL(){
     delete window._regionFromURL;
     setTimeout(function(){ setRegionView(r); }, 300);
   }
+}
+
+// ══════════════════════════════════════════════════════════════
+// MAINTENANCE PRÉVENTIVE
+// ══════════════════════════════════════════════════════════════
+var PREV = [];
+
+function parsePREV(rows){
+  PREV = [];
+  rows.forEach(function(r){
+    // Prestataire depuis Groupe d'affectation : FR_EXT_XXXXXX_NOM
+    var g = String(r["Groupe d'affectation"]||"");
+    var parts = g.split('_');
+    var prest = parts.length >= 4 ? parts.slice(3).join(' ') : g;
+    prest = prest.trim() || 'Inconnu';
+
+    // Type client depuis Compte
+    var compte = String(r["Compte"]||"");
+    var typeC = compte.toUpperCase().indexOf('HYPERMARCHE') >= 0 ? 'Hyper'
+              : compte.toUpperCase().indexOf('SUPERMARCHE') >= 0 ? 'Market' : 'Autre';
+
+    // Statut
+    var etat = String(r["État"]||"").trim();
+    var eCode = etat === 'Clôturé achevé' ? 'CL'
+              : etat === 'Assignée' ? 'AS'
+              : etat === 'En cours' ? 'EC'
+              : etat === "En attente d'approbation" ? 'APPRO'
+              : etat === 'Annulé' ? 'AN' : 'AU';
+
+    // Dates
+    var created = r["Créé"] ? new Date(r["Créé"]) : null;
+    var closed  = r["Fin de tâche"] ? new Date(r["Fin de tâche"]) : null;
+    var age = created ? Math.floor((new Date()-created)/86400000) : -1;
+    var mo  = created ? (created.getFullYear()+'-'+String(created.getMonth()+1).padStart(2,'0')) : null;
+    var moCl = closed ? (closed.getFullYear()+'-'+String(closed.getMonth()+1).padStart(2,'0')) : null;
+
+    // Région directement depuis la colonne Region
+    var reg = String(r["Region"]||r["Région"]||"INCONNU").trim();
+
+    PREV.push({
+      _num  : String(r["Numéro"]||""),
+      _mag  : compte,
+      _prest: prest,
+      _e    : eCode,
+      _etat : etat,
+      _type : typeC,
+      _reg  : reg,
+      _mo   : mo,
+      _moCl : moCl,
+      _age  : age,
+      _closed: closed ? closed.toLocaleDateString("fr-FR") : "",
+      _titre: String(r["Titre de la demande"]||""),
+    });
+  });
+  initPrevFilters();
+}
+
+function initPrevFilters(){
+  var regs   = [...new Set(PREV.map(function(r){return r._reg;}).filter(Boolean))].sort();
+  var prests = [...new Set(PREV.map(function(r){return r._prest;}).filter(Boolean))].sort();
+  var mois   = [...new Set(PREV.map(function(r){return r._mo;}).filter(Boolean))].sort();
+  pvFillSel('pv-reg',   regs,   function(v){return '📍 '+v.replace(/_/g,' ');});
+  pvFillSel('pv-prest', prests, function(v){return v;});
+  pvFillSel('pv-mois',  mois,   function(v){return mL(v)+' 2026';});
+}
+
+function pvFillSel(id, vals, label){
+  var sel = document.getElementById(id);
+  if(!sel) return;
+  while(sel.options.length>1) sel.remove(1);
+  vals.forEach(function(v){
+    var o = document.createElement('option');
+    o.value = v; o.textContent = label(v);
+    sel.appendChild(o);
+  });
+}
+
+function getPrevFiltered(){
+  var reg   = document.getElementById('pv-reg')   ? document.getElementById('pv-reg').value   : '';
+  var prest = document.getElementById('pv-prest') ? document.getElementById('pv-prest').value : '';
+  var type  = document.getElementById('pv-type')  ? document.getElementById('pv-type').value  : '';
+  var mois  = document.getElementById('pv-mois')  ? document.getElementById('pv-mois').value  : '';
+  return PREV.filter(function(r){
+    if(reg   && r._reg   !== reg)   return false;
+    if(prest && r._prest !== prest) return false;
+    if(type  && r._type  !== type)  return false;
+    if(mois  && r._mo    !== mois)  return false;
+    return true;
+  });
+}
+
+
+function pvCreateChart(id, type, labels, datasets, opts){
+  var ctx = document.getElementById(id);
+  if(!ctx) return;
+  // Détruire chart existant si présent
+  if(CHARTS[id]) { try{CHARTS[id].destroy();}catch(e){} }
+  var defaultOpts = {
+    animation: false,
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { labels: { color: '#aaa', font: { size: 10 }, boxWidth: 10 } } }
+  };
+  var mergedOpts = Object.assign({}, defaultOpts, opts || {});
+  if(opts && opts.plugins) mergedOpts.plugins = Object.assign({}, defaultOpts.plugins, opts.plugins);
+  if(opts && opts.scales) mergedOpts.scales = opts.scales;
+  CHARTS[id] = new Chart(ctx.getContext('2d'), {
+    type: type,
+    data: { labels: labels, datasets: datasets },
+    options: mergedOpts
+  });
+}
+
+function renderPrev(){
+  if(PREV.length === 0){ document.getElementById('pv-kpis').innerHTML='<div style="color:var(--t3);font-size:12px;padding:20px">Chargez le fichier WO Préventif pour afficher les données.</div>'; return; }
+  var data = getPrevFiltered();
+  var total = data.length;
+  var cl    = data.filter(function(r){return r._e==='CL';}).length;
+  var as_   = data.filter(function(r){return r._e==='AS'||r._e==='EC';}).length;
+  var appro = data.filter(function(r){return r._e==='APPRO';}).length;
+  var an    = data.filter(function(r){return r._e==='AN';}).length;
+  var taux  = total>0 ? (cl/total*100) : 0;
+  var txC   = taux>=85?'#085041':taux>=60?'#185FA5':taux>=40?'#633806':'#791F1F';
+
+  var kpis = document.getElementById('pv-kpis');
+  if(kpis) kpis.innerHTML =
+    pvKpi('WO Total',               fN(total),           '#378ADD','') +
+    pvKpi('Clôturés achevés',       fN(cl),              '#1D9E75', taux.toFixed(1)+'%') +
+    pvKpi('Att. prestataire',       fN(as_),             '#BA7517', 'À clôturer') +
+    pvKpi('Att. approbation magasin',fN(appro),          '#E24B4A', 'Magasin à approuver') +
+    pvKpi('Taux de clôture',        taux.toFixed(1)+'%', txC,'');
+
+  var eMap={CL:cl,AS:as_,APPRO:appro,AN:an};
+  var eL={CL:'Clôturés',AS:'En cours/Assignés',APPRO:'Att. approbation',AN:'Annulés'};
+  var eC={CL:'#1D9E75',AS:'#378ADD',APPRO:'#E24B4A',AN:'#888'};
+  var eK=Object.keys(eMap).filter(function(k){return eMap[k]>0;});
+  pvCreateChart('pv-c-statuts','doughnut',
+    eK.map(function(k){return eL[k];}),
+    [{data:eK.map(function(k){return eMap[k];}),backgroundColor:eK.map(function(k){return eC[k];}),borderWidth:2,borderColor:'rgba(0,0,0,0)'}],
+    {cutout:'65%',plugins:{legend:{position:'right',labels:{color:'#aaa',font:{size:10},boxWidth:10}}}});
+
+  var prestMap={};
+  data.forEach(function(r){
+    if(!prestMap[r._prest]) prestMap[r._prest]={tot:0,cl:0};
+    prestMap[r._prest].tot++;
+    if(r._e==='CL') prestMap[r._prest].cl++;
+  });
+  var prests=Object.entries(prestMap).filter(function(e){return e[1].tot>=10;}).sort(function(a,b){return b[1].tot-a[1].tot;}).slice(0,10);
+  var pTaux=prests.map(function(e){return e[1].tot?+(e[1].cl/e[1].tot*100).toFixed(1):0;});
+  pvCreateChart('pv-c-taux','bar',
+    prests.map(function(e){return e[0].length>18?e[0].substring(0,18)+'…':e[0];}),
+    [{data:pTaux,backgroundColor:pTaux.map(function(v){return v>=85?'#1D9E75':v>=60?'#378ADD':v>=40?'#BA7517':'#E24B4A';}),borderRadius:4}],
+    {indexAxis:'y',plugins:{legend:{display:false}},
+     scales:{x:{min:0,max:100,ticks:{callback:function(v){return v+'%';},color:'#aaa',font:{size:9}},grid:{color:'rgba(255,255,255,.05)'}},
+             y:{grid:{display:false},ticks:{color:'#aaa',font:{size:9}}}}});
+
+  var moMap={};
+  data.forEach(function(r){
+    if(!r._mo) return;
+    if(!moMap[r._mo]) moMap[r._mo]={tot:0,cl:0};
+    moMap[r._mo].tot++;
+    if(r._e==='CL') moMap[r._mo].cl++;
+  });
+  var mos=Object.keys(moMap).sort();
+  pvCreateChart('pv-c-evol','bar',mos.map(mL),
+    [{label:'WO créés',data:mos.map(function(m){return moMap[m].tot;}),backgroundColor:'rgba(55,138,221,.7)',borderRadius:3,yAxisID:'y'},
+     {label:'Taux clôture %',type:'line',data:mos.map(function(m){return moMap[m].tot?+(moMap[m].cl/moMap[m].tot*100).toFixed(1):0;}),
+      borderColor:'#1D9E75',backgroundColor:'rgba(29,158,117,.1)',tension:.3,fill:true,borderWidth:2,pointRadius:3,yAxisID:'y2'}],
+    {plugins:{legend:{position:'top',labels:{color:'#aaa',font:{size:10},boxWidth:10}}},
+     scales:{y:{position:'left',ticks:{color:'#aaa',font:{size:9}},grid:{color:'rgba(255,255,255,.05)'}},
+             y2:{position:'right',min:0,max:100,grid:{display:false},ticks:{callback:function(v){return v+'%';},color:'#aaa',font:{size:9}}}}});
+
+  var woAT=data.filter(function(r){return r._e==='AS'||r._e==='EC';}).sort(function(a,b){return b._age-a._age;});
+  var el1=document.getElementById('pv-table-at');
+  if(el1) el1.innerHTML=prevTableau('⏳ En attente de clôture par le prestataire ('+fN(as_)+')','#BA7517',woAT,
+    ['_num','_mag','_prest','_reg','_type','_mo','_age'],
+    ['N° WO','Magasin','Prestataire','Région','Type','Mois créé','Âge (j)']);
+
+  var woAPPRO=data.filter(function(r){return r._e==='APPRO';}).sort(function(a,b){return b._age-a._age;});
+  var el2=document.getElementById('pv-table-appro');
+  if(el2) el2.innerHTML=prevTableau('🏪 En attente d\'approbation magasin ('+fN(appro)+')','#E24B4A',woAPPRO,
+    ['_num','_mag','_prest','_reg','_type','_mo','_age'],
+    ['N° WO','Magasin','Prestataire','Région','Type','Mois créé','Âge (j)']);
+
+  var el3=document.getElementById('pv-table-prest');
+  if(el3){
+    var tRows=prests.map(function(e){
+      var p=e[0],d=e[1];
+      var appr=data.filter(function(r){return r._prest===p&&r._e==='APPRO';}).length;
+      var att=data.filter(function(r){return r._prest===p&&(r._e==='AS'||r._e==='EC');}).length;
+      var tx=d.tot?+(d.cl/d.tot*100).toFixed(1):0;
+      return {prest:p,tot:d.tot,cl:d.cl,att:att,appro:appr,taux:tx};
+    }).sort(function(a,b){return b.tot-a.tot;});
+    var th='<div style="margin-bottom:8px"><div style="background:#378ADD22;border:1px solid #378ADD44;border-radius:8px 8px 0 0;padding:10px 14px"><div style="font-size:12px;font-weight:700;color:#378ADD">📊 Récapitulatif par prestataire</div></div><div style="overflow-x:auto;border:1px solid #378ADD22;border-top:none;border-radius:0 0 8px 8px"><table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="background:var(--card2)"><th style="padding:7px 10px;text-align:left;font-size:9px;text-transform:uppercase;color:var(--t3)">Prestataire</th><th style="padding:7px 10px;text-align:right;font-size:9px;text-transform:uppercase;color:var(--t3)">Total</th><th style="padding:7px 10px;text-align:right;font-size:9px;text-transform:uppercase;color:var(--t3)">Clôturés</th><th style="padding:7px 10px;text-align:right;font-size:9px;text-transform:uppercase;color:var(--t3)">Att.Prestataire</th><th style="padding:7px 10px;text-align:right;font-size:9px;text-transform:uppercase;color:var(--t3)">Att.Approbation</th><th style="padding:7px 10px;text-align:right;font-size:9px;text-transform:uppercase;color:var(--t3)">Taux</th></tr></thead><tbody>';
+    tRows.forEach(function(r,i){
+      var tc=r.taux>=85?'#085041':r.taux>=60?'#185FA5':r.taux>=40?'#633806':'#791F1F';
+      var bg=i%2===0?'var(--card)':'var(--card2)';
+      th+='<tr style="background:'+bg+'"><td style="padding:6px 10px;border-bottom:1px solid var(--border);font-weight:600;color:var(--blue)">'+r.prest+'</td><td style="padding:6px 10px;border-bottom:1px solid var(--border);text-align:right">'+fN(r.tot)+'</td><td style="padding:6px 10px;border-bottom:1px solid var(--border);text-align:right;color:#1D9E75;font-weight:600">'+fN(r.cl)+'</td><td style="padding:6px 10px;border-bottom:1px solid var(--border);text-align:right;color:#BA7517">'+fN(r.att)+'</td><td style="padding:6px 10px;border-bottom:1px solid var(--border);text-align:right;color:#E24B4A;font-weight:600">'+fN(r.appro)+'</td><td style="padding:6px 10px;border-bottom:1px solid var(--border);text-align:right;font-weight:700;color:'+tc+'">'+r.taux.toFixed(1)+'%</td></tr>';
+    });
+    el3.innerHTML=th+'</tbody></table></div></div>';
+  }
+}
+
+function pvKpi(label,val,color,sub){
+  return "<div style='background:"+color+"18;border:1px solid "+color+"44;border-radius:8px;padding:10px;text-align:center'>"
+    +"<div style='font-size:8px;color:"+color+";font-weight:700;text-transform:uppercase;margin-bottom:4px'>"+label+"</div>"
+    +"<div style='font-size:20px;font-weight:800;color:"+color+"'>"+val+"</div>"
+    +(sub?"<div style='font-size:9px;color:var(--t3);margin-top:2px'>"+sub+"</div>":"")
+    +"</div>";
+}
+
+function prevTableau(titre,couleur,rows,cols,headers){
+  if(!rows||rows.length===0) return "<div style='background:rgba(29,158,117,.06);border:1px solid rgba(29,158,117,.2);border-radius:8px;padding:12px 16px;margin-bottom:8px'><div style='font-size:12px;font-weight:700;color:#1D9E75'>✅ "+titre+" — Aucun WO</div></div>";
+  var out="<div style='margin-bottom:8px'><div style='display:flex;align-items:center;justify-content:space-between;background:"+couleur+"18;border:1px solid "+couleur+"44;border-radius:8px 8px 0 0;padding:10px 14px'><div style='font-size:12px;font-weight:700;color:"+couleur+"'>"+titre+"</div></div><div style='overflow-x:auto;border:1px solid "+couleur+"22;border-top:none;border-radius:0 0 8px 8px'><table style='width:100%;border-collapse:collapse;font-size:11px'><thead><tr style='background:var(--card2)'>";
+  headers.forEach(function(h){out+="<th style='padding:7px 10px;text-align:left;font-size:9px;text-transform:uppercase;color:var(--t3);white-space:nowrap'>"+h+"</th>";});
+  out+="</tr></thead><tbody>";
+  rows.slice(0,100).forEach(function(r,i){
+    var bg=i%2===0?'var(--card)':'var(--card2)';
+    out+="<tr style='background:"+bg+"'>";
+    cols.forEach(function(c){
+      var v="";
+      if(c==='_age') v="<span style='font-weight:700;color:"+(r._age>=30?'#E24B4A':r._age>=14?'#BA7517':'#378ADD')+"'>"+r._age+"j</span>";
+      else if(c==='_mo') v=r._mo?mL(r._mo)+' 2026':'—';
+      else v=String(r[c]||'').substring(0,35)||'—';
+      out+="<td style='padding:6px 10px;border-bottom:1px solid var(--border);white-space:nowrap'>"+v+"</td>";
+    });
+    out+="</tr>";
+  });
+  if(rows.length>100) out+="<tr><td colspan='"+cols.length+"' style='padding:8px;text-align:center;color:var(--t3);font-size:10px'>... et "+(rows.length-100)+" autres</td></tr>";
+  out+="</tbody></table></div></div>";
+  return out;
+}
+
+function exporterPrev(){
+  var data=getPrevFiltered();
+  if(!data.length){toast("Aucune donnée préventif",true);return;}
+  var wb=XLSX.utils.book_new();
+  var rows=[['N° WO','Magasin','Prestataire','Région','Type','Statut','Mois créé','Date clôture','Âge (j)']];
+  data.forEach(function(r){rows.push([r._num,r._mag,r._prest,r._reg,r._type,r._etat,r._mo?mL(r._mo)+' 2026':'',r._closed||'',r._age]);});
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'WO Préventif');
+  var at=data.filter(function(r){return r._e==='AS'||r._e==='EC';});
+  var rAt=[['N° WO','Magasin','Prestataire','Région','Équipement','Mois','Âge (j)']];
+  at.forEach(function(r){rAt.push([r._num,r._mag,r._prest,r._reg,r._equip,r._mo?mL(r._mo)+' 2026':'',r._age]);});
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rAt),'Att. Prestataire');
+  var ap=data.filter(function(r){return r._e==='APPRO';});
+  var rAp=[['N° WO','Magasin','Prestataire','Région','Équipement','Mois','Âge (j)']];
+  ap.forEach(function(r){rAp.push([r._num,r._mag,r._prest,r._reg,r._equip,r._mo?mL(r._mo)+' 2026':'',r._age]);});
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rAp),'Att. Approbation Magasin');
+  XLSX.writeFile(wb,'WO_Preventif_'+new Date().toISOString().slice(0,10)+'.xlsx');
+  toast('Export Excel préventif généré ✓');
 }
 
 </script>
