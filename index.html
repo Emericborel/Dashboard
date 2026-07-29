@@ -2752,8 +2752,10 @@ function setRegionView(region){
   badge.style.display="block";
 
   // Mettre à jour l'URL dans la barre d'adresse (sans recharger la page)
-  var newUrl = window.location.pathname + (region ? "?region="+region : "");
-  history.replaceState(null, "", newUrl);
+  try {
+    var newUrl = window.location.pathname + (region ? "?region="+region : "");
+    history.replaceState(null, "", newUrl);
+  } catch(e) { /* Ignoré si contexte restreint */ }
 
   toast(region?"Vue filtrée : "+region.replace(/_/g," "):"Vue nationale — toutes régions");
 }
@@ -3106,14 +3108,23 @@ function chargerDepuisSheetAvecProgress(){
     WO=(d.status==="ok"||d.statut==="ok")?(d.rows||[]):[];
     chargerType("QUO",55,80,"Devis National",function(d2){
       QUO=(d2.status==="ok"||d2.statut==="ok")?(d2.rows||[]):[];
-      chargerType("NPS",83,95,"NPS National",function(d3){
+      chargerType("NPS",83,90,"NPS National",function(d3){
         NPS=(d3.status==="ok"||d3.statut==="ok")?(d3.rows||[]):[];
+        setProgress(92,"Chargement Préventif...");
+        chargerType("PREV",92,97,"WO Préventif",function(d4){
+          if((d4.status==="ok"||d4.statut==="ok")&&d4.rows&&d4.rows.length>0){
+            try{ parsePREV(d4.rows); }catch(e){ console.log("parsePREV err:",e); }
+          }
         setProgress(98,"Traitement des données...");
         setTimeout(function(){
+          // Normaliser les données du Sheet (dates en string)
+          WO = normaliserLignes(WO);
+          QUO = normaliserLignes(QUO);
+          NPS = normaliserLignes(NPS);
           try{buildData();buildFilters();}catch(e){console.log("buildData error:",e);}
           // Initialiser région
           initRegionSelector();
-      appliquerRegionURL();
+          appliquerRegionURL();
           // Init alertes filtres
           setProgress(100,"✅ Chargement terminé !");
           setTimeout(function(){
@@ -3123,15 +3134,19 @@ function chargerDepuisSheetAvecProgress(){
               toast("⚠️ Aucune donnée WO reçue",true);
               return;
             }
-            // Afficher sélecteur région AVANT le dashboard
+            // Afficher le dashboard directement
+            document.getElementById("splash").classList.add("hide");
+            var appEl=document.getElementById("app");
+            appEl.classList.add("show");
+            // Afficher sélecteur région dans le dashboard
             var box=document.getElementById("region-selector-box");
             if(box) box.style.display="block";
-            // Ne pas aller directement au dashboard — laisser choisir la région
-            document.getElementById("splash").classList.remove("hide");
-            document.getElementById("app").classList.remove("show");
+            // Rendre tous les onglets
+            try{ renderAll(); }catch(e){ console.log("renderAll:",e); }
             toast("✅ "+fN(WO.length)+" WO · "+fN(QUO.length)+" devis · "+fN(NPS.length)+" NPS chargés");
           },800);
         },100);
+        }); // fin PREV
       });
     });
   });
@@ -3426,6 +3441,22 @@ function exporterPrev(){
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rAp),'Att. Approbation Magasin');
   XLSX.writeFile(wb,'WO_Preventif_'+new Date().toISOString().slice(0,10)+'.xlsx');
   toast('Export Excel préventif généré ✓');
+}
+
+function normaliserLignes(rows){
+  // Les données du Sheet ont les dates en string "2026-03-12 10:00:00"
+  // Cette fonction s'assure que les champs numériques sont bien des nombres
+  if(!rows || !rows.length) return rows;
+  return rows.map(function(r){
+    // Coût total → nombre
+    if(r["Coût total"] && typeof r["Coût total"]==="string"){
+      r["Coût total"] = parseFloat(r["Coût total"].replace(/[^0-9.,-]/g,'').replace(',','.')) || 0;
+    }
+    if(r["Cout total"] && typeof r["Cout total"]==="string"){
+      r["Cout total"] = parseFloat(r["Cout total"].replace(/[^0-9.,-]/g,'').replace(',','.')) || 0;
+    }
+    return r;
+  });
 }
 
 </script>
