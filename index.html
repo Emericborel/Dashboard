@@ -428,6 +428,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
     <div class="fl"><label>Magasin</label><select class="fs" id="f-mag" onchange="applyF()"><option value="">Tous</option></select></div>
     <div class="fl"><label>Mois</label><select class="fs" id="f-mois" onchange="applyF()"><option value="">Tous</option></select></div>
     <button class="btn-reset" onclick="resetF()">✕ Réinitialiser</button>
+    <button onclick="copierLienVueActuelle()" style="padding:5px 11px;background:rgba(55,138,221,.12);color:var(--blue);border:1px solid rgba(55,138,221,.25);border-radius:6px;font-size:11px;font-weight:600;cursor:pointer" title="Copie un lien vers la vue actuelle (région filtrée incluse)">🔗 Copier le lien de cette vue</button>
     <div class="f-count" id="fcount" style="display:none"></div>
   </div>
   <div class="main-wrap"><div class="main">
@@ -839,6 +840,18 @@ var N=function(v){
 var fN=function(v){return Math.round(N(v)).toLocaleString("fr-FR");};
 var fmt=function(v){v=N(v);if(v>=1e6)return(v/1e6).toFixed(2).replace(".",",")+"\u00a0M€";if(v>=1e3)return Math.round(v/1e3).toLocaleString("fr-FR")+"\u00a0k€";return Math.round(v).toLocaleString("fr-FR")+"€";};
 var mL=function(m){var p=String(m||"").split("-");return p.length>=2?(["Jan","Fév","Mar","Avr","Mai","Jun","Jul","Aoû","Sep","Oct","Nov","Déc"][parseInt(p[1])-1]||p[1]):m;};
+// Parsing de date robuste multi-navigateurs. Les données venant d'Apps Script (chargement
+// automatique) arrivent parfois au format "yyyy-MM-dd HH:mm:ss" (espace, pas de "T") — un
+// format non standard que Chrome tolère mais que Firefox/Safari peuvent refuser (Invalid Date).
+// On normalise systématiquement avant de construire l'objet Date.
+var parseDateSafe=function(v){
+  if(v instanceof Date) return v;
+  if(typeof v==="string"){
+    var norm=/^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2})/.test(v) ? v.replace(" ","T") : v;
+    return new Date(norm);
+  }
+  return new Date(v);
+};
 var tC=function(v){return v>=70?"#1D9E75":v>=50?"#378ADD":v>=35?"#BA7517":"#E24B4A";};
 var nC=function(v){return v>70?"#0F6E56":v>30?"#1D9E75":v>0?"#BA7517":"#E24B4A";};
 var PAL=["#378ADD","#1D9E75","#D85A30","#BA7517","#8B5CF6","#E24B4A","#0F6E56","#185FA5","#633806","#D85A30","#5DCAA5","#F0C96A"];
@@ -1025,8 +1038,8 @@ function buildData(){
     r._m=String(r["Compte"]||"").trim();
     r._t=String(r["Type de client"]||"").trim();
     r._mo=toMonth(r["Créé"]);
-    r._age=(r._e!=="CL"&&r._e!=="AN"&&r["Créé"])?Math.floor((today-new Date(r["Créé"]))/86400000):-1;
-    if(r["Fin de tâche"]&&r._e==="CL"&&r["Créé"]){var d=(new Date(r["Fin de tâche"])-new Date(r["Créé"]))/86400000;r._ttr=(d>=0&&d<=730)?d:null;}
+    r._age=(r._e!=="CL"&&r._e!=="AN"&&r["Créé"])?Math.floor((today-parseDateSafe(r["Créé"]))/86400000):-1;
+    if(r["Fin de tâche"]&&r._e==="CL"&&r["Créé"]){var d=(parseDateSafe(r["Fin de tâche"])-parseDateSafe(r["Créé"]))/86400000;r._ttr=(d>=0&&d<=730)?d:null;}
     else r._ttr=null;
   });
   var SM={"Approuvé ERP":"APP","Annulé":"ANN","En attente d'approbation DA":"ATDA","Ouvert":"OUV","En attente d'approbation":"AT"};
@@ -1041,7 +1054,7 @@ function buildData(){
     r._sf=String(r["Sous Famille d'Équipement"]||"").trim();
     r._bc=!!(r["Bons de commande référencé"]&&String(r["Bons de commande référencé"]).trim());
     r._mo=toMonth(r["Créé"]);
-    r._age=(r["Créé"])?Math.floor((new Date()-new Date(r["Créé"]))/86400000):-1;
+    r._age=(r["Créé"])?Math.floor((new Date()-parseDateSafe(r["Créé"]))/86400000):-1;
   });
   NPS.forEach(function(r){
     r._n=N(r["Valeur"]||0);
@@ -1053,6 +1066,13 @@ function buildData(){
   // Période nav
   var months=[...new Set(WO.map(function(r){return r._mo;}).filter(Boolean))].sort();
   if(months.length) document.getElementById("h-period").textContent=mL(months[0])+" → "+mL(months[months.length-1])+" 2026";
+  // Persiste la liste des régions pour que "Liens régionaux" reste utilisable
+  // même après un rechargement de page ou un clic sur "↺ Nouveau fichier"
+  // (qui vide WO en mémoire mais ne doit pas rendre ce bouton définitivement mort).
+  try{
+    var _regsPersist=[...new Set(WO.map(function(r){return r._r;}).filter(function(v){return v&&v!=="INCONNU";}))].sort();
+    if(_regsPersist.length) localStorage.setItem("mc_last_regions", JSON.stringify(_regsPersist));
+  }catch(e){}
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -2886,13 +2906,20 @@ function copierLienRegion(){
 
 function genererLiensRegions(){
   var regs=[...new Set(WO.map(function(r){return r._r;}).filter(function(v){return v&&v!=="INCONNU";}))].sort();
+  // Repli sur la dernière liste connue si WO est vide (page rechargée, ou après "Nouveau fichier")
+  if(!regs.length){
+    try{
+      var cached=localStorage.getItem("mc_last_regions");
+      if(cached) regs=JSON.parse(cached);
+    }catch(e){}
+  }
   var base = window.location.origin + window.location.pathname;
   // Stocker les liens dans un objet global pour les boutons
   window._regionLinks = {national: base};
   regs.forEach(function(r){ window._regionLinks[r] = base + "?region=" + r; });
 
   var out = "<div style='padding:16px'>";
-  out += "<p style='font-size:10px;color:var(--t3);margin:0 0 10px'>Copiez et partagez ces liens avec vos responsables r&#xe9;gionaux</p>";
+  out += "<p style='font-size:10px;color:var(--t3);margin:0 0 10px'>Cliquez sur une r&#xe9;gion pour l'appliquer imm&#xe9;diatement, ou copiez le lien (&#x1F4CB;) pour le partager avec un responsable r&#xe9;gional</p>";
   out += "<div style='display:grid;gap:6px'>";
   out += ligne("&#x1F30D; Vue Nationale", base, "national");
   regs.forEach(function(r){
@@ -2903,11 +2930,25 @@ function genererLiensRegions(){
 
   function ligne(label, url, key){
     return "<div style='display:flex;align-items:center;gap:8px;padding:8px;background:var(--card2);border-radius:6px'>"
-      + "<div style='flex:1;font-size:11px;font-weight:600;color:var(--text)'>" + label + "</div>"
+      + "<div data-key='" + key + "' onclick='appliquerLienRegion(this.dataset.key)' style='flex:1;font-size:11px;font-weight:600;color:var(--text);cursor:pointer' title='Cliquer pour appliquer cette vue immédiatement'>" + label + "</div>"
       + "<code style='font-size:9px;color:var(--t3);flex:2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap'>" + url + "</code>"
-      + "<button data-key='" + key + "' onclick='copierLienKey(this.dataset.key)' style='padding:4px 10px;background:var(--blue);color:#fff;border:none;border-radius:4px;font-size:10px;cursor:pointer;flex-shrink:0'>&#x1F4CB;</button>"
+      + "<button data-key='" + key + "' onclick='copierLienKey(this.dataset.key)' style='padding:4px 10px;background:var(--blue);color:#fff;border:none;border-radius:4px;font-size:10px;cursor:pointer;flex-shrink:0' title='Copier le lien pour le partager'>&#x1F4CB;</button>"
       + "</div>";
   }
+}
+
+// Applique immédiatement la vue régionale choisie dans la modal (clic sur le libellé),
+// en plus de la possibilité de copier le lien (bouton 📋) pour le partager ailleurs.
+function appliquerLienRegion(key){
+  if(WO.length===0){
+    toast("Chargez d'abord les données pour appliquer directement — vous pouvez copier le lien (📋) pour l'ouvrir plus tard",true);
+    return;
+  }
+  var modal=document.getElementById("_liens_modal");
+  if(modal) modal.remove();
+  var linksDiv=document.getElementById("_links_div");
+  if(linksDiv) linksDiv.remove();
+  setRegionView(key==="national" ? "" : key);
 }
 
 function copierLienKey(key){
@@ -2917,7 +2958,11 @@ function copierLienKey(key){
 }
 
 function afficherLiensRegions(){
-  if(WO.length===0){ toast("Chargez d'abord les donn&#xe9;es", true); return; }
+  // N'affiche l'avertissement que si NI les données en mémoire NI le cache localStorage
+  // ne fournissent de liste de régions (cas d'un tout premier lancement du dashboard).
+  var hasCache=false;
+  try{ hasCache = !!localStorage.getItem("mc_last_regions"); }catch(e){}
+  if(WO.length===0 && !hasCache){ toast("Chargez d'abord les donn&#xe9;es une première fois", true); return; }
   var div = document.createElement("div");
   div.id = "_liens_modal";
   div.style.cssText = "position:fixed;inset:0;background:rgba(10,12,28,.9);z-index:9999;overflow-y:auto;padding:20px;display:flex;align-items:flex-start;justify-content:center";
@@ -2938,6 +2983,15 @@ function afficherLiensRegions(){
   inner.innerHTML += genererLiensRegions();
   div.appendChild(inner);
   document.body.appendChild(div);
+}
+
+// Copie un lien vers la vue ACTUELLEMENT affichée (respecte le filtre région en cours),
+// directement depuis la barre de filtres du dashboard — pas de modal, pas de dépendance
+// à l'écran d'accueil ni au localStorage. C'est la façon la plus simple de générer un lien.
+function copierLienVueActuelle(){
+  var base = window.location.origin + window.location.pathname;
+  var url = F.reg ? base + "?region=" + F.reg : base;
+  copierLien(url);
 }
 
 function copierLien(url){
@@ -3187,6 +3241,15 @@ function chargerDepuisSheetAvecProgress(){
       try{document.head.removeChild(sc);}catch(e){}
       delete window[cbName];
       setProgress(pctEnd, "✅ "+label+" chargé — "+fN((data.rows||[]).length)+" lignes");
+      // DIAGNOSTIC TEMPORAIRE — à retirer une fois le problème des onglets vides résolu.
+      // Vérifie le format exact des données renvoyées par Apps Script (clés, types).
+      console.log("=== DIAGNOSTIC AUTO-LOAD ["+type+"] ===");
+      console.log("Statut:", data.status||data.statut, "| Lignes:", (data.rows||[]).length);
+      if(data.rows && data.rows.length){
+        console.log("Clés de la 1ère ligne:", Object.keys(data.rows[0]));
+        console.log("1ère ligne complète:", data.rows[0]);
+        if(data.rows[0]["Créé"]!==undefined) console.log("Type de 'Créé':", typeof data.rows[0]["Créé"], "| valeur:", data.rows[0]["Créé"]);
+      }
       cb(data);
     };
     sc.onerror=function(){
@@ -3217,6 +3280,35 @@ function chargerDepuisSheetAvecProgress(){
           QUO = normaliserLignes(QUO);
           NPS = normaliserLignes(NPS);
           try{buildData();buildFilters();}catch(e){console.log("buildData error:",e);}
+          // DIAGNOSTIC TEMPORAIRE — vérifie que buildData() a bien calculé les champs
+          // dérivés (_e, _f, _r, _mo...) sur les données venues d'Apps Script.
+          console.log("=== DIAGNOSTIC POST-buildData() ===");
+          if(WO.length){
+            console.log("WO[0] après buildData:", WO[0]);
+            console.log("WO avec _e défini:", WO.filter(function(r){return r._e!==undefined;}).length, "/", WO.length);
+            console.log("WO avec _mo non vide:", WO.filter(function(r){return r._mo;}).length, "/", WO.length);
+            console.log("Valeurs distinctes _e:", [...new Set(WO.map(function(r){return r._e;}))]);
+            // DIAGNOSTIC RENFORCÉ — cible spécifiquement _age et _ttr, les deux champs
+            // calculés par arithmétique de dates, absents de la Vue générale mais utilisés
+            // par TOUS les autres onglets (Taux, Magasins, TTR, Aging, Budget, Récurrence, Sans BC).
+            var _ageValides=WO.filter(function(r){return typeof r._age==="number"&&!isNaN(r._age);}).length;
+            var _ageNaN=WO.filter(function(r){return typeof r._age==="number"&&isNaN(r._age);}).length;
+            var _ttrValides=WO.filter(function(r){return typeof r._ttr==="number"&&!isNaN(r._ttr);}).length;
+            console.log("--- Diagnostic dates (_age / _ttr) ---");
+            console.log("_age numérique valide:", _ageValides, "/", WO.length, "| _age = NaN:", _ageNaN);
+            console.log("_ttr numérique valide (WO clôturés avec délai):", _ttrValides, "/", WO.length);
+            var _rowTest=WO.find(function(r){return r["Créé"];});
+            if(_rowTest){
+              console.log("Exemple champ 'Créé' brut:", JSON.stringify(_rowTest["Créé"]), "| typeof:", typeof _rowTest["Créé"]);
+              console.log("new Date(Créé) donne:", new Date(_rowTest["Créé"]), "| Invalid?", isNaN(new Date(_rowTest["Créé"]).getTime()));
+              console.log("_age calculé pour cette ligne:", _rowTest._age, "| _ttr:", _rowTest._ttr);
+            }
+            console.log("Navigateur (userAgent):", navigator.userAgent);
+          }
+          if(QUO.length){
+            console.log("QUO[0] après buildData:", QUO[0]);
+            console.log("QUO avec _s défini:", QUO.filter(function(r){return r._s!==undefined;}).length, "/", QUO.length);
+          }
           initRegionSelector();
           appliquerRegionURL();
           setProgress(100,"✅ Chargement terminé !");
@@ -3302,8 +3394,8 @@ function parsePREV(rows){
               : etat === "En attente d'approbation" ? 'APPRO'
               : etat === 'Annulé' ? 'AN' : 'AU';
 
-    var created = r["Créé"] ? new Date(r["Créé"]) : null;
-    var closed  = r["Fin de tâche"] ? new Date(r["Fin de tâche"]) : null;
+    var created = r["Créé"] ? parseDateSafe(r["Créé"]) : null;
+    var closed  = r["Fin de tâche"] ? parseDateSafe(r["Fin de tâche"]) : null;
     var age = created ? Math.floor((new Date()-created)/86400000) : -1;
     var mo  = created ? (created.getFullYear()+'-'+String(created.getMonth()+1).padStart(2,'0')) : null;
     var moCl = closed ? (closed.getFullYear()+'-'+String(closed.getMonth()+1).padStart(2,'0')) : null;
