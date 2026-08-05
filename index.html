@@ -401,6 +401,12 @@ tr:hover td{background:rgba(255,255,255,.025)}
       </div>
     </div>
     <span class="h-period" id="h-period">—</span>
+    <div id="gsearch-wrap" style="position:relative;flex:1;max-width:340px;margin-left:14px">
+      <input id="global-search" type="text" placeholder="🔍 Rechercher un WO, magasin, prestataire…"
+        oninput="onGlobalSearch(this.value)" onfocus="onGlobalSearch(this.value)"
+        style="width:100%;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);color:var(--text);border-radius:8px;padding:6px 10px;font-size:11px">
+      <div id="global-search-results" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--bg3);border:1px solid var(--border);border-radius:8px;margin-top:4px;max-height:380px;overflow-y:auto;z-index:5000;box-shadow:0 8px 24px rgba(0,0,0,.5)"></div>
+    </div>
     <div class="h-right">
       <button class="btn-sm btn-reload" onclick="reload()">↺ Nouveau fichier</button>
     </div>
@@ -1111,6 +1117,157 @@ function resetF(){
   document.getElementById("fcount").style.display="none";
   renderAll();
 }
+
+// ═══════════════════════════════════════════════════════════════
+// RECHERCHE GLOBALE — WO / Magasins / Prestataires
+// ═══════════════════════════════════════════════════════════════
+var _gsearchTimer=null;
+
+function onGlobalSearch(q){
+  clearTimeout(_gsearchTimer);
+  _gsearchTimer=setTimeout(function(){ runGlobalSearch(q); }, 150);
+}
+
+function runGlobalSearch(q){
+  var panel=document.getElementById("global-search-results");
+  if(!panel) return;
+  q=(q||"").trim();
+  if(q.length<2 || !WO.length){ panel.style.display="none"; return; }
+  var qLower=q.toLowerCase();
+
+  // WO (numéro) — jusqu'à 6 résultats
+  var seenWO={};
+  var woMatches=[];
+  for(var i=0;i<WO.length && woMatches.length<6;i++){
+    var r=WO[i], num=String(r["Numéro"]||"");
+    if(num && num.toLowerCase().indexOf(qLower)>=0 && !seenWO[num]){ seenWO[num]=1; woMatches.push(r); }
+  }
+
+  // Magasins — noms distincts correspondants, jusqu'à 6
+  var magSet=new Set();
+  WO.forEach(function(r){ if(magSet.size<6 && r._m && r._m.toLowerCase().indexOf(qLower)>=0) magSet.add(r._m); });
+
+  // Prestataires — noms distincts correspondants, jusqu'à 6
+  var prestSet=new Set();
+  WO.forEach(function(r){ if(prestSet.size<6 && r._f && r._f!=="Inconnu" && r._f.toLowerCase().indexOf(qLower)>=0) prestSet.add(r._f); });
+
+  if(!woMatches.length && !magSet.size && !prestSet.size){
+    panel.innerHTML="<div style='padding:12px;font-size:11px;color:var(--t3)'>Aucun résultat pour « "+q+" »</div>";
+    panel.style.display="block";
+    return;
+  }
+
+  var eL={CL:"Clôturé",AS:"Assigné",EC:"En cours",AT:"En attente",AN:"Annulé"};
+  var html="";
+  if(woMatches.length){
+    html+="<div style='padding:6px 10px;font-size:9px;color:var(--t3);text-transform:uppercase;font-weight:700;letter-spacing:.05em'>WO ("+woMatches.length+")</div>";
+    woMatches.forEach(function(r){
+      html+="<div class='gsr-item' data-num='"+String(r["Numéro"]).replace(/'/g,"&#39;")+"' onclick='ouvrirDetailWO(this.dataset.num)' "
+        +"style='padding:8px 10px;cursor:pointer;border-top:1px solid var(--border)'>"
+        +"<div style='font-size:11px;font-weight:600;color:var(--text)'>📋 "+r["Numéro"]+"</div>"
+        +"<div style='font-size:10px;color:var(--t3)'>"+(r._m||"—")+" · "+r._f+" · "+(eL[r._e]||r._e)+"</div></div>";
+    });
+  }
+  if(magSet.size){
+    html+="<div style='padding:6px 10px;font-size:9px;color:var(--t3);text-transform:uppercase;font-weight:700;letter-spacing:.05em'>Magasins</div>";
+    [...magSet].forEach(function(m){
+      html+="<div class='gsr-item' data-mag='"+m.replace(/'/g,"&#39;")+"' onclick='allerVersMagasin(this.dataset.mag)' "
+        +"style='padding:8px 10px;cursor:pointer;border-top:1px solid var(--border)'>"
+        +"<div style='font-size:11px;font-weight:600;color:var(--text)'>🏪 "+m+"</div></div>";
+    });
+  }
+  if(prestSet.size){
+    html+="<div style='padding:6px 10px;font-size:9px;color:var(--t3);text-transform:uppercase;font-weight:700;letter-spacing:.05em'>Prestataires</div>";
+    [...prestSet].forEach(function(p){
+      html+="<div class='gsr-item' data-prest='"+p.replace(/'/g,"&#39;")+"' onclick='allerVersPrestataire(this.dataset.prest)' "
+        +"style='padding:8px 10px;cursor:pointer;border-top:1px solid var(--border)'>"
+        +"<div style='font-size:11px;font-weight:600;color:var(--text)'>🔧 "+p+"</div></div>";
+    });
+  }
+  panel.innerHTML=html;
+  panel.style.display="block";
+}
+
+function closeGlobalSearch(){
+  var panel=document.getElementById("global-search-results");
+  if(panel) panel.style.display="none";
+  var inp=document.getElementById("global-search");
+  if(inp) inp.value="";
+}
+
+function allerVersMagasin(m){
+  closeGlobalSearch();
+  F.mag=m;
+  var sel=document.getElementById("f-mag"); if(sel) sel.value=m;
+  go("magasins");
+  toast("🏪 "+m);
+}
+
+function allerVersPrestataire(p){
+  closeGlobalSearch();
+  F.prest=p;
+  var sel=document.getElementById("f-prest"); if(sel) sel.value=p;
+  go("taux");
+  toast("🔧 "+p);
+}
+
+function ouvrirDetailWO(num){
+  closeGlobalSearch();
+  var r=WO.find(function(x){ return String(x["Numéro"])===String(num); });
+  if(!r){ toast("WO introuvable",true); return; }
+  var eL={CL:"Clôturé achevé",AS:"Assignée",EC:"En cours",AT:"En attente d'approbation",AN:"Annulé",AU:"Autre"};
+  var pL={TU:"1 - Très urgent",UR:"2 - Urgent",ST:"3 - Standard"};
+  var eC=r._e==="CL"?"#1D9E75":r._e==="AT"?"#E24B4A":r._e==="AN"?"#888":"#378ADD";
+  var creeLe = r["Créé"] ? parseDateSafe(r["Créé"]).toLocaleDateString("fr-FR") : "—";
+
+  var existing=document.getElementById("_wo_detail_modal"); if(existing) existing.remove();
+  var div=document.createElement("div");
+  div.id="_wo_detail_modal";
+  div.style.cssText="position:fixed;inset:0;background:rgba(10,12,28,.9);z-index:100000;display:flex;align-items:center;justify-content:center;padding:20px";
+  var inner=document.createElement("div");
+  inner.style.cssText="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:22px;max-width:480px;width:100%";
+
+  var header=document.createElement("div");
+  header.style.cssText="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px";
+  var title=document.createElement("div");
+  title.style.cssText="font-size:15px;font-weight:700;color:var(--text)";
+  title.textContent="📋 "+r["Numéro"];
+  var closeBtn=document.createElement("button");
+  closeBtn.textContent="✕ Fermer";
+  closeBtn.style.cssText="background:none;border:1px solid var(--border);color:var(--t2);border-radius:6px;padding:4px 10px;cursor:pointer";
+  closeBtn.onclick=function(){ div.remove(); };
+  header.appendChild(title); header.appendChild(closeBtn);
+  inner.appendChild(header);
+
+  var content=document.createElement("div");
+  content.innerHTML =
+    "<div style='display:inline-block;padding:4px 10px;border-radius:10px;font-size:10px;font-weight:700;background:"+eC+"22;color:"+eC+";margin-bottom:12px'>"+(eL[r._e]||r._e)+"</div>"
+    +mstat("Magasin", r._m||"—")
+    +mstat("Région", (r._r||"—").replace(/_/g," "))
+    +mstat("Prestataire", r._f||"—")
+    +mstat("Priorité", pL[r._p]||r._p)
+    +mstat("Créé le", creeLe)
+    +(r._age>=0?mstat("Ancienneté", r._age+" jour(s)"):"")
+    +(r._ttr!==null&&r._ttr!==undefined?mstat("Délai de résolution (TTR)", r._ttr.toFixed(1)+" jour(s)"):"")
+    +mstat("Type de client", r._t||"—");
+  inner.appendChild(content);
+  div.appendChild(inner);
+  document.body.appendChild(div);
+  div.addEventListener("click", function(e){ if(e.target===div) div.remove(); });
+
+  function mstat(label,val){
+    return "<div class='mstat'><span class='mstat-label'>"+label+"</span><span class='mstat-val'>"+val+"</span></div>";
+  }
+}
+
+// Ferme le panneau de résultats si on clique ailleurs sur la page
+document.addEventListener("click", function(e){
+  var wrap=document.getElementById("gsearch-wrap");
+  if(wrap && !wrap.contains(e.target)){
+    var panel=document.getElementById("global-search-results");
+    if(panel) panel.style.display="none";
+  }
+});
 
 // Données filtrées (accès aux données brutes = filtres 100% dynamiques)
 function fWO(){
@@ -2963,9 +3120,12 @@ function afficherLiensRegions(){
   var hasCache=false;
   try{ hasCache = !!localStorage.getItem("mc_last_regions"); }catch(e){}
   if(WO.length===0 && !hasCache){ toast("Chargez d'abord les donn&#xe9;es une première fois", true); return; }
+  // Empêche l'empilement de plusieurs modales si le bouton est cliqué plusieurs fois
+  var existing=document.getElementById("_liens_modal");
+  if(existing) existing.remove();
   var div = document.createElement("div");
   div.id = "_liens_modal";
-  div.style.cssText = "position:fixed;inset:0;background:rgba(10,12,28,.9);z-index:9999;overflow-y:auto;padding:20px;display:flex;align-items:flex-start;justify-content:center";
+  div.style.cssText = "position:fixed;inset:0;background:rgba(10,12,28,.9);z-index:100000;overflow-y:auto;padding:20px;display:flex;align-items:flex-start;justify-content:center";
   var inner = document.createElement("div");
   inner.style.cssText = "background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px;max-width:700px;width:100%;margin-top:40px";
   var header = document.createElement("div");
@@ -2980,9 +3140,19 @@ function afficherLiensRegions(){
   header.appendChild(title);
   header.appendChild(closeBtn);
   inner.appendChild(header);
-  inner.innerHTML += genererLiensRegions();
+  // CORRECTIF : ne jamais faire "inner.innerHTML += ..." après avoir posé un .onclick
+  // en JS sur un enfant déjà attaché (ici closeBtn) — cette opération sérialise tout
+  // le contenu existant en HTML puis le détruit/recrée, ce qui perd silencieusement
+  // tous les gestionnaires posés via la propriété .onclick (ils ne font pas partie
+  // du HTML). On isole donc le contenu généré dans un enfant à part, jamais fusionné
+  // avec "inner" via +=.
+  var content = document.createElement("div");
+  content.innerHTML = genererLiensRegions();
+  inner.appendChild(content);
   div.appendChild(inner);
   document.body.appendChild(div);
+  // Fermeture aussi en cliquant sur le fond sombre (hors de la carte blanche/sombre)
+  div.addEventListener("click", function(e){ if(e.target===div) div.remove(); });
 }
 
 // Copie un lien vers la vue ACTUELLEMENT affichée (respecte le filtre région en cours),
