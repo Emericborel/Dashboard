@@ -401,31 +401,25 @@ tr:hover td{background:rgba(255,255,255,.025)}
       </div>
     </div>
     <span class="h-period" id="h-period">—</span>
-    <div id="gsearch-wrap" style="position:relative;flex:1;max-width:340px;margin-left:14px">
-      <input id="global-search" type="text" placeholder="🔍 Rechercher un WO, magasin, prestataire…"
-        oninput="onGlobalSearch(this.value)" onfocus="onGlobalSearch(this.value)"
-        style="width:100%;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);color:var(--text);border-radius:8px;padding:6px 10px;font-size:11px">
-      <div id="global-search-results" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--bg3);border:1px solid var(--border);border-radius:8px;margin-top:4px;max-height:380px;overflow-y:auto;z-index:5000;box-shadow:0 8px 24px rgba(0,0,0,.5)"></div>
-    </div>
     <div class="h-right">
       <button class="btn-sm btn-reload" onclick="reload()">↺ Nouveau fichier</button>
     </div>
   </div>
   <div class="tabs">
-    <div class="tab active" data-tab="overview" onclick="go('overview')">📊 Vue générale</div>
-    <div class="tab" data-tab="taux" onclick="go('taux')">📈 Taux clôture</div>
-    <div class="tab" data-tab="magasins" onclick="go('magasins')">🏪 Magasins</div>
-    <div class="tab" data-tab="devis" onclick="go('devis')">📄 Devis</div>
-    <div class="tab" data-tab="ttr" onclick="go('ttr')">⏱ TTR</div>
-    <div class="tab" data-tab="aging" onclick="go('aging')">🕐 Aging WO</div>
-    <div class="tab" data-tab="budget" onclick="go('budget')">💰 Budget</div>
-    <div class="tab" data-tab="recurrence" onclick="go('recurrence')">🔁 Récurrence</div>
-    <div class="tab" data-tab="bc" onclick="go('bc')">⚠ Sans BC</div>
-    <div class="tab" data-tab="nps" onclick="go('nps')">⭐ NPS</div>
-    <div class="tab" data-tab="prev" onclick="go('prev')">🔧 Préventif</div>
-    <div class="tab" data-tab="alertes" onclick="go('alertes')">⚠️ Alertes</div>
-    <div class="tab" data-tab="rapports" onclick="go('rapports')">📋 Rapports</div>
-    <div class="tab" data-tab="contacts" onclick="go('contacts')" style="border-left:1px solid var(--border);margin-left:auto">📧 Contacts</div>
+    <div class="tab active" onclick="go('overview')">📊 Vue générale</div>
+    <div class="tab" onclick="go('taux')">📈 Taux clôture</div>
+    <div class="tab" onclick="go('magasins')">🏪 Magasins</div>
+    <div class="tab" onclick="go('devis')">📄 Devis</div>
+    <div class="tab" onclick="go('ttr')">⏱ TTR</div>
+    <div class="tab" onclick="go('aging')">🕐 Aging WO</div>
+    <div class="tab" onclick="go('budget')">💰 Budget</div>
+    <div class="tab" onclick="go('recurrence')">🔁 Récurrence</div>
+    <div class="tab" onclick="go('bc')">⚠ Sans BC</div>
+    <div class="tab" onclick="go('nps')">⭐ NPS</div>
+    <div class="tab" onclick="go('prev')">🔧 Préventif</div>
+    <div class="tab" onclick="go('alertes')">⚠️ Alertes</div>
+    <div class="tab" onclick="go('rapports')">📋 Rapports</div>
+    <div class="tab" onclick="go('contacts')" style="border-left:1px solid var(--border);margin-left:auto">📧 Contacts</div>
   </div>
   <div class="fbar">
     <div class="fl"><label>Région</label><select class="fs" id="f-reg" onchange="applyF()"><option value="">Toutes</option></select></div>
@@ -434,7 +428,6 @@ tr:hover td{background:rgba(255,255,255,.025)}
     <div class="fl"><label>Magasin</label><select class="fs" id="f-mag" onchange="applyF()"><option value="">Tous</option></select></div>
     <div class="fl"><label>Mois</label><select class="fs" id="f-mois" onchange="applyF()"><option value="">Tous</option></select></div>
     <button class="btn-reset" onclick="resetF()">✕ Réinitialiser</button>
-    <button onclick="copierLienVueActuelle()" style="padding:5px 11px;background:rgba(55,138,221,.12);color:var(--blue);border:1px solid rgba(55,138,221,.25);border-radius:6px;font-size:11px;font-weight:600;cursor:pointer" title="Copie un lien vers la vue actuelle (région filtrée incluse)">🔗 Copier le lien de cette vue</button>
     <div class="f-count" id="fcount" style="display:none"></div>
   </div>
   <div class="main-wrap"><div class="main">
@@ -684,22 +677,13 @@ tr:hover td{background:rgba(255,255,255,.025)}
         <div class="card">
           <div class="ct" style="margin-bottom:12px">Générer un rapport</div>
           <div style="display:flex;flex-direction:column;gap:10px">
-            <div class="fl"><label>Type de rapport</label>
-              <div style="display:flex;gap:6px;margin-top:4px">
-                <button id="btn-mode-groupe" onclick="setRapMode('groupe')" style="flex:1;padding:8px;background:var(--blue);color:#fff;border:none;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer">🏢 Par prestataire</button>
-                <button id="btn-mode-magasin" onclick="setRapMode('magasin')" style="flex:1;padding:8px;background:var(--bg);color:var(--t2);border:1px solid var(--border);border-radius:7px;font-size:11px;font-weight:700;cursor:pointer">🏪 Par magasin</button>
-              </div>
-            </div>
             <div class="fl"><label>Territoire / Région</label>
               <select class="fs" id="rap-territoire" style="width:100%" onchange="buildRapportSelects();previewRapport()">
                 <option value="">🌍 Toutes régions (National)</option>
               </select>
             </div>
-            <div class="fl" id="rap-groupe-wrap"><label>Groupe / Prestataire</label>
+            <div class="fl"><label>Groupe / Prestataire</label>
               <select class="fs" id="rap-groupe" style="width:100%" onchange="previewRapport()"><option value="">Sélectionner un groupe…</option></select>
-            </div>
-            <div class="fl" id="rap-magasin-wrap" style="display:none"><label>Magasin</label>
-              <select class="fs" id="rap-magasin" style="width:100%" onchange="previewRapport()"><option value="">Sélectionner un magasin…</option></select>
             </div>
             <div class="fl"><label>Période</label>
               <select class="fs" id="rap-periode" style="width:100%"><option value="">Toute la période</option></select>
@@ -712,7 +696,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
                 <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--t2);text-transform:none;letter-spacing:0"><input type="checkbox" id="rap-devis" checked> Analyse devis</label>
                 <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--t2);text-transform:none;letter-spacing:0"><input type="checkbox" id="rap-nps" checked> NPS (si disponible)</label>
                 <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--t2);text-transform:none;letter-spacing:0"><input type="checkbox" id="rap-bc" checked> Devis sans BC</label>
-                <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--t2);text-transform:none;letter-spacing:0"><input type="checkbox" id="rap-detail" checked> <span id="rap-detail-label">Détail par entité</span></label>
+                <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--t2);text-transform:none;letter-spacing:0"><input type="checkbox" id="rap-detail" checked> Détail par entité</label>
               </div>
             </div>
             <div style="display:flex;gap:8px;margin-top:4px">
@@ -826,10 +810,7 @@ var _woProc=false, _quoProc=false, _npsProc=false;
 var TAB="overview";
 var FILES={wo:null,quo:null,nps:null,prev:null};
 var BUDGETS={};
-// FIX #1 : l'ordre de ce tableau doit correspondre EXACTEMENT à l'ordre des .tab dans le DOM.
-// "prev" et "alertes" manquaient, ce qui décalait le surlignage de l'onglet actif
-// pour Rapports et Contacts (et empêchait tout onglet après Aging d'être fiable par index).
-var TABS=["overview","taux","magasins","devis","ttr","aging","budget","recurrence","bc","nps","prev","alertes","rapports","contacts"];
+var TABS=["overview","taux","magasins","devis","ttr","aging","budget","recurrence","bc","nps","rapports","contacts"];
 
 // ═══════════════════════════════════════════════════════════════
 // UTILITAIRES
@@ -838,7 +819,7 @@ var N=function(v){
   if(v===null||v===undefined||v==="") return 0;
   if(typeof v==="number") return isNaN(v)?0:v;
   if(typeof v==="string"){
-    var s=v.replace(/ /g,"").replace(/\s/g,"").replace(/,/g,".").replace(/[^0-9.\-]/g,"");
+    var s=v.replace(/ /g,"").replace(/\s/g,"").replace(/,/g,".").replace(/[^0-9.\-]/g,"");
     return parseFloat(s)||0;
   }
   return parseFloat(v)||0;
@@ -846,18 +827,6 @@ var N=function(v){
 var fN=function(v){return Math.round(N(v)).toLocaleString("fr-FR");};
 var fmt=function(v){v=N(v);if(v>=1e6)return(v/1e6).toFixed(2).replace(".",",")+"\u00a0M€";if(v>=1e3)return Math.round(v/1e3).toLocaleString("fr-FR")+"\u00a0k€";return Math.round(v).toLocaleString("fr-FR")+"€";};
 var mL=function(m){var p=String(m||"").split("-");return p.length>=2?(["Jan","Fév","Mar","Avr","Mai","Jun","Jul","Aoû","Sep","Oct","Nov","Déc"][parseInt(p[1])-1]||p[1]):m;};
-// Parsing de date robuste multi-navigateurs. Les données venant d'Apps Script (chargement
-// automatique) arrivent parfois au format "yyyy-MM-dd HH:mm:ss" (espace, pas de "T") — un
-// format non standard que Chrome tolère mais que Firefox/Safari peuvent refuser (Invalid Date).
-// On normalise systématiquement avant de construire l'objet Date.
-var parseDateSafe=function(v){
-  if(v instanceof Date) return v;
-  if(typeof v==="string"){
-    var norm=/^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2})/.test(v) ? v.replace(" ","T") : v;
-    return new Date(norm);
-  }
-  return new Date(v);
-};
 var tC=function(v){return v>=70?"#1D9E75":v>=50?"#378ADD":v>=35?"#BA7517":"#E24B4A";};
 var nC=function(v){return v>70?"#0F6E56":v>30?"#1D9E75":v>0?"#BA7517":"#E24B4A";};
 var PAL=["#378ADD","#1D9E75","#D85A30","#BA7517","#8B5CF6","#E24B4A","#0F6E56","#185FA5","#633806","#D85A30","#5DCAA5","#F0C96A"];
@@ -1044,14 +1013,24 @@ function buildData(){
     r._m=String(r["Compte"]||"").trim();
     r._t=String(r["Type de client"]||"").trim();
     r._mo=toMonth(r["Créé"]);
-    r._age=(r._e!=="CL"&&r._e!=="AN"&&r["Créé"])?Math.floor((today-parseDateSafe(r["Créé"]))/86400000):-1;
-    if(r["Fin de tâche"]&&r._e==="CL"&&r["Créé"]){var d=(parseDateSafe(r["Fin de tâche"])-parseDateSafe(r["Créé"]))/86400000;r._ttr=(d>=0&&d<=730)?d:null;}
+    r._age=(r._e!=="CL"&&r._e!=="AN"&&r["Créé"])?Math.floor((today-new Date(r["Créé"]))/86400000):-1;
+    if(r["Fin de tâche"]&&r._e==="CL"&&r["Créé"]){var d=(new Date(r["Fin de tâche"])-new Date(r["Créé"]))/86400000;r._ttr=(d>=0&&d<=730)?d:null;}
     else r._ttr=null;
   });
   var SM={"Approuvé ERP":"APP","Annulé":"ANN","En attente d'approbation DA":"ATDA","Ouvert":"OUV","En attente d'approbation":"AT"};
-  // FIX #4 : le bloc précédent contenait deux conditions toujours fausses
-  // ("x !== undefined && x === undefined" ne peut jamais être vrai) — supprimé,
-  // il ne faisait rien. La normalisation du coût se fait déjà plus bas via N(...).
+  // Normaliser les clés des colonnes QUO pour gérer les variantes d'encodage
+  // Debug: log first QUO row to check column values
+  if(QUO.length > 0) {
+    var sample = QUO[0];
+    console.log("QUO sample keys:", Object.keys(sample));
+    console.log("QUO Coût total:", sample["Coût total"], typeof sample["Coût total"]);
+  }
+  QUO = QUO.map(function(r){
+    // Si "Coût total" absent mais "Coût total" ou "Cout total" présent
+    if(r["Coût total"] !== undefined && r["Coût total"] === undefined) r["Coût total"] = r["Coût total"];
+    if(r["Co\u00FBt total"] !== undefined && r["Coût total"] === undefined) r["Coût total"] = r["Co\u00FBt total"];
+    return r;
+  });
   QUO.forEach(function(r){
     r._s=SM[String(r["Statut du devis"]||"").trim()]||"AU";
     r._f=exFourn(r["Groupe d'affectation"]);
@@ -1060,7 +1039,7 @@ function buildData(){
     r._sf=String(r["Sous Famille d'Équipement"]||"").trim();
     r._bc=!!(r["Bons de commande référencé"]&&String(r["Bons de commande référencé"]).trim());
     r._mo=toMonth(r["Créé"]);
-    r._age=(r["Créé"])?Math.floor((new Date()-parseDateSafe(r["Créé"]))/86400000):-1;
+    r._age=(r["Créé"])?Math.floor((new Date()-new Date(r["Créé"]))/86400000):-1;
   });
   NPS.forEach(function(r){
     r._n=N(r["Valeur"]||0);
@@ -1072,13 +1051,6 @@ function buildData(){
   // Période nav
   var months=[...new Set(WO.map(function(r){return r._mo;}).filter(Boolean))].sort();
   if(months.length) document.getElementById("h-period").textContent=mL(months[0])+" → "+mL(months[months.length-1])+" 2026";
-  // Persiste la liste des régions pour que "Liens régionaux" reste utilisable
-  // même après un rechargement de page ou un clic sur "↺ Nouveau fichier"
-  // (qui vide WO en mémoire mais ne doit pas rendre ce bouton définitivement mort).
-  try{
-    var _regsPersist=[...new Set(WO.map(function(r){return r._r;}).filter(function(v){return v&&v!=="INCONNU";}))].sort();
-    if(_regsPersist.length) localStorage.setItem("mc_last_regions", JSON.stringify(_regsPersist));
-  }catch(e){}
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1118,157 +1090,6 @@ function resetF(){
   renderAll();
 }
 
-// ═══════════════════════════════════════════════════════════════
-// RECHERCHE GLOBALE — WO / Magasins / Prestataires
-// ═══════════════════════════════════════════════════════════════
-var _gsearchTimer=null;
-
-function onGlobalSearch(q){
-  clearTimeout(_gsearchTimer);
-  _gsearchTimer=setTimeout(function(){ runGlobalSearch(q); }, 150);
-}
-
-function runGlobalSearch(q){
-  var panel=document.getElementById("global-search-results");
-  if(!panel) return;
-  q=(q||"").trim();
-  if(q.length<2 || !WO.length){ panel.style.display="none"; return; }
-  var qLower=q.toLowerCase();
-
-  // WO (numéro) — jusqu'à 6 résultats
-  var seenWO={};
-  var woMatches=[];
-  for(var i=0;i<WO.length && woMatches.length<6;i++){
-    var r=WO[i], num=String(r["Numéro"]||"");
-    if(num && num.toLowerCase().indexOf(qLower)>=0 && !seenWO[num]){ seenWO[num]=1; woMatches.push(r); }
-  }
-
-  // Magasins — noms distincts correspondants, jusqu'à 6
-  var magSet=new Set();
-  WO.forEach(function(r){ if(magSet.size<6 && r._m && r._m.toLowerCase().indexOf(qLower)>=0) magSet.add(r._m); });
-
-  // Prestataires — noms distincts correspondants, jusqu'à 6
-  var prestSet=new Set();
-  WO.forEach(function(r){ if(prestSet.size<6 && r._f && r._f!=="Inconnu" && r._f.toLowerCase().indexOf(qLower)>=0) prestSet.add(r._f); });
-
-  if(!woMatches.length && !magSet.size && !prestSet.size){
-    panel.innerHTML="<div style='padding:12px;font-size:11px;color:var(--t3)'>Aucun résultat pour « "+q+" »</div>";
-    panel.style.display="block";
-    return;
-  }
-
-  var eL={CL:"Clôturé",AS:"Assigné",EC:"En cours",AT:"En attente",AN:"Annulé"};
-  var html="";
-  if(woMatches.length){
-    html+="<div style='padding:6px 10px;font-size:9px;color:var(--t3);text-transform:uppercase;font-weight:700;letter-spacing:.05em'>WO ("+woMatches.length+")</div>";
-    woMatches.forEach(function(r){
-      html+="<div class='gsr-item' data-num='"+String(r["Numéro"]).replace(/'/g,"&#39;")+"' onclick='ouvrirDetailWO(this.dataset.num)' "
-        +"style='padding:8px 10px;cursor:pointer;border-top:1px solid var(--border)'>"
-        +"<div style='font-size:11px;font-weight:600;color:var(--text)'>📋 "+r["Numéro"]+"</div>"
-        +"<div style='font-size:10px;color:var(--t3)'>"+(r._m||"—")+" · "+r._f+" · "+(eL[r._e]||r._e)+"</div></div>";
-    });
-  }
-  if(magSet.size){
-    html+="<div style='padding:6px 10px;font-size:9px;color:var(--t3);text-transform:uppercase;font-weight:700;letter-spacing:.05em'>Magasins</div>";
-    [...magSet].forEach(function(m){
-      html+="<div class='gsr-item' data-mag='"+m.replace(/'/g,"&#39;")+"' onclick='allerVersMagasin(this.dataset.mag)' "
-        +"style='padding:8px 10px;cursor:pointer;border-top:1px solid var(--border)'>"
-        +"<div style='font-size:11px;font-weight:600;color:var(--text)'>🏪 "+m+"</div></div>";
-    });
-  }
-  if(prestSet.size){
-    html+="<div style='padding:6px 10px;font-size:9px;color:var(--t3);text-transform:uppercase;font-weight:700;letter-spacing:.05em'>Prestataires</div>";
-    [...prestSet].forEach(function(p){
-      html+="<div class='gsr-item' data-prest='"+p.replace(/'/g,"&#39;")+"' onclick='allerVersPrestataire(this.dataset.prest)' "
-        +"style='padding:8px 10px;cursor:pointer;border-top:1px solid var(--border)'>"
-        +"<div style='font-size:11px;font-weight:600;color:var(--text)'>🔧 "+p+"</div></div>";
-    });
-  }
-  panel.innerHTML=html;
-  panel.style.display="block";
-}
-
-function closeGlobalSearch(){
-  var panel=document.getElementById("global-search-results");
-  if(panel) panel.style.display="none";
-  var inp=document.getElementById("global-search");
-  if(inp) inp.value="";
-}
-
-function allerVersMagasin(m){
-  closeGlobalSearch();
-  F.mag=m;
-  var sel=document.getElementById("f-mag"); if(sel) sel.value=m;
-  go("magasins");
-  toast("🏪 "+m);
-}
-
-function allerVersPrestataire(p){
-  closeGlobalSearch();
-  F.prest=p;
-  var sel=document.getElementById("f-prest"); if(sel) sel.value=p;
-  go("taux");
-  toast("🔧 "+p);
-}
-
-function ouvrirDetailWO(num){
-  closeGlobalSearch();
-  var r=WO.find(function(x){ return String(x["Numéro"])===String(num); });
-  if(!r){ toast("WO introuvable",true); return; }
-  var eL={CL:"Clôturé achevé",AS:"Assignée",EC:"En cours",AT:"En attente d'approbation",AN:"Annulé",AU:"Autre"};
-  var pL={TU:"1 - Très urgent",UR:"2 - Urgent",ST:"3 - Standard"};
-  var eC=r._e==="CL"?"#1D9E75":r._e==="AT"?"#E24B4A":r._e==="AN"?"#888":"#378ADD";
-  var creeLe = r["Créé"] ? parseDateSafe(r["Créé"]).toLocaleDateString("fr-FR") : "—";
-
-  var existing=document.getElementById("_wo_detail_modal"); if(existing) existing.remove();
-  var div=document.createElement("div");
-  div.id="_wo_detail_modal";
-  div.style.cssText="position:fixed;inset:0;background:rgba(10,12,28,.9);z-index:100000;display:flex;align-items:center;justify-content:center;padding:20px";
-  var inner=document.createElement("div");
-  inner.style.cssText="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:22px;max-width:480px;width:100%";
-
-  var header=document.createElement("div");
-  header.style.cssText="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px";
-  var title=document.createElement("div");
-  title.style.cssText="font-size:15px;font-weight:700;color:var(--text)";
-  title.textContent="📋 "+r["Numéro"];
-  var closeBtn=document.createElement("button");
-  closeBtn.textContent="✕ Fermer";
-  closeBtn.style.cssText="background:none;border:1px solid var(--border);color:var(--t2);border-radius:6px;padding:4px 10px;cursor:pointer";
-  closeBtn.onclick=function(){ div.remove(); };
-  header.appendChild(title); header.appendChild(closeBtn);
-  inner.appendChild(header);
-
-  var content=document.createElement("div");
-  content.innerHTML =
-    "<div style='display:inline-block;padding:4px 10px;border-radius:10px;font-size:10px;font-weight:700;background:"+eC+"22;color:"+eC+";margin-bottom:12px'>"+(eL[r._e]||r._e)+"</div>"
-    +mstat("Magasin", r._m||"—")
-    +mstat("Région", (r._r||"—").replace(/_/g," "))
-    +mstat("Prestataire", r._f||"—")
-    +mstat("Priorité", pL[r._p]||r._p)
-    +mstat("Créé le", creeLe)
-    +(r._age>=0?mstat("Ancienneté", r._age+" jour(s)"):"")
-    +(r._ttr!==null&&r._ttr!==undefined?mstat("Délai de résolution (TTR)", r._ttr.toFixed(1)+" jour(s)"):"")
-    +mstat("Type de client", r._t||"—");
-  inner.appendChild(content);
-  div.appendChild(inner);
-  document.body.appendChild(div);
-  div.addEventListener("click", function(e){ if(e.target===div) div.remove(); });
-
-  function mstat(label,val){
-    return "<div class='mstat'><span class='mstat-label'>"+label+"</span><span class='mstat-val'>"+val+"</span></div>";
-  }
-}
-
-// Ferme le panneau de résultats si on clique ailleurs sur la page
-document.addEventListener("click", function(e){
-  var wrap=document.getElementById("gsearch-wrap");
-  if(wrap && !wrap.contains(e.target)){
-    var panel=document.getElementById("global-search-results");
-    if(panel) panel.style.display="none";
-  }
-});
-
 // Données filtrées (accès aux données brutes = filtres 100% dynamiques)
 function fWO(){
   return WO.filter(function(r){
@@ -1301,29 +1122,26 @@ function fNPS(){
 // NAVIGATION
 // ═══════════════════════════════════════════════════════════════
 function go(tab){
+  if(tab==="prev") setTimeout(renderPrev,50);
+  if(tab==="alertes") setTimeout(renderAlertes,50);
   TAB=tab;
-  // FIX #1 (suite) : on surligne l'onglet actif via l'attribut data-tab plutôt que par
-  // index de position, pour ne plus jamais désynchroniser l'affichage si l'ordre
-  // du tableau TABS et l'ordre du DOM divergent à nouveau.
-  document.querySelectorAll(".tab").forEach(function(t){t.classList.toggle("active",t.dataset.tab===tab);});
+  document.querySelectorAll(".tab").forEach(function(t,i){t.classList.toggle("active",TABS[i]===tab);});
   document.querySelectorAll(".page").forEach(function(p){p.classList.remove("active");});
   var pg=document.getElementById("page-"+tab);if(pg)pg.classList.add("active");
-  // FIX #3 : renderAll() gère déjà le rendu de "prev" et "alertes" (voir renderAll ci-dessous),
-  // donc le double appel setTimeout(renderXxx,50) qui existait ici a été supprimé
-  // pour éviter de recalculer deux fois les mêmes données à chaque clic d'onglet.
   try { renderAll(); } catch(e){ console.error("render error:", e); }
 }
 
 function renderAll(){
-  // FIX #2 : "prev" et "alertes" étaient absents de ce dictionnaire, donc changer un filtre
-  // global (région, prestataire...) pendant que ces onglets étaient ouverts ne les
-  // rafraîchissait pas. Ajoutés ci-dessous.
+  // Init alertes si onglet actif
+  if(document.getElementById("page-alertes") && 
+     document.getElementById("page-alertes").classList.contains("active")){
+    renderAlertes();
+  }
   var fn={overview:renderOV,taux:renderTaux,magasins:renderMag,devis:renderDevis,
           ttr:renderTTR,aging:renderAging,budget:renderBudget,
-          recurrence:renderRec,bc:renderBC,nps:renderNPS,prev:renderPrev,
-          alertes:renderAlertes,rapports:renderRapports,contacts:renderContacts};
-  // contacts, rapports, prev et alertes peuvent fonctionner même sans données WO/QUO chargées
-  var noDataOk = ["contacts","rapports","prev","alertes"];
+          recurrence:renderRec,bc:renderBC,nps:renderNPS,rapports:renderRapports,contacts:renderContacts};
+  // contacts et rapports fonctionnent même sans données
+  var noDataOk = ["contacts","rapports"];
   if(!WO.length && noDataOk.indexOf(TAB) < 0) return;
   if(fn[TAB]) try { fn[TAB](); } catch(e){ console.error("renderAll error:", e); }
 }
@@ -1515,11 +1333,11 @@ function renderDevis(){
   // SF
   var sfMap={};quo.forEach(function(r){if(r._sf){if(!sfMap[r._sf])sfMap[r._sf]=0;sfMap[r._sf]+=r._c;}});
   hbars("b-sf",Object.entries(sfMap).sort(function(a,b){return b[1]-a[1];}).slice(0,10).map(function(e){return{l:e[0],v:e[1]};}),
-    function(d,i){return PAL[i%PAL.length];},function(d){return fmt(d.v);});
+    function(d,i){return PAL[i%PAL.length];},fmt);
   // Fourn coût
   var qfMap={};quo.forEach(function(r){if(r._f!=="Inconnu"){if(!qfMap[r._f])qfMap[r._f]=0;qfMap[r._f]+=r._c;}});
   hbars("b-qf",Object.entries(qfMap).sort(function(a,b){return b[1]-a[1];}).slice(0,10).map(function(e){return{l:e[0],v:e[1]};}),
-    "#378ADD",function(d){return fmt(d.v);});
+    "#378ADD",fmt);
   // Région
   var rMap={};quo.forEach(function(r){if(r._r!=="INCONNU"){if(!rMap[r._r])rMap[r._r]=0;rMap[r._r]+=r._c;}});
   var rKeys=Object.keys(rMap).sort(function(a,b){return rMap[b]-rMap[a];});
@@ -1695,7 +1513,7 @@ function renderRec(){
   hbars("b-rec-vol",data.slice(0,20).map(function(d){return{l:d.l,v:d.n};}),
     "#D85A30",function(d){return fN(d.v)+" WO";});
   hbars("b-rec-cout",data.slice(0,20).sort(function(a,b){return b.cout-a.cout;}).map(function(d){return{l:d.l,v:d.cout};}),
-    "#8B5CF6",function(d){return fmt(d.v);});
+    "#8B5CF6",fmt);
   var tb=document.getElementById("tb-rec");
   if(tb)tb.innerHTML=data.slice(0,100).map(function(d,i){
     var pp=d.tx>=70?"pg":d.tx>=50?"pb":d.tx>=35?"pa":"pr";
@@ -1721,10 +1539,10 @@ function renderBC(){
   delete pMap["Inconnu"];
   var pData=Object.entries(pMap).sort(function(a,b){return b[1].cout-a[1].cout;});
   hbars("b-bc-prest",pData.slice(0,15).map(function(e){return{l:e[0],v:e[1].cout};}),
-    "#E24B4A",function(d){return fmt(d.v);});
+    "#E24B4A",fmt);
   var rMap={};quo.forEach(function(r){if(r._r!=="INCONNU"){if(!rMap[r._r])rMap[r._r]=0;rMap[r._r]+=r._c;}});
   hbars("b-bc-reg",Object.entries(rMap).sort(function(a,b){return b[1]-a[1];}).map(function(e){return{l:e[0].replace(/_/g," "),v:e[1]};}),
-    "#BA7517",function(d){return fmt(d.v);});
+    "#BA7517",fmt);
   var tb=document.getElementById("tb-bc");
   if(tb)tb.innerHTML=pData.map(function(e,i){
     var reg=[...e[1].regs].filter(function(r){return r!=="INCONNU";}).map(function(r){return r.replace(/_/g," ");}).join(", ");
@@ -1789,39 +1607,6 @@ function renderRapports(){
   if(selT && !selT.dataset.bound){
     selT.dataset.bound="1";
   }
-  applyRapModeUI();
-}
-
-// ── MODE RAPPORT : "groupe" (prestataire) ou "magasin" ──────────
-var RAP_MODE = "groupe";
-
-function setRapMode(mode){
-  RAP_MODE = mode;
-  applyRapModeUI();
-  buildRapportSelects();
-  previewRapport();
-}
-
-function applyRapModeUI(){
-  var btnG=document.getElementById("btn-mode-groupe");
-  var btnM=document.getElementById("btn-mode-magasin");
-  var wrapG=document.getElementById("rap-groupe-wrap");
-  var wrapM=document.getElementById("rap-magasin-wrap");
-  var lbl=document.getElementById("rap-detail-label");
-  if(!btnG||!btnM||!wrapG||!wrapM)return;
-  var isM = RAP_MODE==="magasin";
-  btnG.style.background = isM?"var(--bg)":"var(--blue)";
-  btnG.style.color = isM?"var(--t2)":"#fff";
-  btnG.style.border = isM?"1px solid var(--border)":"none";
-  btnM.style.background = isM?"var(--blue)":"var(--bg)";
-  btnM.style.color = isM?"#fff":"var(--t2)";
-  btnM.style.border = isM?"none":"1px solid var(--border)";
-  wrapG.style.display = isM?"none":"block";
-  wrapM.style.display = isM?"block":"none";
-  if(lbl) lbl.textContent = isM?"Détail par prestataire intervenant":"Détail par entité";
-  // Masquer les checkboxes propres au comparatif multi-entités quand un seul magasin est affiché
-  var chkTaux=document.getElementById("rap-taux");
-  if(chkTaux&&chkTaux.parentElement) chkTaux.parentElement.style.display = isM?"none":"flex";
 }
 
 function buildGroupesUI(){
@@ -1893,25 +1678,6 @@ function buildRapportSelects(){
     if(stillValid) sel.value=prevVal;
   }
 
-  // ── Magasin (filtré par territoire si sélectionné) ──
-  var selMag=document.getElementById("rap-magasin");
-  if(selMag){
-    var prevMag=selMag.value;
-    while(selMag.options.length>1)selMag.remove(1);
-    var mCount={};
-    woScope.forEach(function(r){if(r._m)mCount[r._m]=(mCount[r._m]||0)+1;});
-    var magsSorted=Object.entries(mCount).sort(function(a,b){return b[1]-a[1];});
-    magsSorted.forEach(function(e){
-      var o=document.createElement("option");o.value=e[0];
-      o.textContent=e[0]+" ("+fN(e[1])+" WO)";
-      selMag.appendChild(o);
-    });
-    if(prevMag){
-      var stillValidMag=Array.from(selMag.options).some(function(o){return o.value===prevMag;});
-      if(stillValidMag) selMag.value=prevMag;
-    }
-  }
-
   // ── Période ──
   var selP=document.getElementById("rap-periode");if(!selP)return;
   if(selP.options.length<=1){
@@ -1977,49 +1743,6 @@ function getGroupeData(gid){
   return{nom:nomAffiche, nomBase:nom, territoire:territoire, entites:entites, couleur:g?g.couleur:"#378ADD", wo:woG, quo:quoG, nps:npsG};
 }
 
-// ── Rapport par magasin ──────────────────────────────────────
-function getMagasinData(magasin){
-  var periode=document.getElementById("rap-periode")?document.getElementById("rap-periode").value||"":"";
-
-  var woM=WO.filter(function(r){
-    if(r._m!==magasin)return false;
-    if(periode&&r._mo!==periode)return false;
-    return true;
-  });
-  var quoM=QUO.filter(function(r){
-    if(r._m!==magasin)return false;
-    if(periode&&r._mo!==periode)return false;
-    return true;
-  });
-  var npsM=NPS.filter(function(r){
-    if(r._m!==magasin)return false;
-    if(periode&&r._mo!==periode)return false;
-    return true;
-  });
-
-  // Région du magasin déduite de ses propres WO (un magasin appartient à une seule région)
-  var territoire = woM.length ? woM[0]._r : "";
-  if(territoire==="INCONNU") territoire="";
-
-  // Prestataires ayant réellement travaillé sur ce magasin (hors "Inconnu"), triés par volume, plafonnés à 15
-  var pCount={};woM.forEach(function(r){if(r._f&&r._f!=="Inconnu")pCount[r._f]=(pCount[r._f]||0)+1;});
-  var entites=Object.entries(pCount).sort(function(a,b){return b[1]-a[1];}).slice(0,15).map(function(e){return e[0];});
-
-  return{nom:magasin, nomBase:magasin, territoire:territoire, entites:entites, couleur:"#8B5CF6", wo:woM, quo:quoM, nps:npsM};
-}
-
-// Dispatcher : renvoie les données du rapport selon le mode actif (groupe ou magasin)
-function getRapportData(){
-  if(RAP_MODE==="magasin"){
-    var mag=document.getElementById("rap-magasin")?document.getElementById("rap-magasin").value:"";
-    if(!mag)return null;
-    return getMagasinData(mag);
-  }
-  var gid=document.getElementById("rap-groupe")?document.getElementById("rap-groupe").value:"";
-  if(!gid)return null;
-  return getGroupeData(gid);
-}
-
 function calcKPIs(wo,quo,nps){
   var n=wo.length||1;
   var cl=wo.filter(function(r){return r._e==="CL";}).length;
@@ -2045,9 +1768,10 @@ function calcKPIs(wo,quo,nps){
 }
 
 function previewRapport(){
-  var data=getRapportData();if(!data)return;
+  var gid=document.getElementById("rap-groupe").value;if(!gid)return;
   // Mise à jour info email
-  updateRapEmailInfo(data);
+  updateRapEmailInfo(gid);
+  var data=getGroupeData(gid);
   var kpi=calcKPIs(data.wo,data.quo,data.nps);
   var prev=document.getElementById("rap-preview");
   var title=document.getElementById("rap-preview-title");
@@ -2055,11 +1779,8 @@ function previewRapport(){
   var content=document.getElementById("rap-preview-content");
   if(!prev)return;
   prev.style.display="block";
-  title.textContent=(RAP_MODE==="magasin"?"🏪 Rapport magasin — ":"Rapport — ")+data.nom;
-  sub.textContent=(RAP_MODE==="magasin"
-      ? (data.entites.length?data.entites.length+" prestataire(s) intervenu(s)":"Aucun prestataire identifié")
-      : data.entites.join(" + "))
-    +" · "+fN(kpi.n)+" WO"+(data.territoire?" · 📍 "+data.territoire.replace(/_/g," "):" · 🌍 National");
+  title.textContent="Rapport — "+data.nom;
+  sub.textContent=data.entites.join(" + ")+" · "+fN(kpi.n)+" WO"+(data.territoire?" · 📍 "+data.territoire.replace(/_/g," "):" · 🌍 National");
   // KPIs grid
   var kpiHTML="<div class='kg' style='grid-template-columns:repeat(auto-fit,minmax(130px,1fr));margin-bottom:14px'>"
     +"<div class='kpi' style='border-top-color:"+data.couleur+"'><div class='kl'>WO Total</div><div class='kv'>"+fN(kpi.n)+"</div></div>"
@@ -2108,8 +1829,13 @@ function previewRapport(){
 
 // ── EXPORT PDF ────────────────────────────────────────────────
 function genererPDF(){
-  var data=getRapportData();
-  if(!data){toast("Sélectionnez un "+(RAP_MODE==="magasin"?"magasin":"groupe"),true);return;}
+  var gid=document.getElementById("rap-groupe").value;
+  if(!gid){toast("Sélectionnez un groupe",true);return;}
+  // Lancer en async pour ne pas bloquer l'UI
+  toast("⏳ Génération du rapport en cours...");
+  setTimeout(function(){
+  try{
+  var data=getGroupeData(gid);
   var kpi=calcKPIs(data.wo,data.quo,data.nps);
   var periode=document.getElementById("rap-periode").value||"";
   var OBJECTIF=85;
@@ -2260,7 +1986,7 @@ function genererPDF(){
   // ① EN-TÊTE
   H.push("<div class='hdr'><div style='display:flex;align-items:center;gap:12px'>");
   H.push("<img class='logo' src='https://emericborel.github.io/Tableau-de-bord/carrefour.png' onerror=\"this.style.display='none'\">");
-  H.push("<div><div class='gname'>"+data.nomBase+(data.territoire?" — "+data.territoire.replace(/_/g," "):"")+"</div><div class='gsub'>"+(RAP_MODE==="magasin"?"Rapport Maintenance Curative — Magasin · "+(data.entites.length?data.entites.length+" prestataire(s) intervenu(s)":"Aucun prestataire identifié"):"Rapport Maintenance Curative · "+data.entites.join(" + ")+(data.territoire?" · Périmètre régional":" · Périmètre national"))+"</div></div>");
+  H.push("<div><div class='gname'>"+data.nomBase+(data.territoire?" — "+data.territoire.replace(/_/g," "):"")+"</div><div class='gsub'>Rapport Maintenance Curative · "+data.entites.join(" + ")+(data.territoire?" · Périmètre régional":" · Périmètre national")+"</div></div>");
   H.push("</div><div class='meta'>Carrefour — Direction Technique France<br><strong>Période : "+periodeLabel+"</strong><br>Généré le "+now+"</div></div>");
 
   // ② BANDEAU PERFORMANCE
@@ -2360,26 +2086,40 @@ function genererPDF(){
   H.push("<div class='footer'><span>Carrefour — Direction Technique France · Dashboard Maintenance Curative Nationale</span><span>"+periodeLabel+" · "+now+"</span></div>");
   H.push("</div></body></html>");
 
-  var win=window.open("","_blank");
-  win.document.write(H.join(""));
-  win.document.close();
-  setTimeout(function(){win.print();},800);
-  toast("Rapport PDF généré ✓");
+  // Ouvrir dans une nouvelle fenêtre sans bloquer l'UI
+  toast("⏳ Génération du rapport...");
+  setTimeout(function(){
+    try{
+      var win=window.open("","_blank");
+      if(!win){ toast("⚠️ Autorisez les popups pour générer le PDF",true); return; }
+      win.document.write(H.join(""));
+      win.document.close();
+      setTimeout(function(){ try{win.print();}catch(e){} },600);
+          toast("✅ Rapport ouvert — utilisez Ctrl+P pour imprimer");
+      }catch(eWin){
+        toast("Erreur ouverture: "+eWin.message,true);
+      }
+    },100);
+  }catch(e){
+    toast("Erreur génération: "+e.message,true);
+  }
+  },10);  // fin setTimeout principal
 }
 
 
 function genererExcel(){
-  var data=getRapportData();
-  if(!data){toast("Sélectionnez un "+(RAP_MODE==="magasin"?"magasin":"groupe"),true);return;}
+  var gid=document.getElementById("rap-groupe").value;
+  if(!gid){toast("Sélectionnez un groupe",true);return;}
+  var data=getGroupeData(gid);
   var kpi=calcKPIs(data.wo,data.quo,data.nps);
   var wb=XLSX.utils.book_new();
 
   // Feuille 1 : KPIs consolidés
   var kpiRows=[
-    [(RAP_MODE==="magasin"?"RAPPORT MAGASIN — ":"RAPPORT MAINTENANCE CURATIVE — ")+data.nom],
+    ["RAPPORT MAINTENANCE CURATIVE — "+data.nom],
     ["Généré le",new Date().toLocaleDateString("fr-FR")],
     ["Territoire",data.territoire?data.territoire.replace(/_/g," "):"National (toutes régions)"],
-    [RAP_MODE==="magasin"?"Prestataires intervenus":"Entités",data.entites.join(", ")],
+    ["Entités",data.entites.join(", ")],
     [],
     ["INDICATEUR","VALEUR","CONTEXTE"],
     ["WO Total",kpi.n,""],
@@ -2438,7 +2178,7 @@ function genererExcel(){
   ws5["!cols"]=[{wch:14},{wch:10},{wch:10},{wch:14},{wch:12},{wch:12},{wch:12},{wch:14}];
   XLSX.utils.book_append_sheet(wb,ws5,"Évolution Mensuelle");
 
-  XLSX.writeFile(wb,(RAP_MODE==="magasin"?"Rapport_Magasin_":"Rapport_")+(data.territoire?data.territoire+"_":"")+data.nomBase.replace(/\s/g,"_")+"_"+new Date().toISOString().slice(0,10)+".xlsx");
+  XLSX.writeFile(wb,"Rapport_"+(data.territoire?data.territoire+"_":"")+data.nomBase.replace(/\s/g,"_")+"_"+new Date().toISOString().slice(0,10)+".xlsx");
   toast("Excel exporté ✓ ("+data.entites.length+" entités, "+fN(data.wo.length)+" WO)");
 }
 
@@ -2682,6 +2422,67 @@ function envoyerRapport(){
 }
 
 
+function buildExcelWB(data, kpi){
+  var wb = XLSX.utils.book_new();
+  var kpiRows=[
+    ["RAPPORT MAINTENANCE CURATIVE — "+data.nom],
+    ["WO Total",kpi.n],["Clôturés",kpi.cl],["%",+(kpi.taux.toFixed(1))],
+    ["En attente",kpi.at],["TU ouverts",kpi.tu],
+    ["TTR moyen (j)",+(kpi.ttrMoy.toFixed(1))],
+    ["Coût devis",kpi.coutTot],["Sans BC",kpi.bcRisk],
+    ["NPS",kpi.npsN>0?+(kpi.npsScore.toFixed(1)):"N/A"]
+  ];
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(kpiRows), "KPIs");
+  var woRows=[["N° WO","Statut","Prestataire","Magasin","Région","Priorité","Mois","Âge","TTR"]];
+  data.wo.slice(0,5000).forEach(function(r){woRows.push([r["Numéro"]||"",r["État"]||"",r._f,r._m,r._r,r._p,r._mo,r._age>=0?r._age:"",r._ttr!=null?+(r._ttr.toFixed(1)):""]);});
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(woRows), "WO Détail");
+  return wb;
+}
+
+function buildPDFHtml(data, kpi, periodeLabel){
+  var txColor = kpi.taux>=70?"#085041":kpi.taux>=50?"#185FA5":kpi.taux>=35?"#633806":"#791F1F";
+  return "<!DOCTYPE html><html><head><meta charset=UTF-8><style>body{font-family:system-ui;color:#1a1a2e;margin:0;padding:0}.p{padding:28px 36px;max-width:750px;margin:0 auto}.hdr{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid "+data.couleur+";padding-bottom:14px;margin-bottom:20px}.gn{font-size:20px;font-weight:800;color:"+data.couleur+"}.gs{font-size:11px;color:#888;margin-top:3px}.meta{text-align:right;font-size:11px;color:#888}.kg{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px}.k{border:1px solid #e2e4eb;border-radius:7px;padding:10px;border-top:3px solid "+data.couleur+"}.kl{font-size:9px;color:#888;text-transform:uppercase;margin-bottom:4px}.kv{font-size:16px;font-weight:700}.ks{font-size:9px;color:#bbb;margin-top:2px}</style></head><body><div class=p>"
+    +"<div class=hdr><div><div class=gn>"+data.nom+"</div><div class=gs>"+data.entites.join(" + ")+"</div></div><div class=meta>Carrefour DTF<br>"+periodeLabel+"<br>"+new Date().toLocaleDateString("fr-FR")+"</div></div>"
+    +"<div class=kg>"
+    +"<div class=k><div class=kl>WO Total</div><div class=kv>"+fN(kpi.n)+"</div></div>"
+    +"<div class=k><div class=kl>Taux clôture</div><div class=kv style=color:"+txColor+">"+kpi.taux.toFixed(1)+"%</div><div class=ks>"+fN(kpi.cl)+" clôturés</div></div>"
+    +"<div class=k><div class=kl>En attente</div><div class=kv>"+fN(kpi.at)+"</div><div class=ks>"+fN(kpi.tu)+" TU</div></div>"
+    +"<div class=k><div class=kl>TTR moyen</div><div class=kv>"+kpi.ttrMoy.toFixed(1)+"j</div></div>"
+    +"<div class=k><div class=kl>Coût devis</div><div class=kv>"+fmt(kpi.coutTot)+"</div></div>"
+    +"<div class=k><div class=kl>Sans BC</div><div class=kv style=color:#791F1F>"+fmt(kpi.bcRisk)+"</div></div>"
+    +(kpi.npsN>0?"<div class=k><div class=kl>NPS</div><div class=kv style=color:"+nC(kpi.npsScore)+">"+(kpi.npsScore>0?"+":"")+kpi.npsScore.toFixed(1)+"</div></div>":"")
+    +"</div></div></body></html>";
+}
+
+
+function ouvrirConfigSplash(){ /* plus nécessaire */ }
+function saveSplashUrl(){
+  var url = (document.getElementById("splash-script-url").value||"").trim();
+  if(url){ SCRIPT_URL = url; localStorage.setItem("mc_script_url", url); }
+  var st = document.getElementById("splash-url-status");
+  if(st){ st.textContent = "✅ Sauvegardé — vérification des données..."; }
+  // Vérifier immédiatement si données auto disponibles
+  setTimeout(function(){
+    verifierDonneesAuto();
+    if(st) setTimeout(function(){st.textContent="✅ URL configurée";},3000);
+  }, 500);
+  // Sync avec l'onglet contacts si ouvert
+  var urlEl = document.getElementById("apps-script-url");
+  if(urlEl && url) urlEl.value = url;
+}
+// Charger SCRIPT_URL depuis localStorage au démarrage
+// Remplir champ URL au chargement
+window.addEventListener("load", function(){
+  var inp = document.getElementById("splash-script-url");
+  if(inp && SCRIPT_URL) inp.value = SCRIPT_URL;
+  if(SCRIPT_URL){
+    var st = document.getElementById("splash-url-status");
+    if(st) st.textContent = "✅ URL configurée";
+    setTimeout(verifierDonneesAuto, 800);
+  }
+});
+
+// ── MODAL CONTACTS (accessible depuis splash) ─────────────────
 function ouvrirModalContacts(){
   document.getElementById("modal-contacts").style.display="block";
   var inp = document.getElementById("modal-script-url");
@@ -2748,20 +2549,11 @@ function renderModalGroupes(){
   }).join("");
 }
 
-function updateRapEmailInfo(data){
+function updateRapEmailInfo(gid){
   var el = document.getElementById("rap-email-info"); if(!el) return;
-  if(RAP_MODE==="magasin"){
-    // Les contacts sont rattachés aux prestataires, pas aux magasins : email toujours demandé à l'envoi.
-    if(!SCRIPT_URL){
-      el.innerHTML = "<span style='color:var(--red)'>⚠ Configurez d'abord l'URL Apps Script dans Contacts</span>";
-    } else {
-      el.innerHTML = "<span style='color:var(--amber)'>⚠ Rapport magasin — l'email du destinataire (directeur magasin, etc.) sera demandé à l'envoi</span>";
-    }
-    return;
-  }
-  var gid=document.getElementById("rap-groupe")?document.getElementById("rap-groupe").value:"";
   // Chercher contact correspondant
   var nomGroupe = "";
+  var email = "";
   if(gid && gid.startsWith("__")){
     nomGroupe = gid.slice(2);
   } else {
@@ -2784,22 +2576,19 @@ function updateRapEmailInfo(data){
 }
 
 function envoyerDepuisRapports(){
+  var gid=document.getElementById("rap-groupe").value;
+  if(!gid){toast("Sélectionnez un groupe d'abord",true);return;}
   if(!SCRIPT_URL){toast("Configurez l'URL Apps Script dans Contacts",true);return;}
-  var data0=getRapportData();
-  if(!data0){toast("Sélectionnez un "+(RAP_MODE==="magasin"?"magasin":"groupe")+" d'abord",true);return;}
 
-  var nomGroupe=data0.nomBase, email="", email2="", objectif=85;
-  if(RAP_MODE==="magasin"){
-    // Pas de contact rattaché à un magasin : email toujours demandé.
-    email=prompt("Email destinataire pour le magasin "+nomGroupe+" :");if(!email)return;
-  } else {
-    var gid=document.getElementById("rap-groupe").value;
-    var c=CONTACTS.find(function(x){
-      return x.nom===nomGroupe||x.groupe===nomGroupe||(gid.startsWith("__")&&x.nom===gid.slice(2));
-    });
-    if(c){email=c.email;email2=c.email2||"";objectif=c.taux_ref||85;}
-    else{email=prompt("Email destinataire pour "+nomGroupe+" :");if(!email)return;}
-  }
+  var nomGroupe="",email="",email2="",objectif=85;
+  if(gid.startsWith("__")) nomGroupe=gid.slice(2);
+  else{var g=GROUPES.find(function(x){return x.id===gid;});if(g)nomGroupe=g.nom;}
+
+  var c=CONTACTS.find(function(x){
+    return x.nom===nomGroupe||x.groupe===nomGroupe||(gid.startsWith("__")&&x.nom===gid.slice(2));
+  });
+  if(c){email=c.email;email2=c.email2||"";objectif=c.taux_ref||85;}
+  else{email=prompt("Email destinataire pour "+nomGroupe+" :");if(!email)return;}
 
   var territoire=document.getElementById("rap-territoire")?document.getElementById("rap-territoire").value||"":"";
   var periode=document.getElementById("rap-periode").value||"";
@@ -2810,15 +2599,17 @@ function envoyerDepuisRapports(){
     periodeLabel=allM.length>=2?"De "+mL(allM[0])+" 2026 à "+mL(allM[allM.length-1])+" 2026":allM.length===1?mL(allM[0])+" 2026":"Toute la période";
   }
 
-  var data=data0;
+  var data=getGroupeData(gid);
   var kpi=calcKPIs(data.wo,data.quo,data.nps);
   var msgPerf=getMessagePerformance(kpi.taux,objectif);
   var message="Bonjour,\n\nVeuillez trouver ci-joint votre rapport de performance maintenance curative pour la période "+periodeLabel+(territoire?" — Région : "+territoire.replace(/_/g," "):"")+".\n\n"+msgPerf+"\n\nCordialement,\nDirection Technique France — Carrefour";
-  var objet=(RAP_MODE==="magasin"?"Rapport magasin — ":"Rapport performance maintenance — ")+nomGroupe+(territoire?" — "+territoire.replace(/_/g," "):"")+(" — "+periodeLabel);
+  var objet="Rapport performance maintenance — "+nomGroupe+(territoire?" — "+territoire.replace(/_/g," "):"")+(" — "+periodeLabel);
 
   var st=document.getElementById("rap-send-status");
   if(st)st.innerHTML="<span style='color:var(--amber)'>⏳ Envoi en cours…</span>";
 
+  // Construire les données à envoyer via URL params (GET)
+  // Le PDF est généré côté Apps Script depuis les KPIs
   var params=new URLSearchParams({
     action    :"sendRapport",
     to        :email,
@@ -2838,6 +2629,7 @@ function envoyerDepuisRapports(){
     cout_total:fmt(kpi.coutTot),
     bc_risk   :fmt(kpi.bcRisk),
     nps_score :kpi.npsN>0?kpi.npsScore.toFixed(1):"N/A",
+    // Données mensuelles encodées (pour que Apps Script génère le PDF)
     mois_data :encodeMoisData(data,kpi),
     entites_data:encodeEntitesData(data,kpi),
   });
@@ -2882,32 +2674,121 @@ function encodeEntitesData(data,kpi){
   }).join("|");
 }
 
-function ouvrirConfigSplash(){ /* plus nécessaire */ }
-function saveSplashUrl(){
-  var url = (document.getElementById("splash-script-url").value||"").trim();
-  if(url){ SCRIPT_URL = url; localStorage.setItem("mc_script_url", url); }
-  var st = document.getElementById("splash-url-status");
-  if(st){ st.textContent = "✅ Sauvegardé — vérification des données..."; }
-  // Vérifier immédiatement si données auto disponibles
-  setTimeout(function(){
-    verifierDonneesAuto();
-    if(st) setTimeout(function(){st.textContent="✅ URL configurée";},3000);
-  }, 500);
-  // Sync avec l'onglet contacts si ouvert
-  var urlEl = document.getElementById("apps-script-url");
-  if(urlEl && url) urlEl.value = url;
-}
-// Charger SCRIPT_URL depuis localStorage au démarrage
-// Remplir champ URL au chargement
-window.addEventListener("load", function(){
-  var inp = document.getElementById("splash-script-url");
-  if(inp && SCRIPT_URL) inp.value = SCRIPT_URL;
-  if(SCRIPT_URL){
-    var st = document.getElementById("splash-url-status");
-    if(st) st.textContent = "✅ URL configurée";
-    setTimeout(verifierDonneesAuto, 800);
+
+
+// Génère le HTML du rapport (sans ouvrir de fenêtre — pour envoi email)
+function genererPDFHtml(data, kpi, periodeLabel){
+  var now=new Date().toLocaleDateString("fr-FR");
+  var OBJECTIF=85;
+  var txC=kpi.taux>=OBJECTIF?"#085041":kpi.taux>=60?"#185FA5":kpi.taux>=40?"#633806":"#791F1F";
+  var perf=kpi.taux>=OBJECTIF?"Excellente performance":kpi.taux>=60?"Bonne performance":kpi.taux>=40?"Performance à améliorer":"Performance insuffisante";
+
+  var mMap={};
+  data.wo.forEach(function(r){
+    if(!r._mo)return;
+    if(!mMap[r._mo])mMap[r._mo]={tot:0,cl:0,at:0,cout:0};
+    mMap[r._mo].tot++;
+    if(r._e==="CL")mMap[r._mo].cl++;
+    if(r._e==="AT")mMap[r._mo].at++;
+  });
+  data.quo.forEach(function(r){if(r._mo&&mMap[r._mo])mMap[r._mo].cout+=r._c;});
+  var mos=Object.keys(mMap).sort();
+
+  var css="body{font-family:Arial,sans-serif;color:#1a1a2e;margin:0;padding:24px}"
+    +".hdr{display:flex;justify-content:space-between;border-bottom:3px solid "+data.couleur+";padding-bottom:12px;margin-bottom:16px}"
+    +".gname{font-size:20px;font-weight:800;color:"+data.couleur+"}"
+    +".gsub{font-size:10px;color:#888;margin-top:3px}"
+    +".meta{text-align:right;font-size:10px;color:#888;line-height:1.8}"
+    +".perf{display:flex;align-items:center;gap:16px;background:"+data.couleur+"12;border:1px solid "+data.couleur+"33;border-radius:8px;padding:12px 18px;margin-bottom:14px}"
+    +".score{font-size:30px;font-weight:800;color:"+txC+"}"
+    +".kg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}"
+    +".kb{border:1px solid #e2e4eb;border-radius:7px;padding:10px;border-top:3px solid "+data.couleur+"}"
+    +".kl{font-size:8px;color:#888;text-transform:uppercase;margin-bottom:3px}"
+    +".kv{font-size:16px;font-weight:700}"
+    +".ks{font-size:9px;color:#aaa}"
+    +"h2{font-size:11px;text-transform:uppercase;border-bottom:2px solid #e2e4eb;padding-bottom:4px;margin:14px 0 8px}"
+    +"table{width:100%;border-collapse:collapse;font-size:10px}"
+    +"th{padding:6px 8px;background:#f8f9fc;border-bottom:2px solid #e2e4eb;font-size:8px;text-transform:uppercase;color:#888}"
+    +"td{padding:6px 8px;border-bottom:1px solid #f0f2f8}"
+    +".tr{text-align:right}"
+    +".pill{display:inline-block;padding:2px 6px;border-radius:4px;font-size:8px;font-weight:700}"
+    +".pg{background:#dcfce7;color:#085041}.pb{background:#dbeafe;color:#1e3a8a}.pa{background:#fef9c3;color:#633806}.pr{background:#fee2e2;color:#791F1F}"
+    +".footer{margin-top:20px;padding-top:8px;border-top:1px solid #e2e4eb;font-size:9px;color:#aaa;display:flex;justify-content:space-between}";
+
+  var H=[];
+  H.push("<!DOCTYPE html><html><head><meta charset='UTF-8'><style>"+css+"</style></head><body>");
+  H.push("<div class='hdr'><div><div class='gname'>"+data.nomBase+(data.territoire?" — "+data.territoire.replace(/_/g," "):"")+"</div><div class='gsub'>Rapport Maintenance Curative · "+data.entites.join(" + ")+(data.territoire?" · Périmètre régional":" · National")+"</div></div>");
+  H.push("<div class='meta'>Carrefour — Direction Technique France<br><strong>"+periodeLabel+"</strong><br>"+now+"</div></div>");
+
+  H.push("<div class='perf'><div style='text-align:center'><div class='score'>"+kpi.taux.toFixed(1)+"%</div><div style='font-size:9px;color:#888;text-transform:uppercase'>Taux de clôture</div><div style='font-size:9px;color:"+txC+";font-weight:700;margin-top:3px'>"+(kpi.taux>=OBJECTIF?"✓ Objectif atteint":"↑ Objectif : "+OBJECTIF+"%")+"</div></div>");
+  H.push("<div style='flex:1;font-size:11px;color:#444;line-height:1.6'><strong>"+perf+"</strong><br>"+fN(kpi.cl)+" WO clôturés sur "+fN(kpi.n)+" · Écart : <span style='color:"+txC+";font-weight:600'>"+(kpi.taux-OBJECTIF).toFixed(1)+" pts</span></div>");
+  H.push("<div style='text-align:right'><div style='font-size:8px;color:#888;text-transform:uppercase'>WO en attente</div><div style='font-size:24px;font-weight:800;color:#791F1F'>"+fN(kpi.at)+"</div><div style='font-size:9px;color:#888'>dont "+fN(kpi.tu)+" TU</div></div></div>");
+
+  H.push("<div class='kg'>");
+  H.push("<div class='kb'><div class='kl'>WO Total</div><div class='kv'>"+fN(kpi.n)+"</div></div>");
+  H.push("<div class='kb'><div class='kl'>Clôturés</div><div class='kv' style='color:"+txC+"'>"+fN(kpi.cl)+"</div><div class='ks'>"+kpi.taux.toFixed(1)+"%</div></div>");
+  H.push("<div class='kb'><div class='kl'>En attente</div><div class='kv' style='color:#791F1F'>"+fN(kpi.at)+"</div><div class='ks'>"+fN(kpi.tu)+" TU</div></div>");
+  H.push("<div class='kb'><div class='kl'>Coût total</div><div class='kv'>"+fmt(kpi.coutTot)+"</div></div>");
+  H.push("<div class='kb'><div class='kl'>Approuvés ERP</div><div class='kv'>"+fmt(kpi.coutApp)+"</div></div>");
+  if(kpi.npsN>0) H.push("<div class='kb'><div class='kl'>Score NPS</div><div class='kv' style='color:"+(kpi.npsScore>=30?"#085041":"#791F1F")+"'>"+(kpi.npsScore>0?"+":"")+kpi.npsScore.toFixed(1)+"</div><div class='ks'>"+fN(kpi.npsN)+" éval.</div></div>");
+  H.push("</div>");
+
+  if(data.entites.length>1){
+    H.push("<h2>Détail par entité</h2>");
+    H.push("<table><thead><tr><th>Entité</th><th class='tr'>WO</th><th class='tr'>Taux</th><th class='tr'>Attente</th><th class='tr'>TTR</th><th class='tr'>Coût</th></tr></thead><tbody>");
+    data.entites.forEach(function(e,i){
+      var ew=data.wo.filter(function(r){return r._f===e;});
+      var eq=data.quo.filter(function(r){return r._f===e;});
+      var ek=calcKPIs(ew,eq,[]);
+      var pc=ek.taux>=OBJECTIF?"pg":ek.taux>=60?"pb":ek.taux>=40?"pa":"pr";
+      H.push("<tr style='background:"+(i%2===0?"#fff":"#f9fafb")+"'>");
+      H.push("<td style='font-weight:600;color:"+data.couleur+"'>"+e+"</td><td class='tr'>"+fN(ek.n)+"</td>");
+      H.push("<td class='tr'><span class='pill "+pc+"'>"+ek.taux.toFixed(1)+"%</span></td>");
+      H.push("<td class='tr'>"+fN(ek.at)+"</td><td class='tr'>"+ek.ttrMoy.toFixed(1)+"j</td><td class='tr'>"+fmt(ek.coutTot)+"</td></tr>");
+    });
+    H.push("</tbody></table>");
   }
-});
+
+  if(mos.length){
+    H.push("<h2>Évolution mensuelle</h2>");
+    H.push("<table><thead><tr><th>Mois</th><th class='tr'>WO créés</th><th class='tr'>Clôturés</th><th class='tr'>En attente</th><th class='tr'>Taux</th><th class='tr'>Coût</th></tr></thead><tbody>");
+    mos.forEach(function(m,i){
+      var v=mMap[m];var tx=v.tot?v.cl/v.tot*100:0;
+      var pc=tx>=OBJECTIF?"pg":tx>=60?"pb":tx>=40?"pa":"pr";
+      H.push("<tr style='background:"+(i%2===0?"#fff":"#f9fafb")+"'>");
+      H.push("<td><strong>"+mL(m)+" 2026</strong></td><td class='tr'>"+fN(v.tot)+"</td><td class='tr'>"+fN(v.cl)+"</td>");
+      H.push("<td class='tr' style='color:#791F1F'>"+fN(v.at)+"</td>");
+      H.push("<td class='tr'><span class='pill "+pc+"'>"+tx.toFixed(1)+"%</span></td><td class='tr'>"+fmt(v.cout)+"</td></tr>");
+    });
+    H.push("</tbody></table>");
+  }
+
+  H.push("<div class='footer'><span>Carrefour — Direction Technique France</span><span>"+periodeLabel+"</span></div>");
+  H.push("</body></html>");
+  return H.join("");
+}
+
+
+
+
+
+
+
+
+
+
+// Charger SCRIPT_URL depuis localStorage au démarrage
+
+// Duplication supprimée
+
+
+
+
+
+
+
+
+
 
 // ── CHARGEMENT AUTOMATIQUE DEPUIS GOOGLE SHEET ─────────────────
 var PIPELINE_URL = ""; // Sera rempli depuis SCRIPT_URL
@@ -2952,6 +2833,9 @@ function verifierDonneesAuto(){
   sc.src = url + "?action=getMeta&callback=" + cbName;
   document.head.appendChild(sc);
 }
+
+
+
 
 // ══════════════════════════════════════════════════════════════
 // REGION VIEW — sélection région dès l'accueil
@@ -3063,20 +2947,13 @@ function copierLienRegion(){
 
 function genererLiensRegions(){
   var regs=[...new Set(WO.map(function(r){return r._r;}).filter(function(v){return v&&v!=="INCONNU";}))].sort();
-  // Repli sur la dernière liste connue si WO est vide (page rechargée, ou après "Nouveau fichier")
-  if(!regs.length){
-    try{
-      var cached=localStorage.getItem("mc_last_regions");
-      if(cached) regs=JSON.parse(cached);
-    }catch(e){}
-  }
   var base = window.location.origin + window.location.pathname;
   // Stocker les liens dans un objet global pour les boutons
   window._regionLinks = {national: base};
   regs.forEach(function(r){ window._regionLinks[r] = base + "?region=" + r; });
 
   var out = "<div style='padding:16px'>";
-  out += "<p style='font-size:10px;color:var(--t3);margin:0 0 10px'>Cliquez sur une r&#xe9;gion pour l'appliquer imm&#xe9;diatement, ou copiez le lien (&#x1F4CB;) pour le partager avec un responsable r&#xe9;gional</p>";
+  out += "<p style='font-size:10px;color:var(--t3);margin:0 0 10px'>Copiez et partagez ces liens avec vos responsables r&#xe9;gionaux</p>";
   out += "<div style='display:grid;gap:6px'>";
   out += ligne("&#x1F30D; Vue Nationale", base, "national");
   regs.forEach(function(r){
@@ -3087,25 +2964,11 @@ function genererLiensRegions(){
 
   function ligne(label, url, key){
     return "<div style='display:flex;align-items:center;gap:8px;padding:8px;background:var(--card2);border-radius:6px'>"
-      + "<div data-key='" + key + "' onclick='appliquerLienRegion(this.dataset.key)' style='flex:1;font-size:11px;font-weight:600;color:var(--text);cursor:pointer' title='Cliquer pour appliquer cette vue immédiatement'>" + label + "</div>"
+      + "<div style='flex:1;font-size:11px;font-weight:600;color:var(--text)'>" + label + "</div>"
       + "<code style='font-size:9px;color:var(--t3);flex:2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap'>" + url + "</code>"
-      + "<button data-key='" + key + "' onclick='copierLienKey(this.dataset.key)' style='padding:4px 10px;background:var(--blue);color:#fff;border:none;border-radius:4px;font-size:10px;cursor:pointer;flex-shrink:0' title='Copier le lien pour le partager'>&#x1F4CB;</button>"
+      + "<button data-key='" + key + "' onclick='copierLienKey(this.dataset.key)' style='padding:4px 10px;background:var(--blue);color:#fff;border:none;border-radius:4px;font-size:10px;cursor:pointer;flex-shrink:0'>&#x1F4CB;</button>"
       + "</div>";
   }
-}
-
-// Applique immédiatement la vue régionale choisie dans la modal (clic sur le libellé),
-// en plus de la possibilité de copier le lien (bouton 📋) pour le partager ailleurs.
-function appliquerLienRegion(key){
-  if(WO.length===0){
-    toast("Chargez d'abord les données pour appliquer directement — vous pouvez copier le lien (📋) pour l'ouvrir plus tard",true);
-    return;
-  }
-  var modal=document.getElementById("_liens_modal");
-  if(modal) modal.remove();
-  var linksDiv=document.getElementById("_links_div");
-  if(linksDiv) linksDiv.remove();
-  setRegionView(key==="national" ? "" : key);
 }
 
 function copierLienKey(key){
@@ -3114,18 +2977,12 @@ function copierLienKey(key){
   copierLien(url);
 }
 
+
 function afficherLiensRegions(){
-  // N'affiche l'avertissement que si NI les données en mémoire NI le cache localStorage
-  // ne fournissent de liste de régions (cas d'un tout premier lancement du dashboard).
-  var hasCache=false;
-  try{ hasCache = !!localStorage.getItem("mc_last_regions"); }catch(e){}
-  if(WO.length===0 && !hasCache){ toast("Chargez d'abord les donn&#xe9;es une première fois", true); return; }
-  // Empêche l'empilement de plusieurs modales si le bouton est cliqué plusieurs fois
-  var existing=document.getElementById("_liens_modal");
-  if(existing) existing.remove();
+  if(WO.length===0){ toast("Chargez d'abord les donn&#xe9;es", true); return; }
   var div = document.createElement("div");
   div.id = "_liens_modal";
-  div.style.cssText = "position:fixed;inset:0;background:rgba(10,12,28,.9);z-index:100000;overflow-y:auto;padding:20px;display:flex;align-items:flex-start;justify-content:center";
+  div.style.cssText = "position:fixed;inset:0;background:rgba(10,12,28,.9);z-index:9999;overflow-y:auto;padding:20px;display:flex;align-items:flex-start;justify-content:center";
   var inner = document.createElement("div");
   inner.style.cssText = "background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px;max-width:700px;width:100%;margin-top:40px";
   var header = document.createElement("div");
@@ -3140,29 +2997,11 @@ function afficherLiensRegions(){
   header.appendChild(title);
   header.appendChild(closeBtn);
   inner.appendChild(header);
-  // CORRECTIF : ne jamais faire "inner.innerHTML += ..." après avoir posé un .onclick
-  // en JS sur un enfant déjà attaché (ici closeBtn) — cette opération sérialise tout
-  // le contenu existant en HTML puis le détruit/recrée, ce qui perd silencieusement
-  // tous les gestionnaires posés via la propriété .onclick (ils ne font pas partie
-  // du HTML). On isole donc le contenu généré dans un enfant à part, jamais fusionné
-  // avec "inner" via +=.
-  var content = document.createElement("div");
-  content.innerHTML = genererLiensRegions();
-  inner.appendChild(content);
+  inner.innerHTML += genererLiensRegions();
   div.appendChild(inner);
   document.body.appendChild(div);
-  // Fermeture aussi en cliquant sur le fond sombre (hors de la carte blanche/sombre)
-  div.addEventListener("click", function(e){ if(e.target===div) div.remove(); });
 }
 
-// Copie un lien vers la vue ACTUELLEMENT affichée (respecte le filtre région en cours),
-// directement depuis la barre de filtres du dashboard — pas de modal, pas de dépendance
-// à l'écran d'accueil ni au localStorage. C'est la façon la plus simple de générer un lien.
-function copierLienVueActuelle(){
-  var base = window.location.origin + window.location.pathname;
-  var url = F.reg ? base + "?region=" + F.reg : base;
-  copierLien(url);
-}
 
 function copierLien(url){
   if(navigator.clipboard){
@@ -3225,6 +3064,7 @@ function renderAlertes(){
   }).sort(function(a,b){ return b._age-a._age; });
 
   // 3. Devis Approuvés ERP (BC transmis) — WO non clôturé depuis >7j
+  // Approuvé ERP = BC déjà transmis au prestataire → il doit clôturer le WO
   var quoNA = quoF.filter(function(r){
     return r._s==="APP" && r._age >= SEUIL && r._c > 0;
   }).sort(function(a,b){ return b._age-a._age; });
@@ -3343,6 +3183,11 @@ function exporterAlertes(){
   var reg   = document.getElementById("al-reg")   ? document.getElementById("al-reg").value   : "";
   var prest = document.getElementById("al-prest") ? document.getElementById("al-prest").value : "";
   var SEUIL = 7;
+  var woF=WO.filter(function(r){ return (!reg||r._r===reg)&&(!prest||r._f===prest); });
+  var quoF=QUO.filter(function(r){ return (!reg||r._r===reg)&&(!prest||r._f===prest); });
+  var woAT=woF.filter(function(r){ return r._e==="AT"&&r._age>=SEUIL; });
+  var woTU=woF.filter(function(r){ return r._p==="TU"&&r._e!=="CL"&&r._e!=="AN"&&r._age>=SEUIL; });
+  var quoNA=quoF.filter(function(r){ return r._s!=="AP"&&r._s!=="AN"&&r._age>=SEUIL&&r._c>0; });
   var wb=XLSX.utils.book_new();
   function addSheet(name,rows,cols){
     if(!rows.length) return;
@@ -3350,6 +3195,7 @@ function exporterAlertes(){
     rows.forEach(function(r){ data.push(cols.map(function(c){ return c==="_age"?r._age:String(r[c]||""); })); });
     XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(data),name);
   }
+  // Recalculer pour l'export
   var SEUIL_EX=7;
   var woFEx=WO.filter(function(r){return(!reg||r._r===reg)&&(!prest||r._f===prest);});
   var quoFEx=QUO.filter(function(r){return(!reg||r._r===reg)&&(!prest||r._f===prest);});
@@ -3371,6 +3217,7 @@ function chargerDepuisSheetAvecProgress(){
   var url=SCRIPT_URL||localStorage.getItem("mc_script_url")||"";
   if(!url){toast("Configurez l'URL Apps Script",true);return;}
 
+  // Créer une modal de progression
   var modal=document.createElement("div");
   modal.id="_load_modal";
   modal.style.cssText="position:fixed;inset:0;background:rgba(10,12,28,.9);z-index:99999;display:flex;align-items:center;justify-content:center";
@@ -3411,15 +3258,6 @@ function chargerDepuisSheetAvecProgress(){
       try{document.head.removeChild(sc);}catch(e){}
       delete window[cbName];
       setProgress(pctEnd, "✅ "+label+" chargé — "+fN((data.rows||[]).length)+" lignes");
-      // DIAGNOSTIC TEMPORAIRE — à retirer une fois le problème des onglets vides résolu.
-      // Vérifie le format exact des données renvoyées par Apps Script (clés, types).
-      console.log("=== DIAGNOSTIC AUTO-LOAD ["+type+"] ===");
-      console.log("Statut:", data.status||data.statut, "| Lignes:", (data.rows||[]).length);
-      if(data.rows && data.rows.length){
-        console.log("Clés de la 1ère ligne:", Object.keys(data.rows[0]));
-        console.log("1ère ligne complète:", data.rows[0]);
-        if(data.rows[0]["Créé"]!==undefined) console.log("Type de 'Créé':", typeof data.rows[0]["Créé"], "| valeur:", data.rows[0]["Créé"]);
-      }
       cb(data);
     };
     sc.onerror=function(){
@@ -3446,41 +3284,15 @@ function chargerDepuisSheetAvecProgress(){
           }
         setProgress(98,"Traitement des données...");
         setTimeout(function(){
+          // Normaliser les données du Sheet (dates en string)
           WO = normaliserLignes(WO);
           QUO = normaliserLignes(QUO);
           NPS = normaliserLignes(NPS);
           try{buildData();buildFilters();}catch(e){console.log("buildData error:",e);}
-          // DIAGNOSTIC TEMPORAIRE — vérifie que buildData() a bien calculé les champs
-          // dérivés (_e, _f, _r, _mo...) sur les données venues d'Apps Script.
-          console.log("=== DIAGNOSTIC POST-buildData() ===");
-          if(WO.length){
-            console.log("WO[0] après buildData:", WO[0]);
-            console.log("WO avec _e défini:", WO.filter(function(r){return r._e!==undefined;}).length, "/", WO.length);
-            console.log("WO avec _mo non vide:", WO.filter(function(r){return r._mo;}).length, "/", WO.length);
-            console.log("Valeurs distinctes _e:", [...new Set(WO.map(function(r){return r._e;}))]);
-            // DIAGNOSTIC RENFORCÉ — cible spécifiquement _age et _ttr, les deux champs
-            // calculés par arithmétique de dates, absents de la Vue générale mais utilisés
-            // par TOUS les autres onglets (Taux, Magasins, TTR, Aging, Budget, Récurrence, Sans BC).
-            var _ageValides=WO.filter(function(r){return typeof r._age==="number"&&!isNaN(r._age);}).length;
-            var _ageNaN=WO.filter(function(r){return typeof r._age==="number"&&isNaN(r._age);}).length;
-            var _ttrValides=WO.filter(function(r){return typeof r._ttr==="number"&&!isNaN(r._ttr);}).length;
-            console.log("--- Diagnostic dates (_age / _ttr) ---");
-            console.log("_age numérique valide:", _ageValides, "/", WO.length, "| _age = NaN:", _ageNaN);
-            console.log("_ttr numérique valide (WO clôturés avec délai):", _ttrValides, "/", WO.length);
-            var _rowTest=WO.find(function(r){return r["Créé"];});
-            if(_rowTest){
-              console.log("Exemple champ 'Créé' brut:", JSON.stringify(_rowTest["Créé"]), "| typeof:", typeof _rowTest["Créé"]);
-              console.log("new Date(Créé) donne:", new Date(_rowTest["Créé"]), "| Invalid?", isNaN(new Date(_rowTest["Créé"]).getTime()));
-              console.log("_age calculé pour cette ligne:", _rowTest._age, "| _ttr:", _rowTest._ttr);
-            }
-            console.log("Navigateur (userAgent):", navigator.userAgent);
-          }
-          if(QUO.length){
-            console.log("QUO[0] après buildData:", QUO[0]);
-            console.log("QUO avec _s défini:", QUO.filter(function(r){return r._s!==undefined;}).length, "/", QUO.length);
-          }
+          // Initialiser région
           initRegionSelector();
           appliquerRegionURL();
+          // Init alertes filtres
           setProgress(100,"✅ Chargement terminé !");
           setTimeout(function(){
             var m=document.getElementById("_load_modal");
@@ -3489,11 +3301,14 @@ function chargerDepuisSheetAvecProgress(){
               toast("⚠️ Aucune donnée WO reçue",true);
               return;
             }
+            // Afficher le dashboard directement
             document.getElementById("splash").classList.add("hide");
             var appEl=document.getElementById("app");
             appEl.classList.add("show");
+            // Afficher sélecteur région dans le dashboard
             var box=document.getElementById("region-selector-box");
             if(box) box.style.display="block";
+            // Rendre tous les onglets
             try{ renderAll(); }catch(e){ console.log("renderAll:",e); }
             toast("✅ "+fN(WO.length)+" WO · "+fN(QUO.length)+" devis · "+fN(NPS.length)+" NPS chargés");
           },800);
@@ -3504,6 +3319,8 @@ function chargerDepuisSheetAvecProgress(){
   });
 }
 
+// Hook: remplacer chargerDepuisSheet par la version avec progress
+var _origCharger = typeof chargerDepuisSheet === "function" ? chargerDepuisSheet : null;
 function chargerDepuisSheet(){
   chargerDepuisSheetAvecProgress();
 }
@@ -3516,8 +3333,10 @@ function chargerDepuisSheet(){
   var regionParam = (urlParams.get("region")||"").toUpperCase();
   if(!regionParam) return;
 
+  // Stocker pour application après chargement des données
   window._regionFromURL = regionParam;
 
+  // Modifier l'écran d'accueil pour indiquer le chargement
   document.addEventListener("DOMContentLoaded", function(){
     var sp = document.getElementById("splash");
     if(!sp) return;
@@ -3532,6 +3351,7 @@ function chargerDepuisSheet(){
   });
 })();
 
+// Appliquer la région depuis URL après chargement données
 function appliquerRegionURL(){
   if(window._regionFromURL){
     var r = window._regionFromURL;
@@ -3548,15 +3368,18 @@ var PREV = [];
 function parsePREV(rows){
   PREV = [];
   rows.forEach(function(r){
+    // Prestataire depuis Groupe d'affectation : FR_EXT_XXXXXX_NOM
     var g = String(r["Groupe d'affectation"]||"");
     var parts = g.split('_');
     var prest = parts.length >= 4 ? parts.slice(3).join(' ') : g;
     prest = prest.trim() || 'Inconnu';
 
+    // Type client depuis Compte
     var compte = String(r["Compte"]||"");
     var typeC = compte.toUpperCase().indexOf('HYPERMARCHE') >= 0 ? 'Hyper'
               : compte.toUpperCase().indexOf('SUPERMARCHE') >= 0 ? 'Market' : 'Autre';
 
+    // Statut
     var etat = String(r["État"]||"").trim();
     var eCode = etat === 'Clôturé achevé' ? 'CL'
               : etat === 'Assignée' ? 'AS'
@@ -3564,12 +3387,14 @@ function parsePREV(rows){
               : etat === "En attente d'approbation" ? 'APPRO'
               : etat === 'Annulé' ? 'AN' : 'AU';
 
-    var created = r["Créé"] ? parseDateSafe(r["Créé"]) : null;
-    var closed  = r["Fin de tâche"] ? parseDateSafe(r["Fin de tâche"]) : null;
+    // Dates
+    var created = r["Créé"] ? new Date(r["Créé"]) : null;
+    var closed  = r["Fin de tâche"] ? new Date(r["Fin de tâche"]) : null;
     var age = created ? Math.floor((new Date()-created)/86400000) : -1;
     var mo  = created ? (created.getFullYear()+'-'+String(created.getMonth()+1).padStart(2,'0')) : null;
     var moCl = closed ? (closed.getFullYear()+'-'+String(closed.getMonth()+1).padStart(2,'0')) : null;
 
+    // Région directement depuis la colonne Region
     var reg = String(r["Region"]||r["Région"]||"INCONNU").trim();
 
     PREV.push({
@@ -3624,9 +3449,11 @@ function getPrevFiltered(){
   });
 }
 
+
 function pvCreateChart(id, type, labels, datasets, opts){
   var ctx = document.getElementById(id);
   if(!ctx) return;
+  // Détruire chart existant si présent
   if(CHARTS[id]) { try{CHARTS[id].destroy();}catch(e){} }
   var defaultOpts = {
     animation: false,
@@ -3649,7 +3476,7 @@ function pvCreateChart(id, type, labels, datasets, opts){
 }
 
 function renderPrev(){
-  if(PREV.length === 0){ var el0=document.getElementById('pv-kpis'); if(el0) el0.innerHTML='<div style="color:var(--t3);font-size:12px;padding:20px">Chargez le fichier WO Préventif pour afficher les données.</div>'; return; }
+  if(PREV.length === 0){ document.getElementById('pv-kpis').innerHTML='<div style="color:var(--t3);font-size:12px;padding:20px">Chargez le fichier WO Préventif pour afficher les données.</div>'; return; }
   var data = getPrevFiltered();
   var total = data.length;
   var cl    = data.filter(function(r){return r._e==='CL';}).length;
@@ -3687,10 +3514,8 @@ function renderPrev(){
   pvCreateChart('pv-c-taux','bar',
     prests.map(function(e){return e[0].length>18?e[0].substring(0,18)+'…':e[0];}),
     [{data:pTaux,backgroundColor:pTaux.map(function(v){return v>=85?'#1D9E75':v>=60?'#378ADD':v>=40?'#BA7517':'#E24B4A';}),borderRadius:4}],
-    // FIX mineur : suppression de la clé "color" en double dans ticks (elle apparaissait deux fois,
-    // ce qui n'avait aucun effet mais indiquait une coquille de copier-coller).
     {indexAxis:'y',plugins:{legend:{display:false}},
-     scales:{x:{min:0,max:100,ticks:{callback:function(v){return v+'%';},color:tc(),font:{size:9}},grid:{color:gc()}},
+     scales:{x:{min:0,max:100,ticks:{callback:function(v){return v+'%';},color:tc(),font:{size:9},color:tc()},grid:{color:gc()}},
              y:{grid:{display:false},ticks:{color:tc(),font:{size:9}}}}});
 
   var moMap={};
@@ -3706,7 +3531,7 @@ function renderPrev(){
      {label:'Taux clôture %',type:'line',data:mos.map(function(m){return moMap[m].tot?+(moMap[m].cl/moMap[m].tot*100).toFixed(1):0;}),
       borderColor:'#1D9E75',backgroundColor:'rgba(29,158,117,.1)',tension:.3,fill:true,borderWidth:2,pointRadius:3,yAxisID:'y2'}],
     {plugins:{legend:{position:'top',labels:{color:tc(),font:{size:10},boxWidth:10}}},
-     scales:{y:{position:'left',ticks:{color:tc(),font:{size:9}},grid:{color:gc()}},
+     scales:{y:{position:'left',ticks:{color:tc(),font:{size:9},color:tc()},grid:{color:gc()}},
              y2:{position:'right',min:0,max:100,grid:{display:false},ticks:{callback:function(v){return v+'%';},color:tc(),font:{size:9}}}}});
 
   var woAT=data.filter(function(r){return r._e==='AS'||r._e==='EC';}).sort(function(a,b){return b._age-a._age;});
@@ -3732,9 +3557,9 @@ function renderPrev(){
     }).sort(function(a,b){return b.tot-a.tot;});
     var th='<div style="margin-bottom:8px"><div style="background:#378ADD22;border:1px solid #378ADD44;border-radius:8px 8px 0 0;padding:10px 14px"><div style="font-size:12px;font-weight:700;color:#378ADD">📊 Récapitulatif par prestataire</div></div><div style="overflow-x:auto;border:1px solid #378ADD22;border-top:none;border-radius:0 0 8px 8px"><table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="background:var(--card2)"><th style="padding:7px 10px;text-align:left;font-size:9px;text-transform:uppercase;color:var(--t3)">Prestataire</th><th style="padding:7px 10px;text-align:right;font-size:9px;text-transform:uppercase;color:var(--t3)">Total</th><th style="padding:7px 10px;text-align:right;font-size:9px;text-transform:uppercase;color:var(--t3)">Clôturés</th><th style="padding:7px 10px;text-align:right;font-size:9px;text-transform:uppercase;color:var(--t3)">Att.Prestataire</th><th style="padding:7px 10px;text-align:right;font-size:9px;text-transform:uppercase;color:var(--t3)">Att.Approbation</th><th style="padding:7px 10px;text-align:right;font-size:9px;text-transform:uppercase;color:var(--t3)">Taux</th></tr></thead><tbody>';
     tRows.forEach(function(r,i){
-      var tc2=r.taux>=85?'#085041':r.taux>=60?'#185FA5':r.taux>=40?'#633806':'#791F1F';
+      var tc=r.taux>=85?'#085041':r.taux>=60?'#185FA5':r.taux>=40?'#633806':'#791F1F';
       var bg=i%2===0?'var(--card)':'var(--card2)';
-      th+='<tr style="background:'+bg+'"><td style="padding:6px 10px;border-bottom:1px solid var(--border);font-weight:600;color:var(--blue)">'+r.prest+'</td><td style="padding:6px 10px;border-bottom:1px solid var(--border);text-align:right">'+fN(r.tot)+'</td><td style="padding:6px 10px;border-bottom:1px solid var(--border);text-align:right;color:#1D9E75;font-weight:600">'+fN(r.cl)+'</td><td style="padding:6px 10px;border-bottom:1px solid var(--border);text-align:right;color:#BA7517">'+fN(r.att)+'</td><td style="padding:6px 10px;border-bottom:1px solid var(--border);text-align:right;color:#E24B4A;font-weight:600">'+fN(r.appro)+'</td><td style="padding:6px 10px;border-bottom:1px solid var(--border);text-align:right;font-weight:700;color:'+tc2+'">'+r.taux.toFixed(1)+'%</td></tr>';
+      th+='<tr style="background:'+bg+'"><td style="padding:6px 10px;border-bottom:1px solid var(--border);font-weight:600;color:var(--blue)">'+r.prest+'</td><td style="padding:6px 10px;border-bottom:1px solid var(--border);text-align:right">'+fN(r.tot)+'</td><td style="padding:6px 10px;border-bottom:1px solid var(--border);text-align:right;color:#1D9E75;font-weight:600">'+fN(r.cl)+'</td><td style="padding:6px 10px;border-bottom:1px solid var(--border);text-align:right;color:#BA7517">'+fN(r.att)+'</td><td style="padding:6px 10px;border-bottom:1px solid var(--border);text-align:right;color:#E24B4A;font-weight:600">'+fN(r.appro)+'</td><td style="padding:6px 10px;border-bottom:1px solid var(--border);text-align:right;font-weight:700;color:'+tc+'">'+r.taux.toFixed(1)+'%</td></tr>';
     });
     el3.innerHTML=th+'</tbody></table></div></div>';
   }
@@ -3813,10 +3638,13 @@ function toggleTheme(){
   var isLight = document.body.classList.toggle("light-mode");
   if(btn) btn.textContent = isLight ? "☀️" : "🌙";
   try{ localStorage.setItem("mc_theme", isLight ? "light" : "dark"); }catch(e){}
+  // Mettre à jour les couleurs Chart.js globales
   appliquerThemeCharts(isLight);
+  // Détruire TOUS les graphiques existants
   Object.keys(CHARTS).forEach(function(id){
     try{ CHARTS[id].destroy(); delete CHARTS[id]; }catch(e){}
   });
+  // Recréer tous les graphiques avec les nouvelles couleurs
   setTimeout(function(){
     try{ renderAll(); }catch(e){}
   }, 50);
@@ -3828,12 +3656,15 @@ function appliquerThemeCharts(isLight){
 
   if(typeof Chart === "undefined") return;
 
+  // Appliquer les defaults globaux Chart.js
   Chart.defaults.color = textColor;
   Chart.defaults.borderColor = gridColor;
 
+  // Légendes
   try{ Chart.defaults.plugins.legend.labels.color = textColor; }catch(e){}
   try{ Chart.defaults.plugins.legend.labels.boxWidth = 10; }catch(e){}
 
+  // Axes par défaut
   try{
     Chart.defaults.scales.linear.ticks.color = textColor;
     Chart.defaults.scales.linear.grid.color  = gridColor;
@@ -3841,12 +3672,16 @@ function appliquerThemeCharts(isLight){
     Chart.defaults.scales.category.grid.color  = gridColor;
   }catch(e){}
 
+  // Mettre à jour les graphiques déjà créés sans les recréer
   Object.values(CHARTS).forEach(function(chart){
     try{
       if(!chart || !chart.options) return;
+      // Couleur globale
       chart.options.color = textColor;
+      // Légendes
       if(chart.options.plugins && chart.options.plugins.legend && chart.options.plugins.legend.labels)
         chart.options.plugins.legend.labels.color = textColor;
+      // Scales
       if(chart.options.scales){
         Object.values(chart.options.scales).forEach(function(scale){
           if(scale.ticks) scale.ticks.color = textColor;
