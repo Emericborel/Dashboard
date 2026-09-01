@@ -666,9 +666,9 @@ tr:hover td{background:rgba(255,255,255,.025)}
     <!-- RAPPORTS -->
     <div class="page" id="page-rapports">
       <div class="ai alert" style="margin-bottom:14px">
-        💡 Configurez vos groupes prestataires, puis générez un rapport PDF ou Excel consolidé.
+        💡 Configurez vos groupes prestataires ou sélectionnez un magasin, puis générez un rapport PDF ou Excel consolidé.
       </div>
-      <!-- Groupes configurés -->
+      <!-- Groupes configurés + Magasin côte à côte -->
       <div class="g2">
         <div class="card">
           <div class="ch"><div class="ct">Groupes prestataires</div><button onclick="addGroupe()" style="padding:5px 12px;background:var(--blue);color:#fff;border:none;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer">+ Ajouter groupe</button></div>
@@ -713,6 +713,43 @@ tr:hover td{background:rgba(255,255,255,.025)}
             </div>
           </div>
         </div>
+        <!-- RAPPORT MAGASIN -->
+        <div class="card">
+          <div class="ct" style="margin-bottom:12px">🏪 Rapport par magasin</div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div class="fl">
+              <label>Région</label>
+              <select class="fs" id="rap-mag-reg" style="width:100%" onchange="filtrerMagasinsRapport()">
+                <option value="">🌍 Toutes régions</option>
+              </select>
+            </div>
+            <div class="fl">
+              <label>Magasin</label>
+              <select class="fs" id="rap-mag-select" style="width:100%">
+                <option value="">Sélectionner un magasin…</option>
+              </select>
+            </div>
+            <div class="fl">
+              <label>Période</label>
+              <select class="fs" id="rap-mag-periode" style="width:100%">
+                <option value="">Toute la période</option>
+              </select>
+            </div>
+            <div class="fl"><label>Contenu</label>
+              <div style="display:flex;flex-direction:column;gap:6px;margin-top:4px">
+                <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--t2);text-transform:none;letter-spacing:0"><input type="checkbox" id="rmag-kpi" checked> KPIs magasin</label>
+                <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--t2);text-transform:none;letter-spacing:0"><input type="checkbox" id="rmag-wo" checked> WO en attente</label>
+                <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--t2);text-transform:none;letter-spacing:0"><input type="checkbox" id="rmag-prev" checked> Préventif en attente</label>
+                <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--t2);text-transform:none;letter-spacing:0"><input type="checkbox" id="rmag-devis" checked> Analyse devis</label>
+                <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--t2);text-transform:none;letter-spacing:0"><input type="checkbox" id="rmag-evol" checked> Évolution mensuelle</label>
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:4px">
+              <button onclick="genererRapportMagasin()" style="flex:1;padding:9px;background:var(--red);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">📄 Exporter PDF</button>
+              <button onclick="genererExcelMagasin()" style="flex:1;padding:9px;background:var(--green);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">📊 Exporter Excel</button>
+            </div>
+          </div>
+        </div>
       </div>
       <!-- Prévisualisation -->
       <div class="card g1" id="rap-preview" style="display:none">
@@ -720,30 +757,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
         <div id="rap-preview-content"></div>
       </div>
 
-      <!-- RAPPORT MAGASIN -->
-      <div class="card g1" style="margin-top:14px">
-        <div class="ch">
-          <div><div class="ct">📋 Rapport par magasin</div><div class="cs">Générez un rapport PDF ou Excel pour un magasin spécifique</div></div>
-        </div>
-        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-top:12px">
-          <div class="fl" style="flex:2;min-width:220px">
-            <label>Région</label>
-            <select class="fs" id="rap-mag-reg" style="width:100%" onchange="filtrerMagasinsRapport()">
-              <option value="">🌍 Toutes régions</option>
-            </select>
-          </div>
-          <div class="fl" style="flex:3;min-width:280px">
-            <label>Magasin</label>
-            <select class="fs" id="rap-mag-select" style="width:100%">
-              <option value="">Sélectionner un magasin…</option>
-            </select>
-          </div>
-          <div style="display:flex;gap:8px;flex-shrink:0">
-            <button onclick="genererRapportMagasin()" style="padding:9px 16px;background:var(--red);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">📄 PDF</button>
-            <button onclick="genererExcelMagasin()" style="padding:9px 16px;background:var(--green);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">📊 Excel</button>
-          </div>
-        </div>
-      </div>
+
     <!-- CONTACTS -->
     <div class="page" id="page-contacts">
       <div class="ai alert">
@@ -844,7 +858,7 @@ var N=function(v){
   if(v===null||v===undefined||v==="") return 0;
   if(typeof v==="number") return isNaN(v)?0:v;
   if(typeof v==="string"){
-    var s=v.replace(/ /g,"").replace(/\s/g,"").replace(/,/g,".").replace(/[^0-9.\-]/g,"");
+    var s=v.replace(/ /g,"").replace(/[ 	]/g,"").replace(/,/g,".").replace(/[^0-9.\-]/g,"");
     return parseFloat(s)||0;
   }
   return parseFloat(v)||0;
@@ -941,13 +955,13 @@ function readExcel(file,cb){
   if(!file){cb([]);return;}
   var r=new FileReader();
   r.onload=function(e){
-    var wb=XLSX.read(e.target.result,{type:"array",cellDates:true,raw:true});
+    var wb=XLSX.read(e.target.result,{type:"array",cellDates:true});
     // Lire TOUTES les feuilles et fusionner les données
     var allRows=[];
     var headers=null;
     wb.SheetNames.forEach(function(sheetName){
       var ws=wb.Sheets[sheetName];
-      var rows=XLSX.utils.sheet_to_json(ws,{defval:"",raw:true});
+      var rows=XLSX.utils.sheet_to_json(ws,{defval:""});
       if(rows.length>0){
         allRows=allRows.concat(rows);
       }
@@ -3935,44 +3949,197 @@ function exporterMagasins(){
   toast("✅ Export Excel magasins généré");
 }
 
-// ── RAPPORT MAGASIN DEPUIS ONGLET RAPPORTS ───────────────────
+// ══════════════════════════════════════════════════════════════
+// RAPPORT MAGASIN — identique au rapport prestataire
+// ══════════════════════════════════════════════════════════════
 function initRapportMagasin(){
-  // Remplir les régions
   var selReg = document.getElementById("rap-mag-reg");
   if(!selReg) return;
   var regs = [...new Set(WO.map(function(r){return r._r;}).filter(function(v){return v&&v!=="INCONNU";}))].sort();
-  while(selReg.options.length > 1) selReg.remove(1);
+  while(selReg.options.length>1) selReg.remove(1);
   regs.forEach(function(r){
-    var o = document.createElement("option");
-    o.value = r; o.textContent = "📍 "+r.replace(/_/g," ");
+    var o=document.createElement("option");
+    o.value=r; o.textContent="📍 "+r.replace(/_/g," ");
     selReg.appendChild(o);
   });
+  // Remplir périodes
+  var selP = document.getElementById("rap-mag-periode");
+  if(selP){
+    var mos=[...new Set(WO.map(function(r){return r._mo;}).filter(Boolean))].sort();
+    while(selP.options.length>1) selP.remove(1);
+    mos.forEach(function(m){
+      var o=document.createElement("option"); o.value=m; o.textContent=mL(m)+" 2026"; selP.appendChild(o);
+    });
+  }
   filtrerMagasinsRapport();
 }
 
 function filtrerMagasinsRapport(){
-  var reg = (document.getElementById("rap-mag-reg")||{value:""}).value;
-  var selMag = document.getElementById("rap-mag-select");
-  if(!selMag) return;
-  var wo = reg ? WO.filter(function(r){return r._r===reg;}) : WO;
-  var mags = [...new Set(wo.map(function(r){return r._m;}).filter(Boolean))].sort();
-  while(selMag.options.length > 1) selMag.remove(1);
+  var reg=(document.getElementById("rap-mag-reg")||{value:""}).value;
+  var sel=document.getElementById("rap-mag-select"); if(!sel) return;
+  var wo=reg?WO.filter(function(r){return r._r===reg;}):WO;
+  var mags=[...new Set(wo.map(function(r){return r._m;}).filter(Boolean))].sort();
+  while(sel.options.length>1) sel.remove(1);
   mags.forEach(function(m){
-    var o = document.createElement("option");
-    o.value = m; o.textContent = m;
-    selMag.appendChild(o);
+    var o=document.createElement("option"); o.value=m; o.textContent=m; sel.appendChild(o);
   });
 }
 
 function genererRapportMagasin(){
-  var mag = (document.getElementById("rap-mag-select")||{value:""}).value;
-  if(!mag){ toast("Sélectionnez un magasin", true); return; }
-  rapportMagasin(mag);
+  var mag=(document.getElementById("rap-mag-select")||{value:""}).value;
+  if(!mag){toast("Sélectionnez un magasin",true);return;}
+  var periode=(document.getElementById("rap-mag-periode")||{value:""}).value;
+  var inclKpi=!(document.getElementById("rmag-kpi"))||document.getElementById("rmag-kpi").checked;
+  var inclWo=!(document.getElementById("rmag-wo"))||document.getElementById("rmag-wo").checked;
+  var inclPrev=!(document.getElementById("rmag-prev"))||document.getElementById("rmag-prev").checked;
+  var inclDevis=!(document.getElementById("rmag-devis"))||document.getElementById("rmag-devis").checked;
+  var inclEvol=!(document.getElementById("rmag-evol"))||document.getElementById("rmag-evol").checked;
+
+  toast("⏳ Génération rapport magasin...");
+  setTimeout(function(){
+    try{
+      var woMag=WO.filter(function(r){return r._m===mag&&(!periode||r._mo===periode);});
+      var quoMag=QUO.filter(function(r){return r._m===mag&&(!periode||r._mo===periode);});
+      var prevMag=PREV.filter(function(r){return r._mag===mag;});
+      var now=new Date().toLocaleDateString("fr-FR");
+      var reg=woMag.length>0?woMag[0]._r.replace(/_/g," "):"";
+
+      // KPIs
+      var tot=woMag.length,cl=0,at=0,tu=0,ttrSum=0,ttrN=0;
+      woMag.forEach(function(r){
+        if(r._e==="CL"){cl++;if(r._ttr>0){ttrSum+=r._ttr;ttrN++;}}
+        if(r._e==="AT")at++;
+        if(r._p==="TU"&&r._e!=="CL"&&r._e!=="AN")tu++;
+      });
+      var taux=tot?cl/tot*100:0;
+      var ttr=ttrN?Math.round(ttrSum/ttrN):0;
+      var coutTot=quoMag.reduce(function(s,r){return s+r._c;},0);
+      var prevAppro=prevMag.filter(function(r){return r._e==="APPRO";});
+      var txC=taux>=85?"#085041":taux>=60?"#185FA5":taux>=40?"#633806":"#791F1F";
+
+      // Mois
+      var mMap={};
+      woMag.forEach(function(r){
+        if(!r._mo)return;
+        if(!mMap[r._mo])mMap[r._mo]={tot:0,cl:0,at:0,cout:0};
+        mMap[r._mo].tot++;
+        if(r._e==="CL")mMap[r._mo].cl++;
+        if(r._e==="AT")mMap[r._mo].at++;
+      });
+      quoMag.forEach(function(r){if(r._mo&&mMap[r._mo])mMap[r._mo].cout+=r._c;});
+      var mos=Object.keys(mMap).sort();
+      var mN={"01":"Jan","02":"Fév","03":"Mar","04":"Avr","05":"Mai","06":"Jun","07":"Jul","08":"Aoû","09":"Sep","10":"Oct","11":"Nov","12":"Déc"};
+
+      // CSS identique au rapport prestataire
+      var css="@page{margin:15mm}body{font-family:Arial,sans-serif;color:#1a1a2e;margin:0;padding:20px;font-size:11px}"
+        +".hdr{border-bottom:3px solid #004B9B;padding-bottom:10px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:flex-end}"
+        +".htitle{font-size:20px;font-weight:800;color:#004B9B}.hsub{font-size:10px;color:#888;margin-top:2px}"
+        +".hmeta{text-align:right;font-size:10px;color:#888;line-height:1.8}"
+        +".kg{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:12px}"
+        +".kb{border:1px solid #e2e4eb;border-radius:7px;padding:10px;text-align:center;border-top:3px solid #004B9B}"
+        +".kl{font-size:8px;color:#888;text-transform:uppercase;margin-bottom:3px}.kv{font-size:18px;font-weight:800}"
+        +"h2{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;border-bottom:2px solid #e2e4eb;padding-bottom:4px;margin:14px 0 8px;color:#004B9B}"
+        +"table{width:100%;border-collapse:collapse;font-size:10px}"
+        +"th{padding:5px 8px;background:#f3f5fb;border-bottom:2px solid #e2e4eb;font-size:8px;text-transform:uppercase;color:#888;text-align:left}"
+        +"td{padding:5px 8px;border-bottom:1px solid #f0f2f8}"
+        +".pill{display:inline-block;padding:2px 7px;border-radius:4px;font-size:9px;font-weight:700}"
+        +".footer{margin-top:16px;padding-top:8px;border-top:1px solid #e2e4eb;font-size:9px;color:#aaa;display:flex;justify-content:space-between}"
+        +".s2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}"
+        +".card{border:1px solid #e2e4eb;border-radius:8px;padding:12px;background:#fff}";
+
+      var H=[];
+      H.push("<!DOCTYPE html><html><head><meta charset='UTF-8'><style>"+css+"</style></head><body>");
+
+      // Header
+      H.push("<div class='hdr'><div><div class='htitle'>🏪 "+mag+"</div><div class='hsub'>Rapport Maintenance · "+reg+(periode?" · "+mN[periode.split("-")[1]]+" 2026":"")+"</div></div>");
+      H.push("<div class='hmeta'>Carrefour — DTF<br>Généré le <strong>"+now+"</strong></div></div>");
+
+      // KPIs
+      if(inclKpi){
+        H.push("<div class='kg'>");
+        H.push("<div class='kb'><div class='kl'>WO Total</div><div class='kv'>"+fN(tot)+"</div></div>");
+        H.push("<div class='kb'><div class='kl'>Clôturés</div><div class='kv' style='color:"+txC+"'>"+fN(cl)+"</div><div style='font-size:9px;color:"+txC+";font-weight:600'>"+taux.toFixed(1)+"%</div></div>");
+        H.push("<div class='kb'><div class='kl'>En attente</div><div class='kv' style='color:#791F1F'>"+fN(at)+"</div></div>");
+        H.push("<div class='kb'><div class='kl'>TU ouverts</div><div class='kv' style='color:"+(tu>0?"#791F1F":"#085041")+"'>"+fN(tu)+"</div></div>");
+        H.push("<div class='kb'><div class='kl'>Coût devis</div><div class='kv'>"+fmt(coutTot)+"</div></div>");
+        H.push("</div>");
+        if(ttr>0) H.push("<p style='font-size:10px;color:#888;margin-bottom:10px'>⏱ TTR moyen : <strong>"+ttr+"j</strong></p>");
+      }
+
+      // Évolution mensuelle
+      if(inclEvol&&mos.length){
+        H.push("<h2>Évolution mensuelle</h2>");
+        H.push("<table><thead><tr><th>Mois</th><th>WO créés</th><th>Clôturés</th><th>En attente</th><th>Taux</th><th>Coût devis</th></tr></thead><tbody>");
+        mos.forEach(function(m,i){
+          var v=mMap[m]; var tx=v.tot?v.cl/v.tot*100:0;
+          var tc2=tx>=85?"#085041":tx>=60?"#185FA5":tx>=40?"#633806":"#791F1F";
+          H.push("<tr style='background:"+(i%2===0?"#fff":"#f9fafb")+"'>");
+          H.push("<td><strong>"+(mN[m.split("-")[1]]||"")+" 2026</strong></td>");
+          H.push("<td>"+fN(v.tot)+"</td><td>"+fN(v.cl)+"</td><td style='color:#791F1F'>"+fN(v.at)+"</td>");
+          H.push("<td><span class='pill' style='background:"+tc2+"22;color:"+tc2+"'>"+tx.toFixed(1)+"%</span></td>");
+          H.push("<td>"+fmt(v.cout)+"</td></tr>");
+        });
+        H.push("</tbody></table>");
+      }
+
+      // WO en attente
+      if(inclWo){
+        var woAt=woMag.filter(function(r){return r._e==="AT";});
+        if(woAt.length){
+          H.push("<h2>WO en attente d'approbation ("+fN(woAt.length)+")</h2>");
+          H.push("<table><thead><tr><th>N° WO</th><th>Prestataire</th><th>Priorité</th><th>Créé</th><th>Âge</th></tr></thead><tbody>");
+          woAt.slice(0,50).forEach(function(r,i){
+            H.push("<tr style='background:"+(i%2===0?"#fff":"#f9fafb")+"'><td>"+r["Numéro"]+"</td><td>"+r._f+"</td>");
+            H.push("<td><span class='pill' style='background:"+(r._p==="TU"?"#fee2e2":"#dbeafe")+";color:"+(r._p==="TU"?"#791F1F":"#1e3a8a")+"'>"+r._p+"</span></td>");
+            H.push("<td>"+toMonth(r["Créé"])+"</td><td style='color:#791F1F;font-weight:700'>"+r._age+"j</td></tr>");
+          });
+          if(woAt.length>50) H.push("<tr><td colspan='5' style='color:#888;text-align:center'>...et "+(woAt.length-50)+" autres</td></tr>");
+          H.push("</tbody></table>");
+        }
+      }
+
+      // Analyse devis
+      if(inclDevis&&quoMag.length){
+        var qApp=quoMag.filter(function(r){return r._s==="AP";}).length;
+        var qAnn=quoMag.filter(function(r){return r._s==="AN";}).length;
+        H.push("<h2>Analyse devis ("+fN(quoMag.length)+" devis · "+fmt(coutTot)+")</h2>");
+        H.push("<table><thead><tr><th>Statut</th><th>Nb devis</th><th>Coût</th></tr></thead><tbody>");
+        var statuts=[{l:"Approuvés ERP",f:"AP"},{l:"Annulés",f:"AN"},{l:"En attente",f:"AT"},{l:"Ouverts",f:"OU"}];
+        statuts.forEach(function(s,i){
+          var rows=quoMag.filter(function(r){return r._s===s.f;});
+          if(!rows.length)return;
+          var cout=rows.reduce(function(a,r){return a+r._c;},0);
+          H.push("<tr style='background:"+(i%2===0?"#fff":"#f9fafb")+"'><td>"+s.l+"</td><td>"+fN(rows.length)+"</td><td>"+fmt(cout)+"</td></tr>");
+        });
+        H.push("</tbody></table>");
+      }
+
+      // Préventif en attente approbation
+      if(inclPrev&&prevAppro.length){
+        H.push("<h2>🔧 WO Préventifs en attente d'approbation magasin ("+fN(prevAppro.length)+")</h2>");
+        H.push("<table><thead><tr><th>N° WO</th><th>Prestataire</th><th>Équipement</th><th>Mois</th><th>Âge</th></tr></thead><tbody>");
+        prevAppro.slice(0,30).forEach(function(r,i){
+          H.push("<tr style='background:"+(i%2===0?"#fff":"#f9fafb")+"'><td>"+r._num+"</td><td>"+r._prest+"</td><td>"+r._equip+"</td><td>"+r._mo+"</td><td style='color:#791F1F;font-weight:700'>"+r._age+"j</td></tr>");
+        });
+        H.push("</tbody></table>");
+      }
+
+      H.push("<div class='footer'><span>Carrefour — Direction Technique France</span><span>"+now+"</span></div>");
+      H.push("</body></html>");
+
+      var win=window.open("","_blank");
+      if(!win){toast("Autorisez les popups",true);return;}
+      win.document.write(H.join(""));
+      win.document.close();
+      setTimeout(function(){try{win.print();}catch(e){}},600);
+      toast("✅ Rapport "+mag+" généré");
+    }catch(e){toast("Erreur: "+e.message,true);}
+  },30);
 }
 
 function genererExcelMagasin(){
-  var mag = (document.getElementById("rap-mag-select")||{value:""}).value;
-  if(!mag){ toast("Sélectionnez un magasin", true); return; }
+  var mag=(document.getElementById("rap-mag-select")||{value:""}).value;
+  if(!mag){toast("Sélectionnez un magasin",true);return;}
   exporterMagasin(mag);
 }
 
