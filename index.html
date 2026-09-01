@@ -719,6 +719,31 @@ tr:hover td{background:rgba(255,255,255,.025)}
         <div class="ch"><div><div class="ct" id="rap-preview-title">Aperçu rapport</div><div class="cs" id="rap-preview-sub"></div></div></div>
         <div id="rap-preview-content"></div>
       </div>
+
+      <!-- RAPPORT MAGASIN -->
+      <div class="card g1" style="margin-top:14px">
+        <div class="ch">
+          <div><div class="ct">📋 Rapport par magasin</div><div class="cs">Générez un rapport PDF ou Excel pour un magasin spécifique</div></div>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-top:12px">
+          <div class="fl" style="flex:2;min-width:220px">
+            <label>Région</label>
+            <select class="fs" id="rap-mag-reg" style="width:100%" onchange="filtrerMagasinsRapport()">
+              <option value="">🌍 Toutes régions</option>
+            </select>
+          </div>
+          <div class="fl" style="flex:3;min-width:280px">
+            <label>Magasin</label>
+            <select class="fs" id="rap-mag-select" style="width:100%">
+              <option value="">Sélectionner un magasin…</option>
+            </select>
+          </div>
+          <div style="display:flex;gap:8px;flex-shrink:0">
+            <button onclick="genererRapportMagasin()" style="padding:9px 16px;background:var(--red);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">📄 PDF</button>
+            <button onclick="genererExcelMagasin()" style="padding:9px 16px;background:var(--green);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">📊 Excel</button>
+          </div>
+        </div>
+      </div>
     <!-- CONTACTS -->
     <div class="page" id="page-contacts">
       <div class="ai alert">
@@ -810,7 +835,7 @@ var _woProc=false, _quoProc=false, _npsProc=false;
 var TAB="overview";
 var FILES={wo:null,quo:null,nps:null,prev:null};
 var BUDGETS={};
-var TABS=["overview","taux","magasins","devis","ttr","aging","budget","recurrence","bc","nps","rapports","contacts"];
+var TABS=["overview","taux","magasins","devis","ttr","aging","budget","recurrence","bc","nps","prev","alertes","rapports","contacts"];
 
 // ═══════════════════════════════════════════════════════════════
 // UTILITAIRES
@@ -1019,12 +1044,6 @@ function buildData(){
   });
   var SM={"Approuvé ERP":"APP","Annulé":"ANN","En attente d'approbation DA":"ATDA","Ouvert":"OUV","En attente d'approbation":"AT"};
   // Normaliser les clés des colonnes QUO pour gérer les variantes d'encodage
-  // Debug: log first QUO row to check column values
-  if(QUO.length > 0) {
-    var sample = QUO[0];
-    console.log("QUO sample keys:", Object.keys(sample));
-    console.log("QUO Coût total:", sample["Coût total"], typeof sample["Coût total"]);
-  }
   QUO = QUO.map(function(r){
     // Si "Coût total" absent mais "Coût total" ou "Cout total" présent
     if(r["Coût total"] !== undefined && r["Coût total"] === undefined) r["Coût total"] = r["Coût total"];
@@ -1124,6 +1143,7 @@ function fNPS(){
 function go(tab){
   if(tab==="prev") setTimeout(renderPrev,50);
   if(tab==="alertes") setTimeout(renderAlertes,50);
+  if(tab==="rapports") setTimeout(initRapportMagasin,100);
   TAB=tab;
   document.querySelectorAll(".tab").forEach(function(t,i){t.classList.toggle("active",TABS[i]===tab);});
   document.querySelectorAll(".page").forEach(function(p){p.classList.remove("active");});
@@ -1263,6 +1283,7 @@ function renderTaux(){
 // ═══════════════════════════════════════════════════════════════
 function renderMag(){
   var wo=fWO();
+  var search=(document.getElementById("mag-search")||{value:""}).value.toLowerCase().trim();
   var mMap={};
   wo.forEach(function(r){
     var m=r._m;if(!m)return;
@@ -1273,38 +1294,70 @@ function renderMag(){
     if(r._p==="TU"&&r._e!=="CL"&&r._e!=="AN")mMap[m].tu++;
     if(r._age>=0)mMap[m].ages.push(r._age);
   });
-  var data=Object.entries(mMap).filter(function(e){return e[1].at>0;})
-    .map(function(e){var ages=e[1].ages;var mAge=ages.length?Math.round(ages.reduce(function(a,b){return a+b;},0)/ages.length):0;return{l:e[0],n:e[1].n,at:e[1].at,cl:e[1].cl,tu:e[1].tu,reg:e[1].reg.replace(/_/g," "),pct:e[1].n?e[1].at/e[1].n*100:0,mAge:mAge};})
+  var data=Object.entries(mMap)
+    .filter(function(e){return !search||e[0].toLowerCase().includes(search);})
+    .map(function(e){
+      var m=e[1];
+      var taux=m.n?m.cl/m.n*100:0;
+      var pct=m.n?m.at/m.n*100:0;
+      var mAge=m.ages.length?Math.round(m.ages.reduce(function(a,b){return a+b;},0)/m.ages.length):0;
+      return{mag:e[0],reg:m.reg,n:m.n,at:m.at,cl:m.cl,tu:m.tu,pct:pct,taux:taux,mAge:mAge};
+    })
     .sort(function(a,b){return b.at-a.at;});
+
+  var totWO=data.reduce(function(s,d){return s+d.n;},0);
   var totAt=data.reduce(function(s,d){return s+d.at;},0);
+  var totCl=data.reduce(function(s,d){return s+d.cl;},0);
+  var taux=totWO?totCl/totWO*100:0;
   kg("kg-mag",[
-    {l:"Magasins avec WO en attente",v:fN(data.length),s:"",c:"var(--red)"},
-    {l:"WO en attente total",v:fN(totAt),s:"Non clôturés, non annulés",c:"var(--amber)"},
-    {l:"Magasin le + bloqué",v:data[0]?fN(data[0].at)+" WO":"—",s:data[0]?data[0].l.substring(0,25):"",c:"var(--red)"},
-    {l:"Pire % attente",v:data.sort(function(a,b){return b.pct-a.pct;})[0]?data[0].pct.toFixed(1)+"%":"—",s:"Part de WO en attente",c:"var(--coral)"},
+    {l:"Magasins suivis",v:fN(data.length),s:"",c:"var(--blue)"},
+    {l:"WO Total",v:fN(totWO),s:"",c:"var(--text)"},
+    {l:"Taux clôture",v:taux.toFixed(1)+"%",s:"",c:taux>=85?"var(--green)":taux>=60?"var(--blue)":"var(--red)"},
+    {l:"En attente",v:fN(totAt),s:(totWO?totAt/totWO*100:0).toFixed(1)+"%",c:"var(--red)"},
   ]);
-  data.sort(function(a,b){return b.at-a.at;});
-  // Barres top 20
-  hbars("b-mag-at",data.slice(0,20).map(function(d){return{l:d.l+" ("+d.reg+")",v:d.at,pct:d.pct};}),
-    function(d){return d.pct>=50?"#E24B4A":d.pct>=25?"#BA7517":"#378ADD";},
-    function(d){return fN(d.v)+" WO ("+d.pct.toFixed(0)+"%)";});
-  // Par région
-  var rMap={};data.forEach(function(d){if(!rMap[d.reg])rMap[d.reg]=0;rMap[d.reg]+=d.at;});
-  dc("c-mag-reg");var rctx=document.getElementById("c-mag-reg");
-  var rKeys=Object.keys(rMap).sort(function(a,b){return rMap[b]-rMap[a];});
-  if(rctx)CHARTS["c-mag-reg"]=new Chart(rctx,{type:"bar",data:{labels:rKeys,datasets:[{data:rKeys.map(function(k){return rMap[k];}),backgroundColor:rKeys.map(function(k,i){return PAL[i%PAL.length];}),borderRadius:4}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{color:"rgba(232,234,240,.5)"}},y:{grid:{color:gc()},ticks:{color:"rgba(232,234,240,.5)"}}}}});
-  // Tableau
+
+  hbars("b-mag-at",data.slice(0,20).map(function(d){return{l:d.mag,v:d.at};}),
+    function(d){var p=data[0]?d.v/data[0].at*100:0;return p>60?"var(--red)":p>30?"var(--amber)":"var(--blue)";},fN);
+
+  var regMap={};
+  data.forEach(function(d){
+    if(!regMap[d.reg])regMap[d.reg]={n:0,at:0};
+    regMap[d.reg].n+=d.n;regMap[d.reg].at+=d.at;
+  });
+  var regs=Object.keys(regMap).sort();
+  pvCreateChart("c-mag-reg","bar",regs.map(function(r){return r.replace(/_/g," ");}),
+    [{data:regs.map(function(r){return regMap[r].n?+(regMap[r].at/regMap[r].n*100).toFixed(1):0;}),
+      backgroundColor:regs.map(function(r){var p=regMap[r].n?regMap[r].at/regMap[r].n*100:0;return p>30?"#E24B4A":p>15?"#BA7517":"#378ADD";}),borderRadius:4}],
+    {plugins:{legend:{display:false}},scales:{
+      x:{ticks:{color:tc(),font:{size:9}},grid:{color:gc()}},
+      y:{ticks:{color:tc(),font:{size:9},callback:function(v){return v+"%";}},grid:{color:gc()}}}});
+
   var tb=document.getElementById("tb-mag");
-  if(tb)tb.innerHTML=data.slice(0,50).map(function(d,i){
-    var pp=d.pct>=50?"pr":d.pct>=25?"pa":"pb";
-    return"<tr><td class='trank'>"+(i+1)+"</td><td>"+d.l+"</td><td>"+d.reg+"</td><td>"+fN(d.n)+"</td><td>"+fN(d.at)+"</td><td><span class='pill "+pp+"'>"+d.pct.toFixed(1)+"%</span></td><td style='color:"+(d.tu>0?"var(--red)":"var(--t3)")+"'>"+fN(d.tu)+"</td><td>"+d.mAge+"j</td></tr>";
+  if(!tb)return;
+  tb.innerHTML=data.map(function(d,i){
+    var txC=d.taux>=85?"var(--green)":d.taux>=60?"var(--blue)":d.taux>=40?"var(--amber)":"var(--red)";
+    var safe=d.mag.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/'/g,"&#39;");
+    return "<tr>"
+      +"<td style='color:var(--t3)'>"+(i+1)+"</td>"
+      +"<td style='font-weight:600'>"+(d.mag.length>35?d.mag.substring(0,35)+"...":d.mag)+"</td>"
+      +"<td style='color:var(--t2)'>"+d.reg.replace(/_/g," ")+"</td>"
+      +"<td>"+fN(d.n)+"</td>"
+      +"<td style='color:var(--green)'>"+fN(d.cl)+"</td>"
+      +"<td><span style='font-weight:700;color:"+txC+"'>"+d.taux.toFixed(1)+"%</span></td>"
+      +"<td style='color:var(--red)'>"+fN(d.at)+"</td>"
+      +"<td style='color:"+(d.tu>0?"var(--red)":"var(--t3)")+"'>"+fN(d.tu)+"</td>"
+      +"<td>"+d.mAge+"j</td>"
+      +"<td style='white-space:nowrap'>"
+        +"<button data-mag='"+safe+"' onclick='rapportMagasin(this.dataset.mag)' "
+        +"style='padding:3px 8px;background:var(--blue);color:#fff;border:none;border-radius:4px;font-size:10px;cursor:pointer;margin-right:3px'>📋</button>"
+        +"<button data-mag='"+safe+"' onclick='exporterMagasin(this.dataset.mag)' "
+        +"style='padding:3px 8px;background:var(--green);color:#fff;border:none;border-radius:4px;font-size:10px;cursor:pointer'>📥</button>"
+      +"</td>"
+      +"</tr>";
   }).join("");
 }
 
-// ═══════════════════════════════════════════════════════════════
-// DEVIS
-// ═══════════════════════════════════════════════════════════════
+
 function renderDevis(){
   var quo=fQUO();
   var tot=quo.length||1,app=0,ann=0,at=0,cout=0;
@@ -3709,6 +3762,219 @@ function gc(){ return document.body.classList.contains("light-mode") ? "rgba(0,0
     }
   }catch(e){}
 })();
+
+// ══════════════════════════════════════════════════════════════
+// RAPPORT MAGASIN
+// ══════════════════════════════════════════════════════════════
+function rapportMagasin(mag){
+  if(!mag){ toast("Magasin non trouvé",true); return; }
+  toast("⏳ Génération rapport "+mag+"...");
+  setTimeout(function(){
+    try{
+      var woMag = WO.filter(function(r){return r._m===mag;});
+      var quoMag = QUO.filter(function(r){return r._m===mag;});
+      var prevMag = PREV.filter(function(r){return r._mag===mag;});
+      var now = new Date().toLocaleDateString("fr-FR");
+      var reg = woMag.length > 0 ? woMag[0]._r.replace(/_/g," ") : "";
+
+      // KPIs
+      var tot=woMag.length, cl=0, at=0, tu=0, ttrSum=0, ttrN=0;
+      woMag.forEach(function(r){
+        if(r._e==="CL"){cl++; if(r._ttr>0){ttrSum+=r._ttr;ttrN++;}}
+        if(r._e==="AT") at++;
+        if(r._p==="TU"&&r._e!=="CL"&&r._e!=="AN") tu++;
+      });
+      var taux=tot?cl/tot*100:0;
+      var ttr=ttrN?ttrSum/ttrN:0;
+      var coutTot=quoMag.reduce(function(s,r){return s+r._c;},0);
+
+      // WO préventifs en attente approbation
+      var prevAppro=prevMag.filter(function(r){return r._e==="APPRO";});
+
+      // Mois
+      var mMap={};
+      woMag.forEach(function(r){
+        if(!r._mo)return;
+        if(!mMap[r._mo])mMap[r._mo]={tot:0,cl:0};
+        mMap[r._mo].tot++;
+        if(r._e==="CL")mMap[r._mo].cl++;
+      });
+      var mos=Object.keys(mMap).sort();
+      var moisNoms={"01":"Jan","02":"Fév","03":"Mar","04":"Avr","05":"Mai","06":"Jun","07":"Jul","08":"Aoû","09":"Sep","10":"Oct","11":"Nov","12":"Déc"};
+
+      var txC=taux>=85?"#085041":taux>=60?"#185FA5":taux>=40?"#633806":"#791F1F";
+      var css="body{font-family:Arial,sans-serif;color:#1a1a2e;margin:0;padding:24px}"
+        +".hdr{border-bottom:3px solid #004B9B;padding-bottom:12px;margin-bottom:16px;display:flex;justify-content:space-between}"
+        +".mag{font-size:18px;font-weight:800;color:#004B9B}.sub{font-size:10px;color:#888;margin-top:3px}"
+        +".meta{text-align:right;font-size:10px;color:#888;line-height:1.8}"
+        +".kg{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:14px}"
+        +".kb{border:1px solid #e2e4eb;border-radius:7px;padding:10px;text-align:center;border-top:3px solid #004B9B}"
+        +".kl{font-size:8px;color:#888;text-transform:uppercase;margin-bottom:3px}.kv{font-size:16px;font-weight:700}"
+        +"h2{font-size:10px;text-transform:uppercase;border-bottom:2px solid #e2e4eb;padding-bottom:4px;margin:14px 0 8px}"
+        +"table{width:100%;border-collapse:collapse;font-size:10px}"
+        +"th{padding:5px 8px;background:#f8f9fc;border-bottom:2px solid #e2e4eb;font-size:8px;text-transform:uppercase;color:#888;text-align:left}"
+        +"td{padding:5px 8px;border-bottom:1px solid #f0f2f8}"
+        +".pill{display:inline-block;padding:2px 6px;border-radius:4px;font-size:8px;font-weight:700}"
+        +".footer{margin-top:16px;padding-top:8px;border-top:1px solid #e2e4eb;font-size:9px;color:#aaa;display:flex;justify-content:space-between}";
+
+      var H=[];
+      H.push("<!DOCTYPE html><html><head><meta charset='UTF-8'><style>"+css+"</style></head><body>");
+      H.push("<div class='hdr'><div><div class='mag'>"+mag+"</div><div class='sub'>Rapport Maintenance · "+reg+"</div></div>");
+      H.push("<div class='meta'>Carrefour — DTF<br><strong>"+now+"</strong></div></div>");
+
+      // KPIs
+      H.push("<div class='kg'>");
+      H.push("<div class='kb'><div class='kl'>WO Total</div><div class='kv'>"+fN(tot)+"</div></div>");
+      H.push("<div class='kb'><div class='kl'>Clôturés</div><div class='kv' style='color:"+txC+"'>"+fN(cl)+"</div><div style='font-size:9px;color:#888'>"+taux.toFixed(1)+"%</div></div>");
+      H.push("<div class='kb'><div class='kl'>En attente</div><div class='kv' style='color:#791F1F'>"+fN(at)+"</div></div>");
+      H.push("<div class='kb'><div class='kl'>TU ouverts</div><div class='kv' style='color:"+(tu>0?"#791F1F":"#085041")+"'>"+fN(tu)+"</div></div>");
+      H.push("<div class='kb'><div class='kl'>Coût devis</div><div class='kv'>"+fmt(coutTot)+"</div></div>");
+      H.push("</div>");
+
+      // Evolution mensuelle
+      if(mos.length){
+        H.push("<h2>Évolution mensuelle</h2>");
+        H.push("<table><thead><tr><th>Mois</th><th>WO créés</th><th>Clôturés</th><th>Taux</th></tr></thead><tbody>");
+        mos.forEach(function(m,i){
+          var v=mMap[m];var tx=v.tot?v.cl/v.tot*100:0;
+          var tc2=tx>=85?"#085041":tx>=60?"#185FA5":tx>=40?"#633806":"#791F1F";
+          H.push("<tr style='background:"+(i%2===0?"#fff":"#f9fafb")+"'>");
+          H.push("<td><strong>"+(moisNoms[m.split("-")[1]]||"")+" 2026</strong></td><td>"+fN(v.tot)+"</td><td>"+fN(v.cl)+"</td>");
+          H.push("<td><span class='pill' style='background:"+tc2+"22;color:"+tc2+"'>"+tx.toFixed(1)+"%</span></td></tr>");
+        });
+        H.push("</tbody></table>");
+      }
+
+      // WO en attente
+      var woAt=woMag.filter(function(r){return r._e==="AT";}).slice(0,30);
+      if(woAt.length){
+        H.push("<h2>WO en attente d'approbation ("+fN(woAt.length)+")</h2>");
+        H.push("<table><thead><tr><th>N° WO</th><th>Prestataire</th><th>Priorité</th><th>Âge</th></tr></thead><tbody>");
+        woAt.forEach(function(r,i){
+          H.push("<tr style='background:"+(i%2===0?"#fff":"#f9fafb")+"'><td>"+r["Numéro"]+"</td><td>"+r._f+"</td><td>"+r._p+"</td><td style='color:#791F1F;font-weight:600'>"+r._age+"j</td></tr>");
+        });
+        H.push("</tbody></table>");
+      }
+
+      // Préventif en attente approbation
+      if(prevAppro.length){
+        H.push("<h2>🔧 WO Préventifs en attente d'approbation magasin ("+fN(prevAppro.length)+")</h2>");
+        H.push("<table><thead><tr><th>N° WO</th><th>Prestataire</th><th>Équipement</th><th>Âge</th></tr></thead><tbody>");
+        prevAppro.slice(0,20).forEach(function(r,i){
+          H.push("<tr style='background:"+(i%2===0?"#fff":"#f9fafb")+"'><td>"+r._num+"</td><td>"+r._prest+"</td><td>"+r._equip+"</td><td style='color:#791F1F;font-weight:600'>"+r._age+"j</td></tr>");
+        });
+        H.push("</tbody></table>");
+      }
+
+      H.push("<div class='footer'><span>Carrefour — Direction Technique France</span><span>"+now+"</span></div>");
+      H.push("</body></html>");
+
+      var win=window.open("","_blank");
+      if(!win){toast("Autorisez les popups",true);return;}
+      win.document.write(H.join(""));
+      win.document.close();
+      setTimeout(function(){try{win.print();}catch(e){}},600);
+      toast("✅ Rapport "+mag+" généré");
+    }catch(e){ toast("Erreur: "+e.message,true); }
+  },30);
+}
+
+function exporterMagasin(mag){
+  if(!mag){toast("Magasin non trouvé",true);return;}
+  var woMag=WO.filter(function(r){return r._m===mag;});
+  var quoMag=QUO.filter(function(r){return r._m===mag;});
+  var prevMag=PREV.filter(function(r){return r._mag===mag;});
+  var wb=XLSX.utils.book_new();
+
+  // WO Curatif
+  var rWO=[["N° WO","Prestataire","Statut","Priorité","Créé","Âge (j)"]];
+  woMag.forEach(function(r){rWO.push([r["Numéro"],r._f,r._etat||r._e,r._p,r["Créé"],r._age]);});
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rWO),"WO Curatif");
+
+  // Devis
+  if(quoMag.length){
+    var rQ=[["N° Devis","Statut","Coût","Créé"]];
+    quoMag.forEach(function(r){rQ.push([r["Numéro"],r["Statut du devis"],r._c,r["Créé"]]);});
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rQ),"Devis");
+  }
+
+  // Préventif
+  if(prevMag.length){
+    var rP=[["N° WO","Statut","Prestataire","Équipement","Âge (j)"]];
+    prevMag.forEach(function(r){rP.push([r._num,r._etat,r._prest,r._equip,r._age]);});
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rP),"Préventif");
+  }
+
+  var nomFichier=mag.replace(/[^a-zA-Z0-9]/g,"_").substring(0,30);
+  XLSX.writeFile(wb,"Rapport_"+nomFichier+"_"+new Date().toISOString().slice(0,10)+".xlsx");
+  toast("✅ Export Excel "+mag+" généré");
+}
+
+function exporterMagasins(){
+  var wo=fWO();
+  var mMap={};
+  wo.forEach(function(r){
+    var m=r._m;if(!m)return;
+    if(!mMap[m])mMap[m]={n:0,at:0,cl:0,tu:0,reg:r._r,ages:[]};
+    mMap[m].n++;
+    if(r._e==="AT")mMap[m].at++;
+    if(r._e==="CL")mMap[m].cl++;
+    if(r._p==="TU"&&r._e!=="CL"&&r._e!=="AN")mMap[m].tu++;
+    if(r._age>=0)mMap[m].ages.push(r._age);
+  });
+  var rows=[["Magasin","Région","WO Total","Clôturés","Taux %","En attente","TU","Âge moy."]];
+  Object.entries(mMap).sort(function(a,b){return b[1].at-a[1].at;}).forEach(function(e){
+    var m=e[1];
+    var taux=m.n?+(m.cl/m.n*100).toFixed(1):0;
+    var mAge=m.ages.length?Math.round(m.ages.reduce(function(a,b){return a+b;},0)/m.ages.length):0;
+    rows.push([e[0],m.reg.replace(/_/g," "),m.n,m.cl,taux,m.at,m.tu,mAge+"j"]);
+  });
+  var wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),"Magasins");
+  XLSX.writeFile(wb,"Magasins_"+new Date().toISOString().slice(0,10)+".xlsx");
+  toast("✅ Export Excel magasins généré");
+}
+
+// ── RAPPORT MAGASIN DEPUIS ONGLET RAPPORTS ───────────────────
+function initRapportMagasin(){
+  // Remplir les régions
+  var selReg = document.getElementById("rap-mag-reg");
+  if(!selReg) return;
+  var regs = [...new Set(WO.map(function(r){return r._r;}).filter(function(v){return v&&v!=="INCONNU";}))].sort();
+  while(selReg.options.length > 1) selReg.remove(1);
+  regs.forEach(function(r){
+    var o = document.createElement("option");
+    o.value = r; o.textContent = "📍 "+r.replace(/_/g," ");
+    selReg.appendChild(o);
+  });
+  filtrerMagasinsRapport();
+}
+
+function filtrerMagasinsRapport(){
+  var reg = (document.getElementById("rap-mag-reg")||{value:""}).value;
+  var selMag = document.getElementById("rap-mag-select");
+  if(!selMag) return;
+  var wo = reg ? WO.filter(function(r){return r._r===reg;}) : WO;
+  var mags = [...new Set(wo.map(function(r){return r._m;}).filter(Boolean))].sort();
+  while(selMag.options.length > 1) selMag.remove(1);
+  mags.forEach(function(m){
+    var o = document.createElement("option");
+    o.value = m; o.textContent = m;
+    selMag.appendChild(o);
+  });
+}
+
+function genererRapportMagasin(){
+  var mag = (document.getElementById("rap-mag-select")||{value:""}).value;
+  if(!mag){ toast("Sélectionnez un magasin", true); return; }
+  rapportMagasin(mag);
+}
+
+function genererExcelMagasin(){
+  var mag = (document.getElementById("rap-mag-select")||{value:""}).value;
+  if(!mag){ toast("Sélectionnez un magasin", true); return; }
+  exporterMagasin(mag);
+}
 
 </script>
 </body>
