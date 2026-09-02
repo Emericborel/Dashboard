@@ -208,7 +208,7 @@ select.fs:focus{outline:none;border-color:var(--blue)}
 .main{padding:14px 16px 28px;max-width:1440px;margin:0 auto}
 
 /* PAGES */
-.page{display:none}.page.active{display:block}
+.page{display:none;overflow-y:auto;flex:1}.page.active{display:flex;flex-direction:column;overflow-y:auto;flex:1}
 
 /* KPI GRID */
 .kg{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:10px;margin-bottom:12px}
@@ -410,7 +410,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
     <div class="tab" onclick="go('taux')">📈 Taux clôture</div>
     <div class="tab" onclick="go('magasins')">🏪 Magasins</div>
     <div class="tab" onclick="go('devis')">📄 Devis</div>
-    <div class="tab" onclick="go('ttr')">⏱ TTR</div>
+
     <div class="tab" onclick="go('aging')">🕐 Aging WO</div>
     <div class="tab" onclick="go('budget')">💰 Budget</div>
     <div class="tab" onclick="go('recurrence')">🔁 Récurrence</div>
@@ -419,6 +419,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
     <div class="tab" onclick="go('prev')">🔧 Préventif</div>
     <div class="tab" onclick="go('alertes')">⚠️ Alertes</div>
     <div class="tab" onclick="go('rapports')">📋 Rapports</div>
+    <div class="tab" onclick="go('gtopex')">📊 GT Opex</div>
     <div class="tab" onclick="go('contacts')" style="border-left:1px solid var(--border);margin-left:auto">📧 Contacts</div>
   </div>
   <div class="fbar">
@@ -510,32 +511,6 @@ tr:hover td{background:rgba(255,255,255,.025)}
       </div>
     </div>
 
-    <!-- TTR -->
-    <div class="page" id="page-ttr">
-      <div class="kg" id="kg-ttr"></div>
-      <div class="g2">
-        <div class="card">
-          <div class="ch"><div><div class="ct">TTR moyen par prestataire — Top 30</div><div class="cs">Min. 5 WO clôturés</div></div>
-            <div style="display:flex;gap:4px;flex-wrap:wrap"><span class="cbadge cb-g">≤7j</span><span class="cbadge cb-b">7–15j</span><span class="cbadge cb-a">15–30j</span><span class="cbadge cb-r">&gt;30j</span></div>
-          </div>
-          <div id="b-ttr" style="max-height:480px;overflow-y:auto"></div>
-        </div>
-        <div class="card">
-          <div class="ch"><div><div class="ct">Distribution TTR (jours)</div><div class="cs">Répartition des délais de résolution</div></div></div>
-          <div class="cw" style="height:200px"><canvas id="c-ttr-dist"></canvas></div>
-          <div class="ct" style="margin-top:16px">TTR moyen par région</div>
-          <div id="b-ttr-reg" style="margin-top:8px"></div>
-        </div>
-      </div>
-      <div class="g2">
-        <div class="card"><div class="ct">TTR mensuel (jours)</div><div class="cw"><canvas id="c-ttr-month"></canvas></div></div>
-        <div class="card"><div class="ct">TTR par priorité</div><div class="cw"><canvas id="c-ttr-prio"></canvas></div></div>
-      </div>
-      <div class="g1 card">
-        <div class="ct">Tableau détail TTR — Tous prestataires</div>
-        <div class="tscroll"><table><thead><tr><th>#</th><th>Prestataire</th><th>WO clos</th><th>TTR moyen</th><th>TTR médian</th><th>P90</th><th>Performance</th></tr></thead><tbody id="tb-ttr"></tbody></table></div>
-      </div>
-    </div>
 
     <!-- AGING -->
     <div class="page" id="page-aging">
@@ -758,6 +733,81 @@ tr:hover td{background:rgba(255,255,255,.025)}
       </div>
 
 
+    <!-- GT OPEX -->
+    <div class="page" id="page-gtopex">
+      <div style="padding:16px">
+        <!-- Header -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+          <div>
+            <div style="font-size:16px;font-weight:800;color:var(--text)">GT Opex — Maintenance</div>
+            <div style="font-size:11px;color:var(--t3);margin-top:2px">Indicateurs opérationnels Hyper &amp; Market</div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <select class="fs" id="gtopex-mois" style="min-width:130px" onchange="renderGTOpex()">
+              <option value="">Toute la période</option>
+            </select>
+            <button onclick="exporterGTOpex()" style="padding:6px 14px;background:var(--blue);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">📥 Excel</button>
+            <button onclick="ouvrirModalRapportGT()" style="padding:6px 14px;background:var(--red);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">📄 Rapport PDF</button>
+          </div>
+        </div>
+
+        <!-- KPIs globaux -->
+        <div class="kg" id="gtopex-kg" style="margin-bottom:16px"></div>
+
+        <!-- VUE 1 : Flop 10 devis en attente -->
+        <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:10px">
+          🧾 Flop 10 Magasins — Devis en attente de validation
+          <span style="font-size:10px;font-weight:400;color:var(--t3);margin-left:8px">Statut "Ouvert" ou "En attente d'approbation"</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px">
+          <div class="card">
+            <div class="ct">Hyper — Devis en attente</div>
+            <div class="cw" style="height:220px"><canvas id="gtopex-dv-hyper"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="ct">Market — Devis en attente</div>
+            <div class="cw" style="height:220px"><canvas id="gtopex-dv-market"></canvas></div>
+          </div>
+        </div>
+
+        <!-- VUE 2 : Flop 10 WO en attente clôture -->
+        <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:10px">
+          ⏳ Flop 10 Magasins — WO en attente d'approbation <span style="font-size:10px;font-weight:400;color:var(--t3);margin-left:8px">&gt; 30 jours</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px">
+          <div class="card">
+            <div class="ct">Hyper — WO att. approbation >30j</div>
+            <div class="cw" style="height:220px"><canvas id="gtopex-wo-hyper"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="ct">Market — WO att. approbation >30j</div>
+            <div class="cw" style="height:220px"><canvas id="gtopex-wo-market"></canvas></div>
+          </div>
+        </div>
+
+        <!-- VUE 3 : Taux de clôture mensuel par région -->
+        <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:10px">
+          📈 Taux de Clôture Maintenance Curative — par région
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+          <div class="card">
+            <div class="ct">Hyper — Taux clôture par région/mois</div>
+            <div class="cw" style="height:240px"><canvas id="gtopex-tc-hyper"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="ct">Market — Taux clôture par région/mois</div>
+            <div class="cw" style="height:240px"><canvas id="gtopex-tc-market"></canvas></div>
+          </div>
+        </div>
+
+        <!-- Tableaux récap taux par région -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div class="card"><div class="ct">Taux clôture 12 mois — Hyper</div><div id="gtopex-tbl-hyper"></div></div>
+          <div class="card"><div class="ct">Taux clôture 12 mois — Market</div><div id="gtopex-tbl-market"></div></div>
+        </div>
+      </div>
+    </div>
+
     <!-- CONTACTS -->
     <div class="page" id="page-contacts">
       <div class="ai alert">
@@ -849,7 +899,7 @@ var _woProc=false, _quoProc=false, _npsProc=false;
 var TAB="overview";
 var FILES={wo:null,quo:null,nps:null,prev:null};
 var BUDGETS={};
-var TABS=["overview","taux","magasins","devis","ttr","aging","budget","recurrence","bc","nps","prev","alertes","rapports","contacts"];
+var TABS=["overview","taux","magasins","devis","aging","budget","recurrence","bc","nps","prev","alertes","rapports","gtopex","contacts"];
 
 // ═══════════════════════════════════════════════════════════════
 // UTILITAIRES
@@ -1050,13 +1100,26 @@ function buildData(){
     r._f=exFourn(r["Groupe d'affectation"]);
     r._r=String(r["Region"]||r["Région"]||"INCONNU").trim();
     r._m=String(r["Compte"]||"").trim();
-    r._t=String(r["Type de client"]||"").trim();
+    var _rawT = String(r["Type de client"]||"").trim();
+    r._t = _rawT.toLowerCase().indexOf("hyper") >= 0 ? "Hyper"
+         : _rawT.toLowerCase().indexOf("market") >= 0 || _rawT.toLowerCase().indexOf("super") >= 0 ? "Market"
+         : _rawT;
     r._mo=toMonth(r["Créé"]);
     r._age=(r._e!=="CL"&&r._e!=="AN"&&r["Créé"])?Math.floor((today-new Date(r["Créé"]))/86400000):-1;
     if(r["Fin de tâche"]&&r._e==="CL"&&r["Créé"]){var d=(new Date(r["Fin de tâche"])-new Date(r["Créé"]))/86400000;r._ttr=(d>=0&&d<=730)?d:null;}
     else r._ttr=null;
   });
-  var SM={"Approuvé ERP":"APP","Annulé":"ANN","En attente d'approbation DA":"ATDA","Ouvert":"OUV","En attente d'approbation":"AT"};
+  var SM={
+  "Approuvé ERP":"APP",
+  "Approuvé":"APP",
+  "Annulé":"ANN",
+  "En attente d'approbation DA":"ATDA",
+  "En attente d'approbation":"AT",
+  "Ouvert":"OUV",
+  "Assigné":"AS",
+  "En cours":"EC",
+  "Clôturé achevé":"CL"
+};
   // Normaliser les clés des colonnes QUO pour gérer les variantes d'encodage
   QUO = QUO.map(function(r){
     // Si "Coût total" absent mais "Coût total" ou "Cout total" présent
@@ -1064,15 +1127,40 @@ function buildData(){
     if(r["Co\u00FBt total"] !== undefined && r["Coût total"] === undefined) r["Coût total"] = r["Co\u00FBt total"];
     return r;
   });
+  // Auto-detect cost column (handles encoding variants)
+  var _quoCostCol = null;
+  if(QUO.length > 0){
+    var _sample = QUO[0];
+    var _costCandidates = Object.keys(_sample).filter(function(k){
+      return k.toLowerCase().replace(/[^a-z]/g,"").indexOf("co") === 0 
+          && k.toLowerCase().indexOf("total") > 0;
+    });
+    if(_costCandidates.length > 0) _quoCostCol = _costCandidates[0];
+    // Fallback: find any key with "total" or "montant"
+    if(!_quoCostCol){
+      _quoCostCol = Object.keys(_sample).find(function(k){
+        return k.toLowerCase().indexOf("total") >= 0 || k.toLowerCase().indexOf("montant") >= 0;
+      }) || null;
+    }
+    console.log("QUO cost column detected:", _quoCostCol, "| Sample value:", _quoCostCol ? _sample[_quoCostCol] : "N/A");
+  }
   QUO.forEach(function(r){
     r._s=SM[String(r["Statut du devis"]||"").trim()]||"AU";
     r._f=exFourn(r["Groupe d'affectation"]);
-    r._c=N(r["Coût total"]||r["Cout total"]||r["cout total"]||r["COUT TOTAL"]||r["Montant"]||r["montant"]||0);
+    // Coût total - utilise la colonne détectée automatiquement
+    var _rawC = _quoCostCol ? r[_quoCostCol] : (r["Coût total"] !== undefined ? r["Coût total"] : r["Cout total"]);
+    if(_rawC === undefined || _rawC === null || _rawC === "") _rawC = 0;
+    r._c = typeof _rawC === "number" ? _rawC : parseFloat(String(_rawC).replace(/,/,".").replace(/[^0-9.-]/g,"")) || 0;
     r._r=String(r["Region"]||r["Région"]||"INCONNU").trim();
     r._sf=String(r["Sous Famille d'Équipement"]||"").trim();
     r._bc=!!(r["Bons de commande référencé"]&&String(r["Bons de commande référencé"]).trim());
     r._mo=toMonth(r["Créé"]);
     r._age=(r["Créé"])?Math.floor((new Date()-new Date(r["Créé"]))/86400000):-1;
+    r._m=String(r["Compte"]||"").trim();
+    var _rawT = String(r["Type de client"]||"").trim();
+    r._t = _rawT.toLowerCase().indexOf("hyper") >= 0 ? "Hyper"
+         : _rawT.toLowerCase().indexOf("market") >= 0 || _rawT.toLowerCase().indexOf("super") >= 0 ? "Market"
+         : _rawT;
   });
   NPS.forEach(function(r){
     r._n=N(r["Valeur"]||0);
@@ -1158,11 +1246,15 @@ function go(tab){
   if(tab==="prev") setTimeout(renderPrev,50);
   if(tab==="alertes") setTimeout(renderAlertes,50);
   if(tab==="rapports") setTimeout(initRapportMagasin,100);
+  if(tab==="gtopex") setTimeout(initGTOpex,300);
   TAB=tab;
   document.querySelectorAll(".tab").forEach(function(t,i){t.classList.toggle("active",TABS[i]===tab);});
   document.querySelectorAll(".page").forEach(function(p){p.classList.remove("active");});
   var pg=document.getElementById("page-"+tab);if(pg)pg.classList.add("active");
-  try { renderAll(); } catch(e){ console.error("render error:", e); }
+  // Ne pas appeler renderAll pour gtopex (géré par initGTOpex)
+  if(tab !== "gtopex"){
+    try { renderAll(); } catch(e){ console.error("render error:", e); }
+  }
 }
 
 function renderAll(){
@@ -1172,8 +1264,9 @@ function renderAll(){
     renderAlertes();
   }
   var fn={overview:renderOV,taux:renderTaux,magasins:renderMag,devis:renderDevis,
-          ttr:renderTTR,aging:renderAging,budget:renderBudget,
-          recurrence:renderRec,bc:renderBC,nps:renderNPS,rapports:renderRapports,contacts:renderContacts};
+          aging:renderAging,budget:renderBudget,
+          recurrence:renderRec,bc:renderBC,nps:renderNPS,
+          rapports:renderRapports,contacts:renderContacts};
   // contacts et rapports fonctionnent même sans données
   var noDataOk = ["contacts","rapports"];
   if(!WO.length && noDataOk.indexOf(TAB) < 0) return;
@@ -1375,7 +1468,11 @@ function renderMag(){
 function renderDevis(){
   var quo=fQUO();
   var tot=quo.length||1,app=0,ann=0,at=0,cout=0;
+  var sample_c = quo.length > 0 ? quo[0]._c : "N/A";
+  var sample_raw = quo.length > 0 ? QUO[0]["Coût total"] : "N/A";
   quo.forEach(function(r){if(r._s==="APP")app++;if(r._s==="ANN")ann++;if(r._s==="ATDA"||r._s==="AT")at++;cout+=r._c;});
+  // Debug toast - remove after fix
+  if(cout===0 && quo.length>0) toast("DEBUG: _c="+sample_c+" raw="+sample_raw+" type="+typeof sample_raw, true);
   kg("kg-dv",[
     {l:"Devis total",v:fN(tot),s:"",c:"var(--coral)"},
     {l:"Approuvés ERP",v:fN(app),s:(app/tot*100).toFixed(1)+"% du total",c:"var(--green)",bar:app/tot*100},
@@ -1828,10 +1925,13 @@ function calcKPIs(wo,quo,nps){
   var npsDet=nps.filter(function(r){return r._cat==="D";}).length;
   var npsScore=(npsProm-npsDet)/npsN*100;
   var npsMoy=nps.length?nps.reduce(function(s,r){return s+r._n;},0)/npsN:0;
+  var atDA=quo.filter(function(r){return r._s==="ATDA";}).length;
+  var quoOuv=quo.filter(function(r){return r._s==="OUV";}).length;
   return{n:n,cl:cl,at:at,tu:tu,taux:cl/n*100,ttrMoy:ttrMoy,ttrN:ttrWO.length,
     coutTot:coutTot,coutApp:coutApp,bcRisk:bcRisk,
     ag30:ag30,ag60:ag60,agN:aging.length,
-    npsScore:npsScore,npsMoy:npsMoy,npsN:nps.length,npsProm:npsProm,npsDet:npsDet};
+    npsScore:npsScore,npsMoy:npsMoy,npsN:nps.length,npsProm:npsProm,npsDet:npsDet,
+    atDA:atDA,quoOuv:quoOuv,quoTot:quo.length};
 }
 
 function previewRapport(){
@@ -2065,13 +2165,21 @@ function genererPDF(){
 
   // ③ KPIs
   if(showKPI){
+    // Ligne 1 : WO
     H.push("<div class='kg'>");
     H.push("<div class='kb'><div class='kl'>WO Total</div><div class='kv'>"+fN(kpi.n)+"</div></div>");
-    H.push("<div class='kb'><div class='kl'>Clôturés</div><div class='kv' style='color:"+txC+"'>"+fN(kpi.cl)+"</div><div class='ks'>"+kpi.taux.toFixed(1)+"% du total</div></div>");
-    H.push("<div class='kb'><div class='kl'>En attente magasins</div><div class='kv' style='color:#791F1F'>"+fN(kpi.at)+"</div><div class='ks'>"+fN(kpi.tu)+" très urgents</div></div>");
+    H.push("<div class='kb' style='border-top-color:"+txC+"'><div class='kl'>Clôturés</div><div class='kv' style='color:"+txC+"'>"+fN(kpi.cl)+"</div><div class='ks'>"+kpi.taux.toFixed(1)+"%</div></div>");
+    H.push("<div class='kb' style='border-top-color:#E24B4A'><div class='kl'>En attente</div><div class='kv' style='color:#791F1F'>"+fN(kpi.at)+"</div><div class='ks'>"+fN(kpi.tu)+" TU</div></div>");
+    H.push("<div class='kb'><div class='kl'>WO &gt; 30j</div><div class='kv' style='color:"+(kpi.ag30>0?"#791F1F":"#085041")+"'>"+fN(kpi.ag30)+"</div></div>");
+    H.push("<div class='kb'><div class='kl'>WO &gt; 60j</div><div class='kv' style='color:"+(kpi.ag60>0?"#791F1F":"#085041")+"'>"+fN(kpi.ag60)+"</div></div>");
+    H.push("</div>");
+    // Ligne 2 : Devis + TTR + NPS
+    H.push("<div class='kg' style='margin-top:6px'>");
     H.push("<div class='kb'><div class='kl'>Coût total devis</div><div class='kv'>"+fmt(kpi.coutTot)+"</div></div>");
-    H.push("<div class='kb'><div class='kl'>Approuvés ERP</div><div class='kv'>"+fmt(kpi.coutApp)+"</div></div>");
-    if(kpi.npsN>0)H.push("<div class='kb'><div class='kl'>Score NPS</div><div class='kv' style='color:"+(kpi.npsScore>=30?"#085041":"#791F1F")+"'>"+(kpi.npsScore>0?"+":"")+kpi.npsScore.toFixed(1)+"</div><div class='ks'>"+fN(kpi.npsN)+" évaluations</div></div>");
+    H.push("<div class='kb'><div class='kl'>Approuvés ERP</div><div class='kv' style='color:#085041'>"+fmt(kpi.coutApp)+"</div></div>");
+    H.push("<div class='kb'><div class='kl'>Sans BC (risque)</div><div class='kv' style='color:"+(kpi.bcRisk>0?"#791F1F":"#085041")+"'>"+fmt(kpi.bcRisk)+"</div></div>");
+    if(kpi.ttrN>0) H.push("<div class='kb'><div class='kl'>TTR moyen</div><div class='kv'>"+Math.round(kpi.ttrMoy)+"j</div><div class='ks'>"+fN(kpi.ttrN)+" WO</div></div>");
+    if(kpi.npsN>0) H.push("<div class='kb'><div class='kl'>Score NPS</div><div class='kv' style='color:"+(kpi.npsScore>=30?"#085041":"#791F1F")+"'>"+(kpi.npsScore>0?"+":"")+kpi.npsScore.toFixed(1)+"</div><div class='ks'>"+fN(kpi.npsN)+" avis</div></div>");
     H.push("</div>");
   }
 
@@ -2157,12 +2265,7 @@ function genererPDF(){
   toast("⏳ Génération du rapport...");
   setTimeout(function(){
     try{
-      var win=window.open("","_blank");
-      if(!win){ toast("⚠️ Autorisez les popups pour générer le PDF",true); return; }
-      win.document.write(H.join(""));
-      win.document.close();
-      setTimeout(function(){ try{win.print();}catch(e){} },600);
-          toast("✅ Rapport ouvert — utilisez Ctrl+P pour imprimer");
+      ouvrirRapport(H.join(""), "rapport_prestataire");
       }catch(eWin){
         toast("Erreur ouverture: "+eWin.message,true);
       }
@@ -2830,6 +2933,41 @@ function genererPDFHtml(data, kpi, periodeLabel){
     H.push("</tbody></table>");
   }
 
+  // Section Préventif (si données disponibles pour ce prestataire)
+  if(typeof PREV !== "undefined" && PREV.length > 0){
+    var entLow = data.entites.map(function(e){return e.toLowerCase().substring(0,10);});
+    var prevGroupe = PREV.filter(function(r){
+      if(!r._prest) return false;
+      var p = r._prest.toLowerCase();
+      return entLow.some(function(e){return p.includes(e)||e.includes(p.substring(0,6));});
+    });
+    if(prevGroupe.length > 0){
+      var prevCl    = prevGroupe.filter(function(r){return r._e==="CL";}).length;
+      var prevAppro = prevGroupe.filter(function(r){return r._e==="APPRO";});
+      var prevAt    = prevGroupe.filter(function(r){return r._e==="AS"||r._e==="EC";}).length;
+      var prevTaux  = prevGroupe.length ? prevCl/prevGroupe.length*100 : 0;
+      var ptxC = prevTaux>=85?"#085041":prevTaux>=60?"#185FA5":prevTaux>=40?"#633806":"#791F1F";
+      H.push("<h2 style='color:#004B9B;margin-top:18px'>🔧 Maintenance Préventive</h2>");
+      H.push("<div class='kg' style='grid-template-columns:repeat(4,1fr);margin-bottom:10px'>");
+      H.push("<div class='kb'><div class='kl'>WO Préventif Total</div><div class='kv'>"+fN(prevGroupe.length)+"</div></div>");
+      H.push("<div class='kb' style='border-top-color:"+ptxC+"'><div class='kl'>Taux clôture</div><div class='kv' style='color:"+ptxC+"'>"+prevTaux.toFixed(1)+"%</div></div>");
+      H.push("<div class='kb'><div class='kl'>Clôturés</div><div class='kv' style='color:#085041'>"+fN(prevCl)+"</div></div>");
+      H.push("<div class='kb' style='border-top-color:#E24B4A'><div class='kl'>Att. approbation magasin</div><div class='kv' style='color:#791F1F'>"+fN(prevAppro.length)+"</div></div>");
+      H.push("</div>");
+      if(prevAppro.length > 0){
+        H.push("<h3 style='font-size:10px;color:#666;margin:8px 0 4px'>WO en attente d'approbation magasin</h3>");
+        H.push("<table><thead><tr><th>Magasin</th><th>N° WO</th><th>Équipement</th><th>Mois</th><th>Âge</th></tr></thead><tbody>");
+        prevAppro.slice(0,15).forEach(function(r,i){
+          H.push("<tr style='background:"+(i%2===0?"#fff":"#f9fafb")+"'>");
+          H.push("<td>"+r._mag+"</td><td>"+r._num+"</td><td>"+r._equip+"</td><td>"+r._mo+"</td>");
+          H.push("<td style='color:#791F1F;font-weight:700'>"+r._age+"j</td></tr>");
+        });
+        if(prevAppro.length>15) H.push("<tr><td colspan='5' style='color:#888;text-align:center'>...et "+(prevAppro.length-15)+" autres WO</td></tr>");
+        H.push("</tbody></table>");
+      }
+    }
+  }
+
   H.push("<div class='footer'><span>Carrefour — Direction Technique France</span><span>"+periodeLabel+"</span></div>");
   H.push("</body></html>");
   return H.join("");
@@ -3477,6 +3615,7 @@ function parsePREV(rows){
       _age  : age,
       _closed: closed ? closed.toLocaleDateString("fr-FR") : "",
       _titre: String(r["Titre de la demande"]||""),
+      _equip: String(r["Équipement"]||r["Equipement"]||r["équipement"]||""),
     });
   });
   initPrevFilters();
@@ -3821,7 +3960,7 @@ function rapportMagasin(mag){
         +".hdr{border-bottom:3px solid #004B9B;padding-bottom:12px;margin-bottom:16px;display:flex;justify-content:space-between}"
         +".mag{font-size:18px;font-weight:800;color:#004B9B}.sub{font-size:10px;color:#888;margin-top:3px}"
         +".meta{text-align:right;font-size:10px;color:#888;line-height:1.8}"
-        +".kg{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:14px}"
+        +".kg{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:10px}"
         +".kb{border:1px solid #e2e4eb;border-radius:7px;padding:10px;text-align:center;border-top:3px solid #004B9B}"
         +".kl{font-size:8px;color:#888;text-transform:uppercase;margin-bottom:3px}.kv{font-size:16px;font-weight:700}"
         +"h2{font-size:10px;text-transform:uppercase;border-bottom:2px solid #e2e4eb;padding-bottom:4px;margin:14px 0 8px}"
@@ -3883,12 +4022,7 @@ function rapportMagasin(mag){
       H.push("<div class='footer'><span>Carrefour — Direction Technique France</span><span>"+now+"</span></div>");
       H.push("</body></html>");
 
-      var win=window.open("","_blank");
-      if(!win){toast("Autorisez les popups",true);return;}
-      win.document.write(H.join(""));
-      win.document.close();
-      setTimeout(function(){try{win.print();}catch(e){}},600);
-      toast("✅ Rapport "+mag+" généré");
+      ouvrirRapport(H.join(""), "rapport_magasin_"+mag.replace(/[^a-zA-Z0-9]/g,"_").substring(0,20));
     }catch(e){ toast("Erreur: "+e.message,true); }
   },30);
 }
@@ -3989,11 +4123,11 @@ function genererRapportMagasin(){
   var mag=(document.getElementById("rap-mag-select")||{value:""}).value;
   if(!mag){toast("Sélectionnez un magasin",true);return;}
   var periode=(document.getElementById("rap-mag-periode")||{value:""}).value;
-  var inclKpi=!(document.getElementById("rmag-kpi"))||document.getElementById("rmag-kpi").checked;
-  var inclWo=!(document.getElementById("rmag-wo"))||document.getElementById("rmag-wo").checked;
-  var inclPrev=!(document.getElementById("rmag-prev"))||document.getElementById("rmag-prev").checked;
-  var inclDevis=!(document.getElementById("rmag-devis"))||document.getElementById("rmag-devis").checked;
-  var inclEvol=!(document.getElementById("rmag-evol"))||document.getElementById("rmag-evol").checked;
+  var inclKpi=true; var el_kpi=document.getElementById("rmag-kpi"); if(el_kpi) inclKpi=el_kpi.checked;
+  var inclWo=true; var el_wo=document.getElementById("rmag-wo"); if(el_wo) inclWo=el_wo.checked;
+  var inclPrev=true; var el_prev=document.getElementById("rmag-prev"); if(el_prev) inclPrev=el_prev.checked;
+  var inclDevis=true; var el_dv=document.getElementById("rmag-devis"); if(el_dv) inclDevis=el_dv.checked;
+  var inclEvol=true; var el_ev=document.getElementById("rmag-evol"); if(el_ev) inclEvol=el_ev.checked;
 
   toast("⏳ Génération rapport magasin...");
   setTimeout(function(){
@@ -4127,12 +4261,7 @@ function genererRapportMagasin(){
       H.push("<div class='footer'><span>Carrefour — Direction Technique France</span><span>"+now+"</span></div>");
       H.push("</body></html>");
 
-      var win=window.open("","_blank");
-      if(!win){toast("Autorisez les popups",true);return;}
-      win.document.write(H.join(""));
-      win.document.close();
-      setTimeout(function(){try{win.print();}catch(e){}},600);
-      toast("✅ Rapport "+mag+" généré");
+      ouvrirRapport(H.join(""), "rapport_magasin_"+mag.replace(/[^a-zA-Z0-9]/g,"_").substring(0,20));
     }catch(e){toast("Erreur: "+e.message,true);}
   },30);
 }
@@ -4141,6 +4270,529 @@ function genererExcelMagasin(){
   var mag=(document.getElementById("rap-mag-select")||{value:""}).value;
   if(!mag){toast("Sélectionnez un magasin",true);return;}
   exporterMagasin(mag);
+}
+
+// ── OUVERTURE RAPPORT SANS POPUP ─────────────────────────────
+function ouvrirRapport(htmlContent, titre){
+  try{
+    // Méthode 1 : Blob URL (rapide, pas de popup)
+    var blob = new Blob([htmlContent], {type:'text/html;charset=utf-8'});
+    var url  = URL.createObjectURL(blob);
+    var a    = document.createElement('a');
+    a.href   = url;
+    a.target = '_blank';
+    a.rel    = 'noopener';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 10000);
+    toast("✅ Rapport ouvert — utilisez Ctrl+P pour imprimer");
+  }catch(e){
+    // Méthode 2 : téléchargement direct
+    try{
+      var blob2 = new Blob([htmlContent], {type:'text/html;charset=utf-8'});
+      var url2  = URL.createObjectURL(blob2);
+      var a2    = document.createElement('a');
+      a2.href   = url2;
+      a2.download = (titre||'rapport')+'.html';
+      document.body.appendChild(a2);
+      a2.click();
+      document.body.removeChild(a2);
+      setTimeout(function(){ URL.revokeObjectURL(url2); }, 5000);
+      toast("✅ Rapport téléchargé — ouvrez le fichier puis Ctrl+P");
+    }catch(e2){
+      toast("Erreur ouverture rapport: "+e2.message, true);
+    }
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// GT OPEX
+// ══════════════════════════════════════════════════════════════
+var REG_COLORS = {
+  ILE_DE_FRANCE : "#4CAF50",
+  NORD          : "#FF9800",
+  EST           : "#9C27B0",
+  CENTRE_ALPES  : "#00BCD4",
+  SUD_EST       : "#F44336",
+  SUD_OUEST     : "#795548",
+  OUEST         : "#607D8B",
+  AUTRE         : "#888888"
+};
+
+function initGTOpex(){
+  // Remplir filtre mois
+  var sel = document.getElementById("gtopex-mois"); if(!sel) return;
+  while(sel.options.length > 1) sel.remove(1);
+  var mos = [...new Set(WO.map(function(r){return r._mo;}).filter(Boolean))].sort();
+  mos.forEach(function(m){
+    var o = document.createElement("option"); o.value=m; o.textContent=mL(m)+" 2026"; sel.appendChild(o);
+  });
+  renderGTOpex();
+}
+
+function renderGTOpex(){
+  if(WO.length === 0){
+    var kg=document.getElementById("gtopex-kg");
+    if(kg) kg.innerHTML="<div style='color:var(--t3);font-size:12px;padding:20px'>Chargez les données WO et QUO pour afficher GT Opex.</div>";
+    return;
+  }
+  // Debug check type client
+  var types=[...new Set(WO.map(function(r){return r._t;}).filter(Boolean))];
+  console.log("GT Opex - Types WO:", types, "Total WO:", WO.length);
+  var moisF = (document.getElementById("gtopex-mois")||{value:""}).value;
+
+  var wo  = moisF ? WO.filter(function(r){return r._mo===moisF;}) : WO;
+  var quo = moisF ? QUO.filter(function(r){return r._mo===moisF;}) : QUO;
+
+  // ── KPIs globaux ──
+  var woH=wo.filter(function(r){return r._t==="Hyper";});
+  var woM=wo.filter(function(r){return r._t==="Market";});
+  var clH=woH.filter(function(r){return r._e==="CL";}).length;
+  var clM=woM.filter(function(r){return r._e==="CL";}).length;
+  var txH=woH.length?clH/woH.length*100:0;
+  var txM=woM.length?clM/woM.length*100:0;
+  var dvAttH=quo.filter(function(r){return (r._s==="OUV"||r._s==="AT"||r._s==="ATDA")&&r._t==="Hyper";}).length;
+  var dvAttM=quo.filter(function(r){return (r._s==="OUV"||r._s==="AT"||r._s==="ATDA")&&r._t==="Market";}).length;
+  var woAttH=woH.filter(function(r){return r._e==="AT"&&r._age>30;}).length;
+  var woAttM=woM.filter(function(r){return r._e==="AT"&&r._age>30;}).length;
+
+  var kg=document.getElementById("gtopex-kg");
+  if(kg) kg.innerHTML=
+    pvKpi("WO Hyper",fN(woH.length),"#1565C0",txH.toFixed(1)+"%")+
+    pvKpi("WO Market",fN(woM.length),"#2E7D32",txM.toFixed(1)+"%")+
+    pvKpi("Devis att. Hyper",fN(dvAttH),"#E65100","À valider")+
+    pvKpi("Devis att. Market",fN(dvAttM),"#BF360C","À valider")+
+    pvKpi("WO att. >30j Hyper",fN(woAttH),"#791F1F","Approbation")+
+    pvKpi("WO att. >30j Market",fN(woAttM),"#4A0404","Approbation");
+
+  // ── VUE 1 : Flop 10 devis en attente par magasin ──
+  renderFlop10Devis(quo, "Hyper",  "gtopex-dv-hyper");
+  renderFlop10Devis(quo, "Market", "gtopex-dv-market");
+
+  // ── VUE 2 : Flop 10 WO att. approbation >30j ──
+  renderFlop10WO(wo, "Hyper",  "gtopex-wo-hyper");
+  renderFlop10WO(wo, "Market", "gtopex-wo-market");
+
+  // ── VUE 3 : Taux clôture mensuel par région ──
+  renderTauxRegion(wo, "Hyper",  "gtopex-tc-hyper",  "gtopex-tbl-hyper");
+  renderTauxRegion(wo, "Market", "gtopex-tc-market", "gtopex-tbl-market");
+}
+
+function renderFlop10Devis(quo, type, canvasId){
+  var data = quo.filter(function(r){
+    return r._t===type && (r._s==="OUV"||r._s==="AT"||r._s==="ATDA");
+  });
+  console.log("GT Opex Devis", type, ":", data.length, "en attente");
+  var mMap = {};
+  data.forEach(function(r){
+    var m=r._m||r["Compte"]||""; if(!m) return;
+    if(!mMap[m]) mMap[m]={n:0,reg:r._r};
+    mMap[m].n++;
+  });
+  var sorted = Object.entries(mMap).sort(function(a,b){return b[1].n-a[1].n;}).slice(0,10);
+  if(!sorted.length){
+    if(CHARTS[canvasId]){try{CHARTS[canvasId].destroy();}catch(e){}} return;
+  }
+  var labels = sorted.map(function(e){return e[0].length>18?e[0].substring(0,18)+"…":e[0];});
+  var vals   = sorted.map(function(e){return e[1].n;});
+  var colors = sorted.map(function(e){return REG_COLORS[e[1].reg]||"#378ADD";});
+  gtChart(canvasId,"bar",labels,
+    [{data:vals, backgroundColor:colors, borderRadius:4}],
+    {plugins:{legend:{display:false}},
+     indexAxis:"x",
+     scales:{
+       x:{ticks:{color:tc(),font:{size:8},maxRotation:35},grid:{display:false}},
+       y:{ticks:{color:tc(),font:{size:9}},grid:{color:gc()},title:{display:true,text:"Nb devis",color:tc(),font:{size:9}}}
+     }});
+}
+
+function renderFlop10WO(wo, type, canvasId){
+  var data = wo.filter(function(r){
+    return r._t===type && r._e==="AT" && r._age>30;
+  });
+  console.log("GT Opex WO att>30j", type, ":", data.length);
+  var mMap = {};
+  data.forEach(function(r){
+    var m=r._m||""; if(!m) return;
+    if(!mMap[m]) mMap[m]={n:0,reg:r._r};
+    mMap[m].n++;
+  });
+  var sorted = Object.entries(mMap).sort(function(a,b){return b[1].n-a[1].n;}).slice(0,10);
+  if(!sorted.length){
+    if(CHARTS[canvasId]){try{CHARTS[canvasId].destroy();}catch(e){}} return;
+  }
+  var labels = sorted.map(function(e){return e[0].length>18?e[0].substring(0,18)+"…":e[0];});
+  var vals   = sorted.map(function(e){return e[1].n;});
+  var colors = sorted.map(function(e){return REG_COLORS[e[1].reg]||"#E24B4A";});
+  gtChart(canvasId,"bar",labels,
+    [{data:vals, backgroundColor:colors, borderRadius:4}],
+    {plugins:{legend:{display:false}},
+     indexAxis:"x",
+     scales:{
+       x:{ticks:{color:tc(),font:{size:8},maxRotation:35},grid:{display:false}},
+       y:{ticks:{color:tc(),font:{size:9}},grid:{color:gc()},title:{display:true,text:"Nb WO",color:tc(),font:{size:9}}}
+     }});
+}
+
+function renderTauxRegion(wo, type, canvasId, tblId){
+  var regs = Object.keys(REG_COLORS).filter(function(r){return r!=="AUTRE";});
+  // Mois disponibles
+  var mos = [...new Set(wo.map(function(r){return r._mo;}).filter(Boolean))].sort();
+  // Par région et mois
+  var datasets = regs.map(function(reg){
+    var pts = mos.map(function(mo){
+      var rows = wo.filter(function(r){return r._t===type && r._r===reg && r._mo===mo;});
+      if(!rows.length) return null;
+      var cl = rows.filter(function(r){return r._e==="CL";}).length;
+      return +(cl/rows.length*100).toFixed(1);
+    });
+    // Ne rendre que si au moins une valeur non nulle
+    if(pts.every(function(p){return p===null;})) return null;
+    return {
+      label: reg.replace(/_/g," "),
+      data: pts,
+      borderColor: REG_COLORS[reg],
+      backgroundColor: REG_COLORS[reg]+"22",
+      tension: 0.3,
+      borderWidth: 2,
+      pointRadius: 2,
+      spanGaps: true
+    };
+  }).filter(Boolean);
+
+  gtChart(canvasId,"line",mos.map(mL),datasets,{
+    plugins:{legend:{position:"bottom",labels:{color:tc(),font:{size:9},boxWidth:8}}},
+    scales:{
+      x:{ticks:{color:tc(),font:{size:8}},grid:{color:gc()}},
+      y:{min:0,max:100,ticks:{color:tc(),font:{size:9},callback:function(v){return v+"%";}},grid:{color:gc()}}
+    }
+  });
+
+  // Tableau récapitulatif — dernier mois disponible
+  var tbl = document.getElementById(tblId); if(!tbl) return;
+  var lastMo = mos[mos.length-1]||"";
+  var recap = regs.map(function(reg){
+    var rows = wo.filter(function(r){return r._t===type && r._r===reg;});
+    if(!rows.length) return null;
+    var cl = rows.filter(function(r){return r._e==="CL";}).length;
+    var taux = +(cl/rows.length*100).toFixed(1);
+    return {reg:reg, taux:taux};
+  }).filter(Boolean).sort(function(a,b){return b.taux-a.taux;});
+
+  var h = "<table style='width:100%;border-collapse:collapse;font-size:11px;margin-top:8px'><thead>"
+    +"<tr style='background:var(--card2)'>"
+    +"<th style='padding:6px 8px;text-align:left;font-size:9px;color:var(--t3);text-transform:uppercase'>Région</th>"
+    +"<th style='padding:6px 8px;text-align:right;font-size:9px;color:var(--t3);text-transform:uppercase'>Taux clôture</th>"
+    +"</tr></thead><tbody>";
+  recap.forEach(function(r,i){
+    var tc2=r.taux>=85?"#085041":r.taux>=60?"#185FA5":r.taux>=40?"#633806":"#791F1F";
+    h+="<tr style='background:"+(i%2===0?"var(--card)":"var(--card2)")+"'>"
+      +"<td style='padding:6px 8px;display:flex;align-items:center;gap:6px'>"
+      +"<span style='width:8px;height:8px;border-radius:50%;background:"+(REG_COLORS[r.reg]||"#888")+";display:inline-block;flex-shrink:0'></span>"
+      +r.reg.replace(/_/g," ")+"</td>"
+      +"<td style='padding:6px 8px;text-align:right;font-weight:700;color:"+tc2+"'>"+r.taux+"%</td>"
+      +"</tr>";
+  });
+  h+="</tbody></table>";
+  tbl.innerHTML=h;
+}
+
+function exporterGTOpex(){
+  if(WO.length===0){toast("Aucune donnée",true);return;}
+  var wb=XLSX.utils.book_new();
+  var moisF=(document.getElementById("gtopex-mois")||{value:""}).value;
+  var wo=moisF?WO.filter(function(r){return r._mo===moisF;}):WO;
+  var quo=moisF?QUO.filter(function(r){return r._mo===moisF;}):QUO;
+
+  // Feuille 1: Devis en attente par magasin
+  var dvH=quo.filter(function(r){return (r._s==="OUV"||r._s==="AT"||r._s==="ATDA")&&r._t==="Hyper";});
+  var dvM=quo.filter(function(r){return (r._s==="OUV"||r._s==="AT"||r._s==="ATDA")&&r._t==="Market";});
+  var dvRows=[["Magasin","Type","Région","Nb Devis en attente"]];
+  var dvMap={};
+  dvH.concat(dvM).forEach(function(r){
+    var k=r._m+"|"+r._t+"|"+r._r;
+    if(!dvMap[k]) dvMap[k]={m:r._m,t:r._t,reg:r._r,n:0};
+    dvMap[k].n++;
+  });
+  Object.values(dvMap).sort(function(a,b){return b.n-a.n;}).forEach(function(v){
+    dvRows.push([v.m,v.t,v.reg,v.n]);
+  });
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(dvRows),"Devis en attente");
+
+  // Feuille 2: WO att. approbation >30j
+  var woAtt=wo.filter(function(r){return r._e==="AT"&&r._age>30;});
+  var woRows=[["Magasin","Type","Région","Nb WO >30j"]];
+  var woMap={};
+  woAtt.forEach(function(r){
+    var k=r._m+"|"+r._t+"|"+r._r;
+    if(!woMap[k]) woMap[k]={m:r._m,t:r._t,reg:r._r,n:0};
+    woMap[k].n++;
+  });
+  Object.values(woMap).sort(function(a,b){return b.n-a.n;}).forEach(function(v){
+    woRows.push([v.m,v.t,v.reg,v.n]);
+  });
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(woRows),"WO att approbation >30j");
+
+  // Feuille 3: Taux clôture par région/mois
+  var regs=Object.keys(REG_COLORS).filter(function(r){return r!=="AUTRE";});
+  var mos=[...new Set(wo.map(function(r){return r._mo;}).filter(Boolean))].sort();
+  var tcRows=[["Région","Type"].concat(mos.map(mL))];
+  ["Hyper","Market"].forEach(function(type){
+    regs.forEach(function(reg){
+      var row=[reg.replace(/_/g," "),type];
+      mos.forEach(function(mo){
+        var rows=wo.filter(function(r){return r._t===type&&r._r===reg&&r._mo===mo;});
+        row.push(rows.length?+(rows.filter(function(r){return r._e==="CL";}).length/rows.length*100).toFixed(1):0);
+      });
+      tcRows.push(row);
+    });
+  });
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(tcRows),"Taux clôture région");
+  XLSX.writeFile(wb,"GT_Opex_"+new Date().toISOString().slice(0,10)+".xlsx");
+  toast("✅ Export GT Opex généré");
+}
+
+function gtChart(id, type, labels, datasets, opts){
+  var ctx = document.getElementById(id);
+  if(!ctx){ console.log("Canvas not found:", id); return; }
+  if(CHARTS[id]){ try{CHARTS[id].destroy();}catch(e){} delete CHARTS[id]; }
+  var merged = Object.assign({
+    animation:false, responsive:true, maintainAspectRatio:false,
+    plugins:{ legend:{ labels:{ color:tc(), font:{size:10}, boxWidth:10 } } }
+  }, opts||{});
+  if(opts && opts.plugins) merged.plugins = Object.assign({legend:{labels:{color:tc(),font:{size:10},boxWidth:10}}}, opts.plugins);
+  if(opts && opts.scales) merged.scales = opts.scales;
+  try{
+    CHARTS[id] = new Chart(ctx.getContext('2d'),{type:type, data:{labels:labels, datasets:datasets}, options:merged});
+    console.log("Chart created:", id);
+  }catch(e){ console.log("Chart error:", id, e.message); }
+}
+
+// ── RAPPORT GT OPEX ──────────────────────────────────────────
+function ouvrirModalRapportGT(){
+  if(WO.length===0){ toast("Chargez les données d'abord",true); return; }
+  var div = document.createElement("div");
+  div.id = "_modal_gt_rapport";
+  div.style.cssText = "position:fixed;inset:0;background:rgba(10,12,28,.92);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px";
+  div.innerHTML = "<div style='background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px;max-width:520px;width:100%;max-height:90vh;overflow-y:auto'>"
+    +"<div style='display:flex;align-items:center;justify-content:space-between;margin-bottom:18px'>"
+    +"<div style='font-size:15px;font-weight:700;color:var(--text)'>📄 Rapport GT Opex</div>"
+    +"<button onclick='document.getElementById(\"_modal_gt_rapport\").remove()' style='background:none;border:1px solid var(--border);color:var(--t2);border-radius:6px;padding:4px 12px;cursor:pointer'>✕</button>"
+    +"</div>"
+    // Période
+    +"<div style='margin-bottom:14px'>"
+    +"<label style='font-size:10px;text-transform:uppercase;color:var(--t3);font-weight:600;letter-spacing:.5px'>Période</label>"
+    +"<select id='gtr-mois' class='fs' style='width:100%;margin-top:6px'><option value=''>Toute la période</option></select>"
+    +"</div>"
+    // Périmètre
+    +"<div style='margin-bottom:14px'>"
+    +"<label style='font-size:10px;text-transform:uppercase;color:var(--t3);font-weight:600;letter-spacing:.5px'>Périmètre</label>"
+    +"<div style='display:flex;gap:8px;margin-top:6px'>"
+    +"<label style='display:flex;align-items:center;gap:6px;font-size:12px;color:var(--t2);cursor:pointer'><input type='checkbox' id='gtr-hyper' checked> Hyper</label>"
+    +"<label style='display:flex;align-items:center;gap:6px;font-size:12px;color:var(--t2);cursor:pointer'><input type='checkbox' id='gtr-market' checked> Market</label>"
+    +"</div></div>"
+    // Contenu
+    +"<div style='margin-bottom:18px'>"
+    +"<label style='font-size:10px;text-transform:uppercase;color:var(--t3);font-weight:600;letter-spacing:.5px'>Contenu du rapport</label>"
+    +"<div style='display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px'>"
+    +kpiCheck("gtr-kpi",    "✅ KPIs globaux",           true)
+    +kpiCheck("gtr-flop-dv","🧾 Flop 10 Devis en attente",true)
+    +kpiCheck("gtr-flop-wo","⏳ Flop 10 WO att. >30j",   true)
+    +kpiCheck("gtr-taux",   "📈 Taux clôture par région", true)
+    +kpiCheck("gtr-tbl",    "📊 Tableau taux par région", true)
+    +kpiCheck("gtr-detail", "📋 Détail WO en attente",   false)
+    +"</div></div>"
+    // Bouton
+    +"<button onclick='genererRapportGT()' style='width:100%;padding:11px;background:var(--red);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer'>📄 Générer le rapport PDF</button>"
+    +"</div>";
+  document.body.appendChild(div);
+
+  // Remplir mois
+  var sel = document.getElementById("gtr-mois");
+  var mos = [...new Set(WO.map(function(r){return r._mo;}).filter(Boolean))].sort();
+  mos.forEach(function(m){
+    var o=document.createElement("option"); o.value=m; o.textContent=mL(m)+" 2026"; sel.appendChild(o);
+  });
+}
+
+function kpiCheck(id, label, checked){
+  return "<label style='display:flex;align-items:center;gap:8px;padding:8px;background:var(--card2);border-radius:6px;cursor:pointer;font-size:11px;color:var(--t2)'>"
+    +"<input type='checkbox' id='"+id+"' "+(checked?"checked":"")+" style='width:14px;height:14px;cursor:pointer'>"
+    +"<span>"+label+"</span></label>";
+}
+
+function genererRapportGT(){
+  var moisF  = (document.getElementById("gtr-mois")||{value:""}).value;
+  var inclH  = document.getElementById("gtr-hyper")  ? document.getElementById("gtr-hyper").checked  : true;
+  var inclM  = document.getElementById("gtr-market") ? document.getElementById("gtr-market").checked : true;
+  var inclKpi   = document.getElementById("gtr-kpi")     ? document.getElementById("gtr-kpi").checked    : true;
+  var inclDv    = document.getElementById("gtr-flop-dv") ? document.getElementById("gtr-flop-dv").checked: true;
+  var inclWoF   = document.getElementById("gtr-flop-wo") ? document.getElementById("gtr-flop-wo").checked: true;
+  var inclTaux  = document.getElementById("gtr-taux")    ? document.getElementById("gtr-taux").checked   : true;
+  var inclTbl   = document.getElementById("gtr-tbl")     ? document.getElementById("gtr-tbl").checked    : true;
+  var inclDet   = document.getElementById("gtr-detail")  ? document.getElementById("gtr-detail").checked : false;
+
+  document.getElementById("_modal_gt_rapport").remove();
+  toast("⏳ Génération rapport GT Opex...");
+
+  setTimeout(function(){
+    try{
+      var wo  = WO.filter(function(r){return !moisF||r._mo===moisF;});
+      var quo = QUO.filter(function(r){return !moisF||r._mo===moisF;});
+      var typeFilt = [];
+      if(inclH) typeFilt.push("Hyper");
+      if(inclM) typeFilt.push("Market");
+      if(!typeFilt.length) typeFilt = ["Hyper","Market"];
+
+      wo  = wo.filter(function(r){return typeFilt.indexOf(r._t)>=0;});
+      quo = quo.filter(function(r){return typeFilt.indexOf(r._t)>=0;});
+
+      var now = new Date().toLocaleDateString("fr-FR");
+      var periodeLabel = moisF ? mL(moisF)+" 2026" : "Jan → "+mL(WO.map(function(r){return r._mo;}).filter(Boolean).sort().pop())+" 2026";
+      var perimetre = typeFilt.join(" + ");
+      var regs = Object.keys(REG_COLORS).filter(function(r){return r!=="AUTRE";});
+      var mos  = [...new Set(WO.map(function(r){return r._mo;}).filter(Boolean))].sort();
+
+      var css = "@page{margin:12mm}body{font-family:Arial,sans-serif;color:#1a1a2e;font-size:11px;margin:0;padding:20px}"
+        +".hdr{border-bottom:3px solid #004B9B;padding-bottom:12px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:flex-end}"
+        +".htitle{font-size:18px;font-weight:800;color:#004B9B}.hsub{font-size:10px;color:#888;margin-top:3px}"
+        +".hmeta{text-align:right;font-size:10px;color:#888;line-height:1.8}"
+        +".kg{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px}"
+        +".kb{border:1px solid #e2e4eb;border-radius:7px;padding:10px;text-align:center;border-top:3px solid #004B9B}"
+        +".kl{font-size:8px;color:#888;text-transform:uppercase;margin-bottom:3px}.kv{font-size:18px;font-weight:800}"
+        +"h2{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;border-bottom:2px solid #e2e4eb;padding-bottom:4px;margin:16px 0 8px;color:#004B9B}"
+        +"table{width:100%;border-collapse:collapse;font-size:10px;margin-bottom:12px}"
+        +"th{padding:5px 8px;background:#f3f5fb;border-bottom:2px solid #e2e4eb;font-size:8px;text-transform:uppercase;color:#888;text-align:left}"
+        +"td{padding:5px 8px;border-bottom:1px solid #f0f2f8}"
+        +".g2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}"
+        +".section{border:1px solid #e2e4eb;border-radius:8px;padding:12px}"
+        +".pill{display:inline-block;padding:2px 7px;border-radius:4px;font-size:9px;font-weight:700}"
+        +".footer{margin-top:14px;padding-top:8px;border-top:1px solid #e2e4eb;font-size:9px;color:#aaa;display:flex;justify-content:space-between}";
+
+      var H = [];
+      H.push("<!DOCTYPE html><html><head><meta charset='UTF-8'><style>"+css+"</style></head><body>");
+
+      // Header
+      H.push("<div class='hdr'><div><div class='htitle'>📊 GT Opex — Maintenance</div>");
+      H.push("<div class='hsub'>"+perimetre+" · "+periodeLabel+"</div></div>");
+      H.push("<div class='hmeta'>Carrefour — DTF<br>Généré le <strong>"+now+"</strong></div></div>");
+
+      // KPIs globaux
+      if(inclKpi){
+        var woH=wo.filter(function(r){return r._t==="Hyper";});
+        var woM=wo.filter(function(r){return r._t==="Market";});
+        var clH=woH.filter(function(r){return r._e==="CL";}).length;
+        var clM=woM.filter(function(r){return r._e==="CL";}).length;
+        var txH=woH.length?clH/woH.length*100:0;
+        var txM=woM.length?clM/woM.length*100:0;
+        var dvAttH=quo.filter(function(r){return (r._s==="OUV"||r._s==="AT"||r._s==="ATDA")&&r._t==="Hyper";}).length;
+        var dvAttM=quo.filter(function(r){return (r._s==="OUV"||r._s==="AT"||r._s==="ATDA")&&r._t==="Market";}).length;
+        var woA30H=wo.filter(function(r){return r._t==="Hyper"&&r._e==="AT"&&r._age>30;}).length;
+        var woA30M=wo.filter(function(r){return r._t==="Market"&&r._e==="AT"&&r._age>30;}).length;
+        var txHC=txH>=85?"#085041":txH>=60?"#185FA5":txH>=40?"#633806":"#791F1F";
+        var txMC=txM>=85?"#085041":txM>=60?"#185FA5":txM>=40?"#633806":"#791F1F";
+
+        H.push("<div class='kg'>");
+        H.push("<div class='kb' style='border-top-color:"+txHC+"'><div class='kl'>Taux clôture Hyper</div><div class='kv' style='color:"+txHC+"'>"+txH.toFixed(1)+"%</div><div style='font-size:9px;color:#888'>"+fN(woH.length)+" WO</div></div>");
+        H.push("<div class='kb' style='border-top-color:"+txMC+"'><div class='kl'>Taux clôture Market</div><div class='kv' style='color:"+txMC+"'>"+txM.toFixed(1)+"%</div><div style='font-size:9px;color:#888'>"+fN(woM.length)+" WO</div></div>");
+        H.push("<div class='kb' style='border-top-color:#E65100'><div class='kl'>Devis en attente</div><div class='kv' style='color:#E65100'>"+fN(dvAttH+dvAttM)+"</div><div style='font-size:9px;color:#888'>"+dvAttH+" Hyper · "+dvAttM+" Market</div></div>");
+        H.push("<div class='kb' style='border-top-color:#791F1F'><div class='kl'>WO att. appro. &gt;30j</div><div class='kv' style='color:#791F1F'>"+fN(woA30H+woA30M)+"</div><div style='font-size:9px;color:#888'>"+woA30H+" Hyper · "+woA30M+" Market</div></div>");
+        H.push("</div>");
+      }
+
+      // Flop 10 devis en attente
+      if(inclDv){
+        H.push("<h2>🧾 Flop 10 Magasins — Devis en attente de validation</h2>");
+        H.push("<div class='g2'>");
+        ["Hyper","Market"].forEach(function(type){
+          if(typeFilt.indexOf(type)<0) return;
+          var dvT=quo.filter(function(r){return (r._s==="OUV"||r._s==="AT"||r._s==="ATDA")&&r._t===type;});
+          var mMap={};
+          dvT.forEach(function(r){var m=r._m||"";if(!m)return;if(!mMap[m])mMap[m]={n:0,reg:r._r};mMap[m].n++;});
+          var top=Object.entries(mMap).sort(function(a,b){return b[1].n-a[1].n;}).slice(0,10);
+          H.push("<div class='section'><div style='font-size:10px;font-weight:700;margin-bottom:6px;color:#004B9B'>"+type+" — Devis en attente</div>");
+          H.push("<table><thead><tr><th>#</th><th>Magasin</th><th>Région</th><th>Nb devis</th></tr></thead><tbody>");
+          top.forEach(function(e,i){
+            var c=REG_COLORS[e[1].reg]||"#888";
+            H.push("<tr style='background:"+(i%2===0?"#fff":"#f9fafb")+"'><td style='color:#888'>"+(i+1)+"</td><td>"+e[0]+"</td>");
+            H.push("<td><span class='pill' style='background:"+c+"22;color:"+c+"'>"+e[1].reg.replace(/_/g," ")+"</span></td>");
+            H.push("<td style='font-weight:700;color:#E65100'>"+e[1].n+"</td></tr>");
+          });
+          H.push("</tbody></table></div>");
+        });
+        H.push("</div>");
+      }
+
+      // Flop 10 WO en attente >30j
+      if(inclWoF){
+        H.push("<h2>⏳ Flop 10 Magasins — WO en attente d'approbation &gt; 30 jours</h2>");
+        H.push("<div class='g2'>");
+        ["Hyper","Market"].forEach(function(type){
+          if(typeFilt.indexOf(type)<0) return;
+          var woT=wo.filter(function(r){return r._t===type&&r._e==="AT"&&r._age>30;});
+          var mMap={};
+          woT.forEach(function(r){var m=r._m||"";if(!m)return;if(!mMap[m])mMap[m]={n:0,reg:r._r};mMap[m].n++;});
+          var top=Object.entries(mMap).sort(function(a,b){return b[1].n-a[1].n;}).slice(0,10);
+          H.push("<div class='section'><div style='font-size:10px;font-weight:700;margin-bottom:6px;color:#004B9B'>"+type+" — WO att. approbation</div>");
+          H.push("<table><thead><tr><th>#</th><th>Magasin</th><th>Région</th><th>Nb WO</th></tr></thead><tbody>");
+          top.forEach(function(e,i){
+            var c=REG_COLORS[e[1].reg]||"#888";
+            H.push("<tr style='background:"+(i%2===0?"#fff":"#f9fafb")+"'><td style='color:#888'>"+(i+1)+"</td><td>"+e[0]+"</td>");
+            H.push("<td><span class='pill' style='background:"+c+"22;color:"+c+"'>"+e[1].reg.replace(/_/g," ")+"</span></td>");
+            H.push("<td style='font-weight:700;color:#791F1F'>"+e[1].n+"</td></tr>");
+          });
+          H.push("</tbody></table></div>");
+        });
+        H.push("</div>");
+      }
+
+      // Taux clôture par région
+      if(inclTbl){
+        H.push("<h2>📊 Taux de Clôture — Récapitulatif par région</h2>");
+        H.push("<div class='g2'>");
+        typeFilt.forEach(function(type){
+          H.push("<div class='section'><div style='font-size:10px;font-weight:700;margin-bottom:6px;color:#004B9B'>"+type+"</div>");
+          H.push("<table><thead><tr><th>Région</th><th>WO Total</th><th>Clôturés</th><th>Taux</th></tr></thead><tbody>");
+          var recap=regs.map(function(reg){
+            var rows=wo.filter(function(r){return r._t===type&&r._r===reg;});
+            if(!rows.length) return null;
+            var cl=rows.filter(function(r){return r._e==="CL";}).length;
+            return {reg:reg,n:rows.length,cl:cl,taux:+(cl/rows.length*100).toFixed(1)};
+          }).filter(Boolean).sort(function(a,b){return b.taux-a.taux;});
+          recap.forEach(function(r,i){
+            var tc2=r.taux>=85?"#085041":r.taux>=60?"#185FA5":r.taux>=40?"#633806":"#791F1F";
+            var c=REG_COLORS[r.reg]||"#888";
+            H.push("<tr style='background:"+(i%2===0?"#fff":"#f9fafb")+"'>");
+            H.push("<td><span class='pill' style='background:"+c+"22;color:"+c+"'>"+r.reg.replace(/_/g," ")+"</span></td>");
+            H.push("<td>"+fN(r.n)+"</td><td>"+fN(r.cl)+"</td>");
+            H.push("<td><span style='font-weight:700;color:"+tc2+"'>"+r.taux+"%</span></td></tr>");
+          });
+          H.push("</tbody></table></div>");
+        });
+        H.push("</div>");
+      }
+
+      // Détail WO en attente
+      if(inclDet){
+        var woAt=wo.filter(function(r){return r._e==="AT"&&r._age>30;}).sort(function(a,b){return b._age-a._age;});
+        H.push("<h2>📋 Détail WO en attente d'approbation &gt;30j ("+fN(woAt.length)+" WO)</h2>");
+        H.push("<table><thead><tr><th>N° WO</th><th>Magasin</th><th>Type</th><th>Région</th><th>Prestataire</th><th>Âge</th></tr></thead><tbody>");
+        woAt.slice(0,50).forEach(function(r,i){
+          H.push("<tr style='background:"+(i%2===0?"#fff":"#f9fafb")+"'><td>"+r["Numéro"]+"</td><td>"+r._m+"</td>");
+          H.push("<td>"+r._t+"</td><td>"+r._r.replace(/_/g," ")+"</td><td>"+r._f+"</td>");
+          H.push("<td style='color:#791F1F;font-weight:700'>"+r._age+"j</td></tr>");
+        });
+        if(woAt.length>50) H.push("<tr><td colspan='6' style='color:#888;text-align:center'>...et "+(woAt.length-50)+" autres</td></tr>");
+        H.push("</tbody></table>");
+      }
+
+      H.push("<div class='footer'><span>Carrefour — Direction Technique France · GT Opex</span><span>"+periodeLabel+" · "+now+"</span></div>");
+      H.push("</body></html>");
+
+      ouvrirRapport(H.join(""), "rapport_gt_opex");
+    }catch(e){ toast("Erreur: "+e.message,true); }
+  },30);
 }
 
 </script>
