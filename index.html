@@ -1092,7 +1092,6 @@ function processFiles(){
             buildData();
             buildFilters();
             initRegionSelector();
-            debugDump();
             document.getElementById("splash").classList.add("hide");
             var app=document.getElementById("app");
             app.classList.add("show");
@@ -3811,9 +3810,16 @@ function exporterAlertes(){
 }
 
 // ── STABILITÉ DU CHARGEMENT AUTOMATIQUE ──────────────────────
+var _autoLoadEnCours = false;
 function chargerDepuisSheetAvecProgress(){
+  if(_autoLoadEnCours){
+    toast("Un chargement est déjà en cours — patiente jusqu'à la fin avant de relancer",true);
+    return;
+  }
+  _autoLoadEnCours = true;
+
   var url=SCRIPT_URL||localStorage.getItem("mc_script_url")||"";
-  if(!url){toast("Configurez l'URL Apps Script",true);return;}
+  if(!url){toast("Configurez l'URL Apps Script",true);_autoLoadEnCours=false;return;}
 
   // Créer une modal de progression
   var modal=document.createElement("div");
@@ -3847,10 +3853,10 @@ function chargerDepuisSheetAvecProgress(){
     var sc=document.createElement("script");
     var timeout=setTimeout(function(){
       try{document.head.removeChild(sc);}catch(e){}
-      delete window[cbName];
+      window[cbName]=function(){}; // stub vide au lieu de delete : si la réponse arrive malgré tout après le délai, elle ne plante pas avec "is not defined"
       cb({status:"error",rows:[]});
       setProgress(pctEnd, "⚠️ "+label+" : timeout");
-    }, 60000);
+    }, 240000);
     window[cbName]=function(data){
       clearTimeout(timeout);
       try{document.head.removeChild(sc);}catch(e){}
@@ -3895,6 +3901,7 @@ function chargerDepuisSheetAvecProgress(){
           setTimeout(function(){
             var m=document.getElementById("_load_modal");
             if(m) document.body.removeChild(m);
+            _autoLoadEnCours = false;
             if(WO.length===0){
               toast("⚠️ Aucune donnée WO reçue",true);
               return;
