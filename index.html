@@ -1781,7 +1781,7 @@ function renderMag(){
   ]);
 
   hbars("b-mag-at",data.slice(0,20).map(function(d){return{l:d.mag,v:d.at};}),
-    function(d){var p=data[0]?d.v/data[0].at*100:0;return p>60?"var(--red)":p>30?"var(--amber)":"var(--blue)";},fN);
+    function(d){var p=data[0]?d.v/data[0].at*100:0;return p>60?"var(--red)":p>30?"var(--amber)":"var(--blue)";},function(d){return fN(d.v);});
 
   var regMap={};
   data.forEach(function(d){
@@ -1850,11 +1850,11 @@ function renderDevis(){
   // SF
   var sfMap={};quo.forEach(function(r){if(r._sf){if(!sfMap[r._sf])sfMap[r._sf]=0;sfMap[r._sf]+=r._c;}});
   hbars("b-sf",Object.entries(sfMap).sort(function(a,b){return b[1]-a[1];}).slice(0,10).map(function(e){return{l:e[0],v:e[1]};}),
-    function(d,i){return PAL[i%PAL.length];},fmt);
+    function(d,i){return PAL[i%PAL.length];},function(d){return fmt(d.v);});
   // Fourn coût
   var qfMap={};quo.forEach(function(r){if(r._f!=="Inconnu"){if(!qfMap[r._f])qfMap[r._f]=0;qfMap[r._f]+=r._c;}});
   hbars("b-qf",Object.entries(qfMap).sort(function(a,b){return b[1]-a[1];}).slice(0,10).map(function(e){return{l:e[0],v:e[1]};}),
-    "#378ADD",fmt);
+    "#378ADD",function(d){return fmt(d.v);});
   // Région
   var rMap={};quo.forEach(function(r){if(r._r!=="INCONNU"){if(!rMap[r._r])rMap[r._r]=0;rMap[r._r]+=r._c;}});
   var rKeys=Object.keys(rMap).sort(function(a,b){return rMap[b]-rMap[a];});
@@ -2030,7 +2030,7 @@ function renderRec(){
   hbars("b-rec-vol",data.slice(0,20).map(function(d){return{l:d.l,v:d.n};}),
     "#D85A30",function(d){return fN(d.v)+" WO";});
   hbars("b-rec-cout",data.slice(0,20).sort(function(a,b){return b.cout-a.cout;}).map(function(d){return{l:d.l,v:d.cout};}),
-    "#8B5CF6",fmt);
+    "#8B5CF6",function(d){return fmt(d.v);});
   var tb=document.getElementById("tb-rec");
   if(tb)tb.innerHTML=data.slice(0,100).map(function(d,i){
     var pp=d.tx>=70?"pg":d.tx>=50?"pb":d.tx>=35?"pa":"pr";
@@ -2056,10 +2056,10 @@ function renderBC(){
   delete pMap["Inconnu"];
   var pData=Object.entries(pMap).sort(function(a,b){return b[1].cout-a[1].cout;});
   hbars("b-bc-prest",pData.slice(0,15).map(function(e){return{l:e[0],v:e[1].cout};}),
-    "#E24B4A",fmt);
+    "#E24B4A",function(d){return fmt(d.v);});
   var rMap={};quo.forEach(function(r){if(r._r!=="INCONNU"){if(!rMap[r._r])rMap[r._r]=0;rMap[r._r]+=r._c;}});
   hbars("b-bc-reg",Object.entries(rMap).sort(function(a,b){return b[1]-a[1];}).map(function(e){return{l:e[0].replace(/_/g," "),v:e[1]};}),
-    "#BA7517",fmt);
+    "#BA7517",function(d){return fmt(d.v);});
   var tb=document.getElementById("tb-bc");
   if(tb)tb.innerHTML=pData.map(function(e,i){
     var reg=[...e[1].regs].filter(function(r){return r!=="INCONNU";}).map(function(r){return r.replace(/_/g," ");}).join(", ");
@@ -3915,7 +3915,19 @@ function chargerDepuisSheetAvecProgress(){
             if(box) box.style.display="block";
             // Rendre tous les onglets
             try{ renderAll(); }catch(e){ console.log("renderAll:",e); }
+            var _diagCL = WO.filter(function(r){return r._e==="CL";}).length;
+            var _diagFWO = fWO().length;
             toast("✅ "+fN(WO.length)+" WO · "+fN(QUO.length)+" devis · "+fN(NPS.length)+" NPS chargés");
+            // Diagnostic temporaire visible à l'écran (pas besoin de console)
+            var _diagBox = document.createElement("div");
+            _diagBox.style.cssText = "position:fixed;bottom:20px;right:20px;background:#12172B;border:2px solid #378ADD;border-radius:10px;padding:14px 18px;color:#fff;font-family:monospace;font-size:12px;z-index:99999;max-width:340px;box-shadow:0 8px 24px rgba(0,0,0,.5)";
+            _diagBox.innerHTML = "<div style='font-weight:700;margin-bottom:8px;color:#378ADD'>🔍 Diagnostic chargement</div>"
+              + "WO (brut, global) : <b>" + WO.length + "</b><br>"
+              + "fWO() (filtré affiché) : <b>" + _diagFWO + "</b><br>"
+              + "Clôturés (_e===CL) : <b>" + _diagCL + "</b><br>"
+              + "F (filtres actifs) : <span style='font-size:10px'>" + JSON.stringify(F) + "</span>"
+              + "<div style='margin-top:10px;text-align:right'><button onclick='this.parentElement.parentElement.remove()' style='background:#378ADD;border:none;color:#fff;padding:4px 10px;border-radius:5px;cursor:pointer;font-size:11px'>Fermer</button></div>";
+            document.body.appendChild(_diagBox);
           },800);
         },100);
         }); // fin PREV
