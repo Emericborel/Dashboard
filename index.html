@@ -48,6 +48,7 @@ body.light-mode .tab:hover { color:#1a1a2e; background:rgba(0,0,0,.05); }
 /* Filtres */
 body.light-mode .fbar { background:#ffffff; border-color:rgba(0,0,0,.08); }
 body.light-mode .fbar * { color:#0d1117 !important; }
+body.light-mode input.fs { color-scheme:light; }
 body.light-mode .fs { background:#fff; border-color:rgba(0,0,0,.2); color:#0d1117; }
 body.light-mode .fs option { color:#0d1117; background:#fff; }
 /* Cards et KPIs */
@@ -198,6 +199,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
 .fl{display:flex;flex-direction:column;gap:2px}
 .fl label{font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:.07em;font-weight:600}
 select.fs{background:var(--bg);border:1px solid rgba(255,255,255,.1);color:var(--text);border-radius:6px;padding:4px 8px;font-size:11px;min-width:120px;cursor:pointer}
+.msel{position:relative}
+.msel-btn{text-align:left;min-width:150px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:4px 8px}
+.msel-dropdown{position:absolute;top:calc(100% + 4px);left:0;min-width:220px;max-height:320px;overflow-y:auto;background:var(--card);border:1px solid var(--border);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.4);z-index:600;padding:6px}
+.msel-search{width:100%;box-sizing:border-box;padding:5px 8px;margin-bottom:6px;background:var(--bg);border:1px solid rgba(255,255,255,.1);color:var(--text);border-radius:6px;font-size:11px}
+.msel-item{display:flex;align-items:center;gap:7px;padding:4px 6px;border-radius:5px;cursor:pointer;font-size:11px}
+.msel-item:hover{background:rgba(255,255,255,.06)}
+.msel-item input{cursor:pointer}
+.msel-actions{display:flex;justify-content:space-between;padding:4px 6px 2px;border-top:1px solid var(--border);margin-top:4px}
+.msel-actions a{font-size:10px;color:var(--blue);cursor:pointer;text-decoration:underline}
+input.fs{background:var(--bg);border:1px solid rgba(255,255,255,.1);color:var(--text);border-radius:6px;font-size:11px;color-scheme:dark;max-width:150px;height:26px;box-sizing:border-box;padding:2px 6px}
 select.fs:focus{outline:none;border-color:var(--blue)}
 .btn-reset{padding:5px 11px;background:rgba(226,75,74,.1);color:var(--red);border:1px solid rgba(226,75,74,.2);border-radius:6px;font-size:11px;font-weight:600;cursor:pointer}
 .btn-reset:hover{background:rgba(226,75,74,.2)}
@@ -225,6 +236,42 @@ select.fs:focus{outline:none;border-color:var(--blue)}
 .g13{display:grid;grid-template-columns:1.4fr 1fr;gap:12px;margin-bottom:12px}
 .g1{margin-bottom:12px}
 @media(max-width:960px){.g2,.g3,.g13{grid-template-columns:1fr}}
+
+/* ═══════════ MOBILE (≤680px) ═══════════ */
+@media(max-width:680px){
+  /* Grilles en ligne (GT Opex, panneau détail, modals) → 1 colonne */
+  div[style*="grid-template-columns:1fr 1fr"],
+  div[style*="grid-template-columns:repeat(3,1fr)"],
+  div[style*="grid-template-columns:repeat(4,1fr)"]{
+    grid-template-columns:1fr !important;
+  }
+
+  /* Header : on retire le superflu, on garde logo + recherche + action */
+  .header{height:auto;min-height:44px;padding:6px 8px;flex-wrap:wrap;row-gap:6px}
+  .h-logo img{height:24px}
+  .h-logo div div:last-child{display:none} /* sous-titre "Direction Technique France" */
+  .h-period{display:none}
+  .h-right{width:100%;justify-content:space-between}
+  #global-search{width:100% !important;max-width:none}
+  #global-search-results{width:100% !important;left:0;right:0}
+  .btn-reload{padding:6px 10px !important;font-size:10px !important}
+
+  /* Barre de filtres : selects pleine largeur sur mobile pour rester lisibles */
+  .fbar{padding:8px}
+  .fbar .fs{min-width:0 !important;flex:1 1 140px}
+
+  /* Modals : marge et padding réduits pour ne pas rogner le contenu */
+  #modal-contacts>div,#modal-wo-detail>div{max-width:none !important;margin:0 !important;padding:16px !important}
+  #modal-contacts,#modal-wo-detail{padding:10px}
+
+  /* Panneau de détail (magasin/prestataire/équipement) : prend plus d'écran, header compact */
+  #store-detail-panel{max-height:88vh}
+  #store-detail-title{font-size:13px !important}
+  #store-detail-body{padding:14px 16px !important}
+
+  /* Tableaux : police un cran plus petite pour limiter le scroll horizontal */
+  .tscroll table{font-size:11px}
+}
 .card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px}
 .ch{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:11px;gap:8px}
 .ct{font-size:12px;font-weight:600}
@@ -401,7 +448,6 @@ tr:hover td{background:rgba(255,255,255,.025)}
       </div>
     </div>
     <span class="h-period" id="h-period">—</span>
-    <span style="font-size:9px;color:#F59E0B;background:rgba(245,158,11,.15);padding:2px 8px;border-radius:4px;margin-left:8px">BUILD 2026-09-14-v2 (diag PREV brut)</span>
     <div class="h-right" style="display:flex;align-items:center;gap:10px">
       <div style="position:relative">
         <input id="global-search" type="text" placeholder="🔍 N° WO, magasin, prestataire…"
@@ -436,8 +482,8 @@ tr:hover td{background:rgba(255,255,255,.025)}
   </div>
   <div class="tabs">
     <div class="tab active" onclick="go('overview')">📊 Vue générale</div>
-    <div class="tab" onclick="go('taux')">📈 Taux clôture</div>
-    <div class="tab" onclick="go('magasins')">🏪 Magasins</div>
+    <div class="tab" onclick="go('taux')">📈 Taux clôture prestataire</div>
+    <div class="tab" onclick="go('magasins')">🏪 Taux clôture magasin</div>
     <div class="tab" onclick="go('devis')">📄 Devis</div>
 
     <div class="tab" onclick="go('aging')">🕐 Aging WO</div>
@@ -453,8 +499,18 @@ tr:hover td{background:rgba(255,255,255,.025)}
   <div class="fbar">
     <div class="fl"><label>Région</label><select class="fs" id="f-reg" onchange="applyF()"><option value="">Toutes</option></select></div>
     <div class="fl"><label>Type client</label><select class="fs" id="f-type" onchange="applyF()"><option value="">Tous</option></select></div>
-    <div class="fl"><label>Prestataire</label><select class="fs" id="f-prest" onchange="applyF()"><option value="">Tous</option></select></div>
-    <div class="fl"><label>Magasin</label><select class="fs" id="f-mag" onchange="applyF()"><option value="">Tous</option></select></div>
+    <div class="fl"><label>Prestataire</label>
+      <div class="msel" id="msel-prest">
+        <button type="button" class="fs msel-btn" onclick="_toggleMultiSelectDropdown('prest')" id="f-prest-btn">Tous</button>
+        <div class="msel-dropdown" id="f-prest-dropdown" style="display:none"></div>
+      </div>
+    </div>
+    <div class="fl"><label>Magasin</label>
+      <div class="msel" id="msel-mag">
+        <button type="button" class="fs msel-btn" onclick="_toggleMultiSelectDropdown('mag')" id="f-mag-btn">Tous</button>
+        <div class="msel-dropdown" id="f-mag-dropdown" style="display:none"></div>
+      </div>
+    </div>
     <div class="fl"><label>Mois</label><select class="fs" id="f-mois" onchange="applyF()"><option value="">Tous</option></select></div>
     <div class="fl"><label>Du</label><input type="date" class="fs" id="f-date-debut" onchange="applyF()" style="padding:5px 8px"></div>
     <div class="fl"><label>Au</label><input type="date" class="fs" id="f-date-fin" onchange="applyF()" style="padding:5px 8px"></div>
@@ -519,7 +575,13 @@ tr:hover td{background:rgba(255,255,255,.025)}
         </div>
       </div>
       <div class="g1 card">
-        <div class="ct">Tableau détail magasins</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:8px">
+          <div class="ct" style="margin-bottom:0">Tableau détail magasins</div>
+          <div style="display:flex;gap:8px">
+            <button onclick="exporterMagasinsPDF()" style="padding:6px 14px;background:var(--red);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">📄 PDF</button>
+            <button onclick="exporterMagasins()" style="padding:6px 14px;background:var(--green);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">📥 Excel</button>
+          </div>
+        </div>
         <div class="tscroll"><table><thead><tr><th>#</th><th>Magasin</th><th>Région</th><th>Total WO</th><th>En attente</th><th>% Attente</th><th>TU ouverts</th><th>Âge moy.</th></tr></thead><tbody id="tb-mag"></tbody></table></div>
       </div>
     </div>
@@ -576,6 +638,10 @@ tr:hover td{background:rgba(255,255,255,.025)}
     <!-- RÉCURRENCE -->
     <div class="page" id="page-recurrence">
       <div class="kg" id="kg-rec"></div>
+      <div class="g1 card">
+        <div class="ct">Top 20 familles d'équipement — Nombre de demandes WO</div>
+        <div id="b-rec-famille"></div>
+      </div>
       <div class="g2">
         <div class="card"><div class="ct">Top 20 équipements — Volume WO</div><div id="b-rec-vol"></div></div>
         <div class="card"><div class="ct">Top 20 équipements — Coût cumulé</div><div id="b-rec-cout"></div></div>
@@ -885,7 +951,7 @@ Direction Technique France — Carrefour</textarea>
 // ═══════════════════════════════════════════════════════════════
 var WO=[], QUO=[], NPS=[];
 var SCRIPT_URL = localStorage.getItem("mc_script_url") || "";
-var F={reg:"",type:"",prest:"",mag:"",mois:"",dateDebut:"",dateFin:""};
+var F={reg:"",type:"",prest:[],mag:[],mois:"",dateDebut:"",dateFin:""};
 var CHARTS={};
 var _woProc=false, _quoProc=false, _npsProc=false;
 var TAB="overview";
@@ -1608,6 +1674,31 @@ function openPrestataireDetail(prest){
   _openDetailPanel(prest, "Prestataire", bodyHTML);
 }
 
+// Détail par famille d'équipement — utilisé sur Récurrence (Top 20 familles)
+function openFamilleDetail(fam){
+  if(!fam) return;
+  var woList = WO.filter(function(r){return String(r["Sous Famille d'Équipement"]||"").trim()===fam;});
+  var quoList = QUO.filter(function(r){return String(r["Sous Famille d'Équipement"]||"").trim()===fam;});
+
+  var totalWO = woList.length;
+  var cl = woList.filter(function(r){return r._e==="CL";}).length;
+  var taux = totalWO ? (cl/totalWO*100) : 0;
+  var coutTotal = quoList.reduce(function(s,r){return s+r._c;},0);
+  var sites = new Set(woList.map(function(r){return r._m;})).size;
+
+  var kpiHTML = ""
+    + _kpiCardSD("WO Total", fN(totalWO), "var(--blue)")
+    + _kpiCardSD("Taux clôture", taux.toFixed(1)+"%", taux>=70?"var(--green)":taux>=40?"var(--amber)":"var(--red)")
+    + _kpiCardSD("Sites concernés", fN(sites), "var(--amber)")
+    + _kpiCardSD("Coût cumulé", fmt(coutTotal), "#8B5CF6");
+
+  var bodyHTML = "<div style='display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px'>"+kpiHTML+"</div>"
+    + "<div style='margin-bottom:8px;font-size:12px;font-weight:700;color:var(--t2)'>📋 Liste des WO ("+(totalWO>100?"100 plus récents sur "+fN(totalWO):fN(totalWO))+")</div>"
+    + _buildWOTableHTML(woList);
+
+  _openDetailPanel(fam, "Famille d'équipement", bodyHTML);
+}
+
 // Détail par équipement — utilisé sur Récurrence
 function openEquipementDetail(equip){
   if(!equip) return;
@@ -1795,23 +1886,103 @@ function buildFilters(){
   }
   fill("f-reg",uniq(WO.map(function(r){return r._r;}).filter(function(v){return v!=="INCONNU";})));
   fill("f-type",uniq(WO.map(function(r){return r._t;})));
-  fill("f-prest",uniq(WO.map(function(r){return r._f;}).filter(function(v){return v!=="Inconnu";})).slice(0,500));
-  fill("f-mag",uniq(WO.map(function(r){return r._m;})).slice(0,500));
   fill("f-mois",uniq(WO.map(function(r){return r._mo;})),mL);
+  _buildMultiSelect("prest",uniq(WO.map(function(r){return r._f;}).filter(function(v){return v!=="Inconnu";})).slice(0,500));
+  _buildMultiSelect("mag",uniq(WO.map(function(r){return r._m;})).slice(0,500));
 }
+
+// ─── Composant multi-select (Magasin / Prestataire) ───
+var _MSEL_OPTIONS={mag:[],prest:[]};
+
+function _buildMultiSelect(key,vals){
+  _MSEL_OPTIONS[key]=vals;
+  F[key]=F[key].filter(function(v){return vals.indexOf(v)>=0;}); // purge les sélections devenues invalides
+  _updateMultiSelectButtonLabel(key);
+}
+
+function _toggleMultiSelectDropdown(key){
+  var dd=document.getElementById("f-"+key+"-dropdown");
+  if(!dd)return;
+  var isOpen=dd.style.display!=="none";
+  document.querySelectorAll(".msel-dropdown").forEach(function(el){el.style.display="none";});
+  if(!isOpen){
+    dd.style.display="block";
+    _renderMultiSelectDropdown(key);
+  }
+}
+
+function _renderMultiSelectDropdown(key){
+  var dd=document.getElementById("f-"+key+"-dropdown");
+  if(!dd)return;
+  dd.innerHTML="<input type='text' class='msel-search' placeholder='Rechercher…' oninput='_filterMultiSelectItems(\""+key+"\",this.value)' onclick='event.stopPropagation()'>"
+    +"<div id='f-"+key+"-items'></div>"
+    +"<div class='msel-actions'><a onclick='_clearMultiSelect(\""+key+"\")'>Tout désélectionner</a><a onclick='_toggleMultiSelectDropdown(\""+key+"\")'>Fermer</a></div>";
+  _filterMultiSelectItems(key,"");
+}
+
+function _filterMultiSelectItems(key,term){
+  var itemsEl=document.getElementById("f-"+key+"-items");
+  if(!itemsEl)return;
+  var opts=_MSEL_OPTIONS[key]||[];
+  term=(term||"").toLowerCase();
+  var filtered=term?opts.filter(function(v){return v.toLowerCase().indexOf(term)>=0;}):opts;
+  itemsEl.innerHTML=filtered.slice(0,300).map(function(v){
+    var checked=F[key].indexOf(v)>=0?"checked":"";
+    var safe=String(v).replace(/"/g,'\\"');
+    return "<label class='msel-item'><input type='checkbox' "+checked+" onchange='_onMultiSelectChange(\""+key+"\",\""+safe+"\",this.checked)'> <span>"+String(v).replace(/_/g," ")+"</span></label>";
+  }).join("") || "<div style='padding:8px;color:var(--t3);font-size:11px'>Aucun résultat</div>";
+}
+
+function _onMultiSelectChange(key,value,checked){
+  var idx=F[key].indexOf(value);
+  if(checked&&idx<0)F[key].push(value);
+  else if(!checked&&idx>=0)F[key].splice(idx,1);
+  _updateMultiSelectButtonLabel(key);
+  applyF();
+}
+
+function _clearMultiSelect(key){
+  F[key]=[];
+  var searchEl=document.querySelector("#f-"+key+"-dropdown .msel-search");
+  _filterMultiSelectItems(key,searchEl?searchEl.value:"");
+  _updateMultiSelectButtonLabel(key);
+  applyF();
+}
+
+function _resetMultiSelect(key){
+  F[key]=[];
+  var dd=document.getElementById("f-"+key+"-dropdown");
+  if(dd)dd.style.display="none";
+  _updateMultiSelectButtonLabel(key);
+}
+
+function _updateMultiSelectButtonLabel(key){
+  var btn=document.getElementById("f-"+key+"-btn");
+  if(!btn)return;
+  var n=F[key].length;
+  btn.textContent=n===0?"Tous":n===1?String(F[key][0]).replace(/_/g," "):n+" sélectionnés";
+}
+
+document.addEventListener("click",function(e){
+  document.querySelectorAll(".msel").forEach(function(wrap){
+    if(!wrap.contains(e.target)){
+      var dd=wrap.querySelector(".msel-dropdown");
+      if(dd)dd.style.display="none";
+    }
+  });
+});
 
 function applyF(){
   F.reg=document.getElementById("f-reg").value||"";
   F.type=document.getElementById("f-type").value||"";
-  F.prest=document.getElementById("f-prest").value||"";
-  F.mag=document.getElementById("f-mag").value||"";
+  // F.prest et F.mag sont maintenus directement par le composant multi-select (_onMultiSelectChange)
   F.mois=document.getElementById("f-mois").value||"";
   F.dateDebut=document.getElementById("f-date-debut").value||"";
   F.dateFin=document.getElementById("f-date-fin").value||"";
   if(F.dateDebut&&F.dateFin&&F.dateDebut>F.dateFin){
     toast("La date de début doit précéder la date de fin",true);
   }
-  var nb=[F.reg,F.type,F.prest,F.mag,F.mois,F.dateDebut,F.dateFin].filter(Boolean).length;
+  var nb=[F.reg,F.type,F.mois,F.dateDebut,F.dateFin].filter(Boolean).length+(F.prest.length?1:0)+(F.mag.length?1:0);
   var fc=document.getElementById("fcount");
   fc.style.display=nb?"":"none";
   fc.textContent=nb+" filtre(s) actif(s)";
@@ -1819,8 +1990,10 @@ function applyF(){
 }
 
 function resetF(){
-  ["f-reg","f-type","f-prest","f-mag","f-mois","f-date-debut","f-date-fin"].forEach(function(id){var e=document.getElementById(id);if(e)e.value="";});
-  F={reg:"",type:"",prest:"",mag:"",mois:"",dateDebut:"",dateFin:""};
+  ["f-reg","f-type","f-mois","f-date-debut","f-date-fin"].forEach(function(id){var e=document.getElementById(id);if(e)e.value="";});
+  F={reg:"",type:"",prest:[],mag:[],mois:"",dateDebut:"",dateFin:""};
+  _resetMultiSelect("prest");
+  _resetMultiSelect("mag");
   document.getElementById("fcount").style.display="none";
   renderAll();
 }
@@ -1839,8 +2012,8 @@ function fWO(){
   return WO.filter(function(r){
     if(F.reg&&r._r!==F.reg)return false;
     if(F.type&&r._t!==F.type)return false;
-    if(F.prest&&r._f!==F.prest)return false;
-    if(F.mag&&r._m!==F.mag)return false;
+    if(F.prest.length&&F.prest.indexOf(r._f)<0)return false;
+    if(F.mag.length&&F.mag.indexOf(r._m)<0)return false;
     if(F.mois&&r._mo!==F.mois)return false;
     if(!_inDateRange(r._d))return false;
     return true;
@@ -1849,7 +2022,8 @@ function fWO(){
 function fQUO(){
   return QUO.filter(function(r){
     if(F.reg&&r._r!==F.reg)return false;
-    if(F.prest&&r._f!==F.prest)return false;
+    if(F.prest.length&&F.prest.indexOf(r._f)<0)return false;
+    if(F.mag.length&&F.mag.indexOf(r._m)<0)return false;
     if(F.mois&&r._mo!==F.mois)return false;
     if(!_inDateRange(r._d))return false;
     return true;
@@ -1858,7 +2032,8 @@ function fQUO(){
 function fNPS(){
   return NPS.filter(function(r){
     if(F.reg&&r._r!==F.reg)return false;
-    if(F.prest&&r._f!==F.prest)return false;
+    if(F.prest.length&&F.prest.indexOf(r._f)<0)return false;
+    if(F.mag.length&&F.mag.indexOf(r._m)<0)return false;
     if(F.mois&&r._mo!==F.mois)return false;
     if(!_inDateRange(r._d))return false;
     return true;
@@ -2291,6 +2466,18 @@ function renderRec(){
   var data=Object.entries(map).filter(function(e){return e[1].n>=3;}).map(function(e){
     return{l:e[0],n:e[1].n,cl:e[1].cl,sites:e[1].mags.size,cout:quoEq[e[0]]||0,tx:e[1].cl/e[1].n*100};
   }).sort(function(a,b){return b.n-a.n;});
+
+  // Top 20 par famille d'équipement (ex: Froid alimentaire, CVC, Serrurerie...)
+  var famMap={};
+  fWO().forEach(function(r){
+    var fam=String(r["Sous Famille d'Équipement"]||"").trim();
+    if(!fam) return;
+    famMap[fam]=(famMap[fam]||0)+1;
+  });
+  var famData=Object.entries(famMap).sort(function(a,b){return b[1]-a[1];}).slice(0,20).map(function(e){return{l:e[0],v:e[1]};});
+  hbars("b-rec-famille", famData, "#378ADD", function(d){return fN(d.v)+" WO";}, 20,
+    function(d){openFamilleDetail(d.l);});
+
   kg("kg-rec",[
     {l:"Équipements récurrents",v:fN(data.length),s:"≥ 3 WO",c:"var(--red)"},
     {l:"WO sur récurrents",v:fN(data.reduce(function(s,d){return s+d.n;},0)),s:"",c:"var(--coral)"},
@@ -4835,6 +5022,67 @@ function exporterMagasins(){
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),"Magasins");
   XLSX.writeFile(wb,"Magasins_"+new Date().toISOString().slice(0,10)+".xlsx");
   toast("✅ Export Excel magasins généré");
+}
+
+function exporterMagasinsPDF(){
+  var wo=fWO();
+  var mMap={};
+  wo.forEach(function(r){
+    var m=r._m;if(!m)return;
+    if(!mMap[m])mMap[m]={n:0,at:0,cl:0,as:0,reg:r._r,ages:[]};
+    mMap[m].n++;
+    if(r._e==="AT")mMap[m].at++;
+    if(r._e==="CL")mMap[m].cl++;
+    if(r._e==="AS")mMap[m].as++;
+    if(r._age>=0)mMap[m].ages.push(r._age);
+  });
+  var rows=Object.entries(mMap).sort(function(a,b){return b[1].n-a[1].n;}).map(function(e){
+    var m=e[1];
+    var taux=m.n?(m.cl/m.n*100):0;
+    var mAge=m.ages.length?Math.round(m.ages.reduce(function(a,b){return a+b;},0)/m.ages.length):0;
+    return {mag:e[0], reg:m.reg.replace(/_/g," "), n:m.n, at:m.at, taux:taux, as:m.as, age:mAge};
+  });
+  if(!rows.length){ toast("Aucune donnée à exporter avec les filtres actuels",true); return; }
+
+  var w=window.open("","_blank");
+  if(!w){ toast("Autorisez les pop-ups pour exporter en PDF",true); return; }
+  var filtreLabel=[];
+  if(F.reg) filtreLabel.push("Région: "+F.reg.replace(/_/g," "));
+  if(F.type) filtreLabel.push("Type: "+F.type);
+  if(F.prest.length) filtreLabel.push("Prestataire(s): "+F.prest.join(", "));
+  if(F.mag.length) filtreLabel.push("Magasin(s): "+F.mag.join(", "));
+  if(F.mois) filtreLabel.push("Mois: "+mL(F.mois));
+  if(F.dateDebut||F.dateFin) filtreLabel.push("Période: "+(F.dateDebut||"…")+" → "+(F.dateFin||"…"));
+  var rowsHTML = rows.map(function(r,i){
+    var txC = r.taux>=70?"#085041":r.taux>=40?"#633806":"#791F1F";
+    return "<tr style='background:"+(i%2===0?"#fff":"#f9fafb")+"'>"
+      +"<td>"+(i+1)+"</td><td style='font-weight:600'>"+r.mag+"</td><td>"+r.reg+"</td>"
+      +"<td style='text-align:right'>"+r.n+"</td><td style='text-align:right;color:#791F1F'>"+r.at+"</td>"
+      +"<td style='text-align:right;font-weight:700;color:"+txC+"'>"+r.taux.toFixed(1)+"%</td>"
+      +"<td style='text-align:right'>"+r.as+"</td><td style='text-align:right'>"+r.age+"j</td></tr>";
+  }).join("");
+  w.document.write(
+    "<!DOCTYPE html><html><head><meta charset='UTF-8'><title>Tableau détail magasins</title>"
+    +"<style>body{font-family:Arial,sans-serif;padding:28px;color:#1a1a2e}"
+    +"h1{font-size:16px;border-bottom:3px solid #004B9B;padding-bottom:10px;margin-bottom:6px}"
+    +".sub{font-size:10px;color:#888;margin-bottom:16px}"
+    +"table{width:100%;border-collapse:collapse;font-size:10px}"
+    +"th{padding:6px 8px;background:#f8f9fc;border-bottom:2px solid #e2e4eb;font-size:8px;text-transform:uppercase;color:#888;text-align:left}"
+    +"td{padding:5px 8px;border-bottom:1px solid #f0f2f8}"
+    +".footer{margin-top:20px;padding-top:8px;border-top:1px solid #e2e4eb;font-size:9px;color:#aaa}"
+    +"</style></head><body>"
+    +"<h1>Tableau détail magasins</h1>"
+    +"<div class='sub'>"+(filtreLabel.length?filtreLabel.join(" · "):"Tous magasins, toutes périodes")+" · "+rows.length+" magasin(s)</div>"
+    +"<table><thead><tr><th>#</th><th>Magasin</th><th>Région</th><th style='text-align:right'>Total WO</th>"
+    +"<th style='text-align:right'>En attente</th><th style='text-align:right'>Taux clôture</th>"
+    +"<th style='text-align:right'>Assignés</th><th style='text-align:right'>Âge moy.</th></tr></thead>"
+    +"<tbody>"+rowsHTML+"</tbody></table>"
+    +"<div class='footer'>Carrefour — Direction Technique France · "+new Date().toLocaleDateString("fr-FR")+"</div>"
+    +"</body></html>"
+  );
+  w.document.close();
+  w.focus();
+  setTimeout(function(){ w.print(); }, 300);
 }
 
 // ══════════════════════════════════════════════════════════════
