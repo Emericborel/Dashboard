@@ -401,6 +401,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
       </div>
     </div>
     <span class="h-period" id="h-period">—</span>
+    <span style="font-size:9px;color:#F59E0B;background:rgba(245,158,11,.15);padding:2px 8px;border-radius:4px;margin-left:8px">BUILD 2026-09-14-v2 (diag PREV brut)</span>
     <div class="h-right" style="display:flex;align-items:center;gap:10px">
       <div style="position:relative">
         <input id="global-search" type="text" placeholder="🔍 N° WO, magasin, prestataire…"
@@ -3884,6 +3885,15 @@ function chargerDepuisSheetAvecProgress(){
         setProgress(92,"Chargement Préventif...");
         chargerType("PREV",92,97,"WO Préventif",function(d4){
           if((d4.status==="ok"||d4.statut==="ok")&&d4.rows&&d4.rows.length>0){
+            // Diagnostic ponctuel : colonnes et échantillon bruts reçus pour PREV
+            var _pCols = d4.rows[0] ? Object.keys(d4.rows[0]) : [];
+            var _pBox = document.createElement("div");
+            _pBox.style.cssText = "position:fixed;bottom:20px;right:20px;background:#12172B;border:2px solid #8B5CF6;border-radius:10px;padding:14px 18px;color:#fff;font-family:monospace;font-size:11px;z-index:99999;max-width:460px;max-height:70vh;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,.5)";
+            _pBox.innerHTML = "<div style='font-weight:700;margin-bottom:8px;color:#8B5CF6;font-size:13px'>🔍 Diagnostic PREV brut (avant traitement)</div>"
+              + "Colonnes reçues : <span style='font-size:10px'>" + JSON.stringify(_pCols).replace(/</g,"&lt;") + "</span><br><br>"
+              + "Ligne 0 complète :<br><span style='font-size:10px'>" + JSON.stringify(d4.rows[0],null,1).replace(/</g,"&lt;") + "</span>"
+              + "<div style='margin-top:10px;text-align:right'><button onclick='this.parentElement.remove()' style='background:#8B5CF6;border:none;color:#fff;padding:4px 10px;border-radius:5px;cursor:pointer;font-size:11px'>Fermer</button></div>";
+            document.body.appendChild(_pBox);
             try{ parsePREV(d4.rows); }catch(e){ console.log("parsePREV err:",e); }
           }
         setProgress(98,"Traitement des données...");
@@ -3915,42 +3925,7 @@ function chargerDepuisSheetAvecProgress(){
             if(box) box.style.display="block";
             // Rendre tous les onglets
             try{ renderAll(); }catch(e){ console.log("renderAll:",e); }
-            var _diagCL = WO.filter(function(r){return r._e==="CL";}).length;
-            var _diagFWO = fWO().length;
-            // Colonnes réellement présentes sur la 1ère ligne + valeurs brutes État
-            var _diagCols = WO[0] ? Object.keys(WO[0]).filter(function(k){return k.indexOf("_")!==0;}) : [];
-            var _diagEtatRaw = WO[0] ? JSON.stringify(WO[0]["État"]) : "N/A";
-            var _diagEtatMap = {};
-            WO.slice(0,2000).forEach(function(r){var k=JSON.stringify(r["État"]);_diagEtatMap[k]=(_diagEtatMap[k]||0)+1;});
-            // Diagnostic PREV (même logique)
-            var _diagPrevN = PREV.length;
-            var _diagPrevCL = PREV.filter(function(r){return r._e==="CL";}).length;
-            var _diagPrevEtatRaw = PREV[0] ? JSON.stringify(PREV[0]._etat) : "N/A";
-            var _diagPrevCodeMap = {};
-            PREV.forEach(function(r){_diagPrevCodeMap[r._e]=(_diagPrevCodeMap[r._e]||0)+1;});
-            var _diagPrevEtatMap = {};
-            PREV.slice(0,2000).forEach(function(r){var k=JSON.stringify(r._etat);_diagPrevEtatMap[k]=(_diagPrevEtatMap[k]||0)+1;});
             toast("✅ "+fN(WO.length)+" WO · "+fN(QUO.length)+" devis · "+fN(NPS.length)+" NPS chargés");
-            // Diagnostic temporaire visible à l'écran (pas besoin de console)
-            var _diagBox = document.createElement("div");
-            _diagBox.style.cssText = "position:fixed;bottom:20px;right:20px;background:#12172B;border:2px solid #378ADD;border-radius:10px;padding:14px 18px;color:#fff;font-family:monospace;font-size:11px;z-index:99999;max-width:420px;max-height:70vh;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,.5)";
-            _diagBox.innerHTML = "<div style='font-weight:700;margin-bottom:8px;color:#378ADD;font-size:13px'>🔍 Diagnostic chargement — WO</div>"
-              + "WO (brut, global) : <b>" + WO.length + "</b><br>"
-              + "fWO() (filtré affiché) : <b>" + _diagFWO + "</b><br>"
-              + "Clôturés (_e===CL) : <b>" + _diagCL + "</b><br>"
-              + "F (filtres actifs) : <span style='font-size:10px'>" + JSON.stringify(F) + "</span><br><br>"
-              + "Colonnes WO[0] : <span style='font-size:10px'>" + JSON.stringify(_diagCols) + "</span><br>"
-              + "WO[0][\"État\"] brut : <b style='color:#F59E0B'>" + _diagEtatRaw + "</b><br><br>"
-              + "Valeurs État distinctes (2000 premières lignes) :<br><span style='font-size:10px'>" + JSON.stringify(_diagEtatMap,null,1).replace(/</g,"&lt;") + "</span>"
-              + "<hr style='border-color:#333;margin:12px 0'>"
-              + "<div style='font-weight:700;margin-bottom:8px;color:#8B5CF6;font-size:13px'>🔍 Diagnostic chargement — Préventif</div>"
-              + "PREV (total) : <b>" + _diagPrevN + "</b><br>"
-              + "Clôturés (_e===CL) : <b>" + _diagPrevCL + "</b><br>"
-              + "PREV[0]._etat brut : <b style='color:#F59E0B'>" + _diagPrevEtatRaw + "</b><br>"
-              + "Codes _e (après matching) : <span style='font-size:10px'>" + JSON.stringify(_diagPrevCodeMap) + "</span><br><br>"
-              + "Valeurs _etat distinctes (2000 premières lignes) :<br><span style='font-size:10px'>" + JSON.stringify(_diagPrevEtatMap,null,1).replace(/</g,"&lt;") + "</span>"
-              + "<div style='margin-top:10px;text-align:right'><button onclick='this.parentElement.parentElement.remove()' style='background:#378ADD;border:none;color:#fff;padding:4px 10px;border-radius:5px;cursor:pointer;font-size:11px'>Fermer</button></div>";
-            document.body.appendChild(_diagBox);
           },800);
         },100);
         }); // fin PREV
