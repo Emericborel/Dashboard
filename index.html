@@ -244,7 +244,7 @@ select.fs:focus{outline:none;border-color:var(--blue)}
 .bval{font-size:10px;color:var(--text);min-width:65px;text-align:right;font-weight:500}
 
 /* TABLE */
-.tscroll{overflow-y:auto;max-height:400px}
+.tscroll{overflow-y:auto;max-height:400px;resize:vertical;min-height:120px}
 table{width:100%;border-collapse:collapse}
 th{padding:7px 10px;text-align:left;border-bottom:2px solid var(--border);font-size:9px;text-transform:uppercase;letter-spacing:.05em;color:var(--t3);font-weight:600;position:sticky;top:0;background:var(--bg3);z-index:1}
 td{padding:7px 10px;border-bottom:1px solid rgba(255,255,255,.04);font-size:11px;color:var(--t2)}
@@ -424,6 +424,16 @@ tr:hover td{background:rgba(255,255,255,.025)}
       <button onclick="exportWODetailPDF()" style="margin-top:16px;width:100%;padding:9px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">📄 Exporter cette fiche en PDF</button>
     </div>
   </div>
+  <div id="store-detail-panel" style="display:none;position:fixed;bottom:0;left:0;right:0;max-height:78vh;background:var(--card);border-top:2px solid var(--blue);box-shadow:0 -10px 30px rgba(0,0,0,.5);z-index:9998;overflow-y:auto">
+    <div style="position:sticky;top:0;background:var(--card);border-bottom:1px solid var(--border);padding:14px 24px;display:flex;justify-content:space-between;align-items:center;z-index:1">
+      <div>
+        <div style="font-size:15px;font-weight:700" id="store-detail-title">Magasin</div>
+        <div style="font-size:11px;color:var(--t3)" id="store-detail-subtitle"></div>
+      </div>
+      <button onclick="closeStoreDetail()" style="background:none;border:1px solid var(--border);color:var(--t2);font-size:13px;padding:5px 12px;border-radius:7px;cursor:pointer">✕ Fermer</button>
+    </div>
+    <div id="store-detail-body" style="padding:20px 24px"></div>
+  </div>
   <div class="tabs">
     <div class="tab active" onclick="go('overview')">📊 Vue générale</div>
     <div class="tab" onclick="go('taux')">📈 Taux clôture</div>
@@ -478,7 +488,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
           <div class="ch"><div><div class="ct">Taux de clôture par prestataire</div><div class="cs">Classement — min. 10 WO</div></div>
             <div style="display:flex;gap:4px;flex-wrap:wrap"><span class="cbadge cb-g">≥70% Excellent</span><span class="cbadge cb-b">50–70%</span><span class="cbadge cb-a">35–50%</span><span class="cbadge cb-r">&lt;35%</span></div>
           </div>
-          <div id="b-taux" style="max-height:480px;overflow-y:auto"></div>
+          <div id="b-taux" style="max-height:480px;overflow-y:auto;resize:vertical;min-height:150px"></div>
         </div>
         <div class="card"><div class="ct">Taux clôture par région</div><div id="b-taux-reg" style="margin-bottom:16px"></div>
           <div class="ct" style="margin-top:8px">Taux clôture mensuel</div><div class="cw" style="height:160px"><canvas id="c-taux-month"></canvas></div>
@@ -632,6 +642,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
         <div id="pv-table-at" style="margin-bottom:14px"></div>
         <div id="pv-table-appro" style="margin-bottom:14px"></div>
         <div id="pv-table-prest" style="margin-bottom:14px"></div>
+        <div id="pv-table-mag" style="margin-bottom:14px"></div>
       </div>
     </div>
 
@@ -769,13 +780,13 @@ tr:hover td{background:rgba(255,255,255,.025)}
         <div class="kg" id="gtopex-kg" style="margin-bottom:14px"></div>
         <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:8px">🧾 Flop 10 Magasins — Devis en attente</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
-          <div class="card"><div class="ct">Hyper</div><div class="cw" style="height:200px"><canvas id="gtopex-dv-hyper"></canvas></div></div>
-          <div class="card"><div class="ct">Market</div><div class="cw" style="height:200px"><canvas id="gtopex-dv-market"></canvas></div></div>
+          <div class="card"><div class="ct">Hyper</div><div id="gtopex-dv-hyper"></div></div>
+          <div class="card"><div class="ct">Market</div><div id="gtopex-dv-market"></div></div>
         </div>
         <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:8px">⏳ Flop 10 Magasins — WO en attente approbation &gt;30j</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
-          <div class="card"><div class="ct">Hyper</div><div class="cw" style="height:200px"><canvas id="gtopex-wo-hyper"></canvas></div></div>
-          <div class="card"><div class="ct">Market</div><div class="cw" style="height:200px"><canvas id="gtopex-wo-market"></canvas></div></div>
+          <div class="card"><div class="ct">Hyper</div><div id="gtopex-wo-hyper"></div></div>
+          <div class="card"><div class="ct">Market</div><div id="gtopex-wo-market"></div></div>
         </div>
         <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:8px">📈 Taux de Clôture par région</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
@@ -918,17 +929,26 @@ function kg(id,items){
   }).join("");
 }
 
-function hbars(id,data,cFn,vFn,lim){
+function hbars(id,data,cFn,vFn,lim,onClickFn){
   var el=document.getElementById(id);if(!el)return;
   lim=lim||30;
   if(!data||!data.length){el.innerHTML="<p style='color:var(--t3);font-size:11px;padding:6px'>Aucune donnée</p>";return;}
-  var max=Math.max.apply(null,data.slice(0,lim).map(function(d){return Math.abs(N(d.v));}));
-  el.innerHTML=data.slice(0,lim).map(function(d,i){
+  var shown=data.slice(0,lim);
+  var max=Math.max.apply(null,shown.map(function(d){return Math.abs(N(d.v));}));
+  el.innerHTML=shown.map(function(d,i){
     var pct=max?Math.abs(N(d.v))/max*100:0;
     var col=typeof cFn==="function"?cFn(d,i):(cFn||"#378ADD");
     var val=typeof vFn==="function"?vFn(d):fN(d.v);
-    return"<div class='br'><div class='bl' title='"+d.l+"'>"+d.l+"</div><div class='btrack'><div class='bfill' style='width:"+pct+"%;background:"+col+"'></div></div><div class='bval'>"+val+"</div></div>";
+    var clickable=typeof onClickFn==="function";
+    return"<div class='br'"+(clickable?" data-hb-idx='"+i+"' style='cursor:pointer'":"")+"><div class='bl' title='"+d.l+"'>"+d.l+"</div><div class='btrack'><div class='bfill' style='width:"+pct+"%;background:"+col+"'></div></div><div class='bval'>"+val+"</div></div>";
   }).join("");
+  if(typeof onClickFn==="function"){
+    el.querySelectorAll("[data-hb-idx]").forEach(function(node){
+      node.addEventListener("click", function(){
+        onClickFn(shown[parseInt(node.getAttribute("data-hb-idx"))]);
+      });
+    });
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1385,6 +1405,252 @@ function exportWODetailPDF(){
   setTimeout(function(){ w.print(); }, 250);
 }
 
+function _kpiCardSD(label, value, color){
+  return "<div style='background:var(--bg2);border-radius:8px;padding:10px 14px;min-width:110px;flex:1'>"
+    + "<div style='font-size:9px;color:var(--t3);text-transform:uppercase;margin-bottom:4px'>"+label+"</div>"
+    + "<div style='font-size:17px;font-weight:700;color:"+color+"'>"+value+"</div>"
+    + "</div>";
+}
+
+// Panneau de détail magasin — drill-down cliquable depuis n'importe où (Magasins, etc.)
+function openStoreDetail(mag){
+  if(!mag) return;
+  var panel = document.getElementById("store-detail-panel");
+  var title = document.getElementById("store-detail-title");
+  var subtitle = document.getElementById("store-detail-subtitle");
+  var body = document.getElementById("store-detail-body");
+  if(!panel||!title||!subtitle||!body) return;
+
+  var woList = WO.filter(function(r){return r._m===mag;});
+  var prevList = PREV.filter(function(r){return r._mag===mag;});
+  var quoList = QUO.filter(function(r){return r._m===mag;});
+  var npsList = NPS.filter(function(r){return r._m===mag;});
+
+  var region = woList[0]?woList[0]._r:(prevList[0]?prevList[0]._reg:"");
+  title.textContent = mag;
+  subtitle.textContent = region ? region.replace(/_/g," ") : "";
+
+  var totalWO = woList.length;
+  var cl = woList.filter(function(r){return r._e==="CL";}).length;
+  var taux = totalWO ? (cl/totalWO*100) : 0;
+  var enAttente = woList.filter(function(r){return r._e==="AT";}).length;
+
+  var coutTotal = quoList.reduce(function(s,r){return s+r._c;},0);
+
+  var prevTotal = prevList.length;
+  var prevCL = prevList.filter(function(r){return r._e==="CL";}).length;
+  var prevTaux = prevTotal ? (prevCL/prevTotal*100) : 0;
+
+  var npsN = npsList.length;
+  var npsProm = npsList.filter(function(r){return r._cat==="P";}).length;
+  var npsDet = npsList.filter(function(r){return r._cat==="D";}).length;
+  var npsScore = npsN ? ((npsProm-npsDet)/npsN*100) : null;
+
+  var kpiHTML = ""
+    + _kpiCardSD("WO Total", fN(totalWO), "var(--blue)")
+    + _kpiCardSD("Taux clôture", taux.toFixed(1)+"%", taux>=70?"var(--green)":taux>=40?"var(--amber)":"var(--red)")
+    + _kpiCardSD("En attente", fN(enAttente), "var(--red)")
+    + _kpiCardSD("Coût devis", fmt(coutTotal), "#8B5CF6")
+    + _kpiCardSD("WO Préventif", fN(prevTotal), "#8B5CF6")
+    + (npsN ? _kpiCardSD("NPS", (npsScore>0?"+":"")+npsScore.toFixed(0), npsScore>=50?"var(--green)":npsScore>=0?"var(--amber)":"var(--red)") : "");
+
+  // Top équipements / demandes les plus fréquents
+  var eqMap = {};
+  woList.forEach(function(r){
+    var eq = String(r["Équipement"]||"").trim() || String(r["Titre de la demande"]||"").trim() || "Non renseigné";
+    eqMap[eq] = (eqMap[eq]||0)+1;
+  });
+  var topEq = Object.entries(eqMap).sort(function(a,b){return b[1]-a[1];}).slice(0,10);
+
+  // Liste des WO (100 plus récents)
+  var woSorted = woList.slice().sort(function(a,b){
+    var da=a._d?a._d.getTime():0, db=b._d?b._d.getTime():0;
+    return db-da;
+  }).slice(0,100);
+
+  var woRowsHTML = woSorted.map(function(r){
+    var c = eColors[r._e]||"var(--t3)";
+    var titre = String(r["Titre de la demande"]||"").replace(/"/g,"&quot;");
+    return "<tr style='cursor:pointer' onclick='openWODetail(\"Curatif\","+WO.indexOf(r)+")'>"
+      +"<td style='padding:5px 8px'>"+(r["Numéro"]||"")+"</td>"
+      +"<td style='padding:5px 8px'><span style='display:inline-flex;align-items:center;gap:5px'><span style='width:7px;height:7px;border-radius:50%;background:"+c+";display:inline-block'></span>"+(eLabels[r._e]||r._e)+"</span></td>"
+      +"<td style='padding:5px 8px'>"+(r._f||"")+"</td>"
+      +"<td style='padding:5px 8px'>"+(r["Créé"]||"")+"</td>"
+      +"<td style='padding:5px 8px;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap' title=\""+titre+"\">"+(r["Titre de la demande"]||"")+"</td>"
+      +"</tr>";
+  }).join("");
+
+  body.innerHTML =
+    "<div style='display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px'>"+kpiHTML+"</div>"
+    + "<div style='display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px'>"
+      + "<div><div style='font-size:12px;font-weight:700;margin-bottom:6px;color:var(--t2)'>🔧 Préventif</div>"
+      + "<div style='font-size:12px;color:var(--t2)'>"+(prevTotal?fN(prevTotal)+" WO préventif — <b style='color:"+(prevTaux>=70?"var(--green)":"var(--amber)")+"'>"+prevTaux.toFixed(1)+"%</b> de clôture":"Aucune donnée")+"</div></div>"
+      + "<div><div style='font-size:12px;font-weight:700;margin-bottom:6px;color:var(--t2)'>⭐ Satisfaction (NPS)</div>"
+      + "<div style='font-size:12px;color:var(--t2)'>"+(npsN?fN(npsN)+" évaluations — score "+(npsScore>0?"+":"")+npsScore.toFixed(0):"Aucune évaluation")+"</div></div>"
+    + "</div>"
+    + "<div style='margin-bottom:20px'>"
+      + "<div style='font-size:12px;font-weight:700;margin-bottom:8px;color:var(--t2)'>🔁 Top équipements / demandes les plus fréquents</div>"
+      + (topEq.length ? topEq.map(function(e){
+          var safeE=String(e[0]).replace(/</g,"&lt;");
+          return "<div style='display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);font-size:12px'>"
+            +"<span style='color:var(--t2)'>"+safeE.substring(0,80)+"</span><span style='font-weight:700'>"+e[1]+"</span></div>";
+        }).join("") : "<div style='color:var(--t3);font-size:12px'>Aucune donnée</div>")
+    + "</div>"
+    + "<div>"
+      + "<div style='font-size:12px;font-weight:700;margin-bottom:8px;color:var(--t2)'>📋 Liste des WO ("+(totalWO>100?"100 plus récents sur "+fN(totalWO):fN(totalWO))+")</div>"
+      + "<div style='max-height:340px;overflow-y:auto;resize:vertical;min-height:150px;border:1px solid var(--border);border-radius:8px'>"
+      + "<table style='width:100%;border-collapse:collapse;font-size:11px'>"
+      + "<thead style='position:sticky;top:0;background:var(--bg2)'><tr>"
+        + "<th style='padding:6px 8px;text-align:left'>N° WO</th><th style='padding:6px 8px;text-align:left'>Statut</th><th style='padding:6px 8px;text-align:left'>Prestataire</th><th style='padding:6px 8px;text-align:left'>Créé</th><th style='padding:6px 8px;text-align:left'>Titre</th>"
+      + "</tr></thead><tbody>"+(woRowsHTML||"<tr><td colspan='5' style='padding:10px;color:var(--t3)'>Aucun WO</td></tr>")+"</tbody></table>"
+      + "</div>"
+    + "</div>";
+
+  panel.style.display = "block";
+  panel.scrollTop = 0;
+}
+function closeStoreDetail(){
+  var panel = document.getElementById("store-detail-panel");
+  if(panel) panel.style.display = "none";
+}
+
+// ─── Fonctions partagées pour tous les panneaux de détail (magasin, prestataire, équipement, GT Opex) ───
+
+function _buildWOTableHTML(woList, limit){
+  limit = limit || 100;
+  var sorted = woList.slice().sort(function(a,b){
+    var da=a._d?a._d.getTime():0, db=b._d?b._d.getTime():0;
+    return db-da;
+  }).slice(0,limit);
+  var rowsHTML = sorted.map(function(r){
+    var c = eColors[r._e]||"var(--t3)";
+    var titre = String(r["Titre de la demande"]||"").replace(/"/g,"&quot;");
+    return "<tr style='cursor:pointer' onclick='openWODetail(\"Curatif\","+WO.indexOf(r)+")'>"
+      +"<td style='padding:5px 8px'>"+(r["Numéro"]||"")+"</td>"
+      +"<td style='padding:5px 8px'><span style='display:inline-flex;align-items:center;gap:5px'><span style='width:7px;height:7px;border-radius:50%;background:"+c+";display:inline-block'></span>"+(eLabels[r._e]||r._e)+"</span></td>"
+      +"<td style='padding:5px 8px'>"+(r._m||r._f||"")+"</td>"
+      +"<td style='padding:5px 8px'>"+(r["Créé"]||"")+"</td>"
+      +"<td style='padding:5px 8px;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap' title=\""+titre+"\">"+(r["Titre de la demande"]||"")+"</td>"
+      +"</tr>";
+  }).join("");
+  return "<div style='max-height:340px;overflow-y:auto;resize:vertical;min-height:150px;border:1px solid var(--border);border-radius:8px'>"
+    + "<table style='width:100%;border-collapse:collapse;font-size:11px'>"
+    + "<thead style='position:sticky;top:0;background:var(--bg2)'><tr>"
+      + "<th style='padding:6px 8px;text-align:left'>N° WO</th><th style='padding:6px 8px;text-align:left'>Statut</th><th style='padding:6px 8px;text-align:left'>Magasin/Prest.</th><th style='padding:6px 8px;text-align:left'>Créé</th><th style='padding:6px 8px;text-align:left'>Titre</th>"
+    + "</tr></thead><tbody>"+(rowsHTML||"<tr><td colspan='5' style='padding:10px;color:var(--t3)'>Aucun WO</td></tr>")+"</tbody></table>"
+    + "</div>";
+}
+
+function _buildQUOTableHTML(quoList, limit){
+  limit = limit || 100;
+  var sorted = quoList.slice().sort(function(a,b){
+    var da=a._d?a._d.getTime():0, db=b._d?b._d.getTime():0;
+    return db-da;
+  }).slice(0,limit);
+  var rowsHTML = sorted.map(function(r){
+    var c = qColors[r._s]||"var(--t3)";
+    return "<tr style='cursor:pointer' onclick='openWODetail(\"Devis\","+QUO.indexOf(r)+")'>"
+      +"<td style='padding:5px 8px'>"+(r["Numéro"]||"")+"</td>"
+      +"<td style='padding:5px 8px'><span style='display:inline-flex;align-items:center;gap:5px'><span style='width:7px;height:7px;border-radius:50%;background:"+c+";display:inline-block'></span>"+(qLabels[r._s]||r._s)+"</span></td>"
+      +"<td style='padding:5px 8px'>"+(r._m||r._f||"")+"</td>"
+      +"<td style='padding:5px 8px'>"+fmt(r._c)+"</td>"
+      +"</tr>";
+  }).join("");
+  return "<div style='max-height:340px;overflow-y:auto;resize:vertical;min-height:150px;border:1px solid var(--border);border-radius:8px'>"
+    + "<table style='width:100%;border-collapse:collapse;font-size:11px'>"
+    + "<thead style='position:sticky;top:0;background:var(--bg2)'><tr>"
+      + "<th style='padding:6px 8px;text-align:left'>N° Devis</th><th style='padding:6px 8px;text-align:left'>Statut</th><th style='padding:6px 8px;text-align:left'>Magasin/Prest.</th><th style='padding:6px 8px;text-align:left'>Coût</th>"
+    + "</tr></thead><tbody>"+(rowsHTML||"<tr><td colspan='4' style='padding:10px;color:var(--t3)'>Aucun devis</td></tr>")+"</tbody></table>"
+    + "</div>";
+}
+
+function _openDetailPanel(title, subtitle, bodyHTML){
+  var panel = document.getElementById("store-detail-panel");
+  var titleEl = document.getElementById("store-detail-title");
+  var subtitleEl = document.getElementById("store-detail-subtitle");
+  var body = document.getElementById("store-detail-body");
+  if(!panel||!titleEl||!subtitleEl||!body) return;
+  titleEl.textContent = title;
+  subtitleEl.textContent = subtitle||"";
+  body.innerHTML = bodyHTML;
+  panel.style.display = "block";
+  panel.scrollTop = 0;
+}
+
+// Détail par prestataire — utilisé sur Taux clôture (tableau détail prestataires)
+function openPrestataireDetail(prest){
+  if(!prest) return;
+  var woList = WO.filter(function(r){return r._f===prest;});
+  var prevList = PREV.filter(function(r){return r._prest===prest;});
+  var quoList = QUO.filter(function(r){return r._f===prest;});
+
+  var totalWO = woList.length;
+  var cl = woList.filter(function(r){return r._e==="CL";}).length;
+  var taux = totalWO ? (cl/totalWO*100) : 0;
+  var enAttente = woList.filter(function(r){return r._e==="AT";}).length;
+  var coutTotal = quoList.reduce(function(s,r){return s+r._c;},0);
+  var prevTotal = prevList.length;
+  var prevCL = prevList.filter(function(r){return r._e==="CL";}).length;
+  var prevTaux = prevTotal ? (prevCL/prevTotal*100) : 0;
+
+  var kpiHTML = ""
+    + _kpiCardSD("WO Total", fN(totalWO), "var(--blue)")
+    + _kpiCardSD("Taux clôture", taux.toFixed(1)+"%", taux>=70?"var(--green)":taux>=40?"var(--amber)":"var(--red)")
+    + _kpiCardSD("En attente", fN(enAttente), "var(--red)")
+    + _kpiCardSD("Coût devis", fmt(coutTotal), "#8B5CF6")
+    + _kpiCardSD("WO Préventif", fN(prevTotal), "#8B5CF6")
+    + (prevTotal ? _kpiCardSD("Taux clôture Prév.", prevTaux.toFixed(1)+"%", prevTaux>=70?"var(--green)":"var(--amber)") : "");
+
+  var bodyHTML = "<div style='display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px'>"+kpiHTML+"</div>"
+    + "<div style='margin-bottom:8px;font-size:12px;font-weight:700;color:var(--t2)'>📋 Liste des WO ("+(totalWO>100?"100 plus récents sur "+fN(totalWO):fN(totalWO))+")</div>"
+    + _buildWOTableHTML(woList);
+
+  _openDetailPanel(prest, "Prestataire", bodyHTML);
+}
+
+// Détail par équipement — utilisé sur Récurrence
+function openEquipementDetail(equip){
+  if(!equip) return;
+  var woList = WO.filter(function(r){return String(r["Équipement"]||"").trim()===equip;});
+  var quoList = QUO.filter(function(r){return String(r["Équipement"]||"").trim()===equip;});
+
+  var totalWO = woList.length;
+  var cl = woList.filter(function(r){return r._e==="CL";}).length;
+  var taux = totalWO ? (cl/totalWO*100) : 0;
+  var coutTotal = quoList.reduce(function(s,r){return s+r._c;},0);
+  var sites = new Set(woList.map(function(r){return r._m;})).size;
+
+  var kpiHTML = ""
+    + _kpiCardSD("WO Total", fN(totalWO), "var(--blue)")
+    + _kpiCardSD("Taux clôture", taux.toFixed(1)+"%", taux>=70?"var(--green)":taux>=40?"var(--amber)":"var(--red)")
+    + _kpiCardSD("Sites concernés", fN(sites), "var(--amber)")
+    + _kpiCardSD("Coût cumulé", fmt(coutTotal), "#8B5CF6");
+
+  var bodyHTML = "<div style='display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px'>"+kpiHTML+"</div>"
+    + "<div style='margin-bottom:8px;font-size:12px;font-weight:700;color:var(--t2)'>📋 Liste des WO ("+(totalWO>100?"100 plus récents sur "+fN(totalWO):fN(totalWO))+")</div>"
+    + _buildWOTableHTML(woList);
+
+  _openDetailPanel(equip.length>60?equip.substring(0,60)+"…":equip, "Équipement / type de demande", bodyHTML);
+}
+
+// Détail filtré pour les "flops" GT Opex — montre exactement les WO/devis derrière la barre cliquée
+function openGTOpexFlopDetail(mag, kind, type){
+  if(!mag) return;
+  var titre, bodyHTML;
+  if(kind==="devis"){
+    var quoList = QUO.filter(function(r){return (r._m===mag||r["Compte"]===mag) && r._t===type && (r._s==="OUV"||r._s==="AT"||r._s==="ATDA");});
+    titre = "Devis en attente — "+mag;
+    bodyHTML = "<div style='margin-bottom:8px;font-size:12px;color:var(--t2)'>"+fN(quoList.length)+" devis en attente de validation</div>"
+      + _buildQUOTableHTML(quoList);
+  } else {
+    var woList = WO.filter(function(r){return r._m===mag && r._t===type && r._e==="AT" && r._age>30;});
+    titre = "WO en attente >30j — "+mag;
+    bodyHTML = "<div style='margin-bottom:8px;font-size:12px;color:var(--t2)'>"+fN(woList.length)+" WO en attente d'approbation depuis plus de 30 jours</div>"
+      + _buildWOTableHTML(woList);
+  }
+  _openDetailPanel(titre, type, bodyHTML);
+}
+
 // ═══════════════════════════════════════════════════════════════
 // DIAGNOSTIC TEMPORAIRE — à retirer une fois les données validées.
 // Ouvrir la console navigateur (F12 → Console) après chargement des
@@ -1508,6 +1774,7 @@ function buildData(){
     r._cat=r._n>=9?"P":r._n>=7?"N":"D";
     r._f=exFourn(r["Groupe d'affectation"]);
     r._r=String(r["Region"]||r["Région"]||"INCONNU").trim();
+    r._m=String(r["Compte"]||"").trim();
     r._mo=toMonth(r["Créé"]);
     r._d=parseDate(r["Créé"]);
   });
@@ -1739,7 +2006,8 @@ function renderTaux(){
   var tb=document.getElementById("tb-taux");
   if(tb)tb.innerHTML=data.map(function(d,i){
     var pp=d.tx>=70?"pg":d.tx>=50?"pb":d.tx>=35?"pa":"pr";
-    return"<tr><td class='trank'>"+(i+1)+"</td><td>"+d.l+"</td><td style='font-size:10px;color:var(--t3)'>"+d.regs.substring(0,30)+"</td><td>"+fN(d.n)+"</td><td>"+fN(d.cl)+"</td><td><span class='pill "+pp+"'>"+d.tx.toFixed(1)+"%</span></td><td>"+fN(d.at)+"</td><td>"+fN(d.an)+"</td><td style='color:"+(d.tu>0?"var(--red)":"var(--t3)")+"'>"+fN(d.tu)+"</td></tr>";
+    var safe=String(d.l).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/'/g,"&#39;");
+    return"<tr><td class='trank'>"+(i+1)+"</td><td style='color:var(--blue);cursor:pointer' data-prest='"+safe+"' onclick='openPrestataireDetail(this.dataset.prest)' title='Cliquer pour le détail'>"+d.l+"</td><td style='font-size:10px;color:var(--t3)'>"+d.regs.substring(0,30)+"</td><td>"+fN(d.n)+"</td><td>"+fN(d.cl)+"</td><td><span class='pill "+pp+"'>"+d.tx.toFixed(1)+"%</span></td><td>"+fN(d.at)+"</td><td>"+fN(d.an)+"</td><td style='color:"+(d.tu>0?"var(--red)":"var(--t3)")+"'>"+fN(d.tu)+"</td></tr>";
   }).join("");
 }
 
@@ -1782,7 +2050,8 @@ function renderMag(){
   ]);
 
   hbars("b-mag-at",data.slice(0,20).map(function(d){return{l:d.mag,v:d.at};}),
-    function(d){var p=data[0]?d.v/data[0].at*100:0;return p>60?"var(--red)":p>30?"var(--amber)":"var(--blue)";},function(d){return fN(d.v);});
+    function(d){var p=data[0]?d.v/data[0].at*100:0;return p>60?"var(--red)":p>30?"var(--amber)":"var(--blue)";},function(d){return fN(d.v);},20,
+    function(d){openStoreDetail(d.l);});
 
   var regMap={};
   data.forEach(function(d){
@@ -1804,7 +2073,7 @@ function renderMag(){
     var safe=d.mag.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/'/g,"&#39;");
     return "<tr>"
       +"<td style='color:var(--t3)'>"+(i+1)+"</td>"
-      +"<td style='font-weight:600'>"+(d.mag.length>35?d.mag.substring(0,35)+"...":d.mag)+"</td>"
+      +"<td style='font-weight:600;color:var(--blue);cursor:pointer' data-mag='"+safe+"' onclick='openStoreDetail(this.dataset.mag)' title='Cliquer pour le détail'>"+(d.mag.length>35?d.mag.substring(0,35)+"...":d.mag)+"</td>"
       +"<td style='color:var(--t2)'>"+d.reg.replace(/_/g," ")+"</td>"
       +"<td>"+fN(d.n)+"</td>"
       +"<td style='color:var(--green)'>"+fN(d.cl)+"</td>"
@@ -2029,14 +2298,15 @@ function renderRec(){
     {l:"Sites touchés",v:fN(new Set(data.flatMap(function(d){return[d.l];})).size),s:"",c:"var(--blue)"},
   ]);
   hbars("b-rec-vol",data.slice(0,20).map(function(d){return{l:d.l,v:d.n};}),
-    "#D85A30",function(d){return fN(d.v)+" WO";});
+    "#D85A30",function(d){return fN(d.v)+" WO";},20,function(d){openEquipementDetail(d.l);});
   hbars("b-rec-cout",data.slice(0,20).sort(function(a,b){return b.cout-a.cout;}).map(function(d){return{l:d.l,v:d.cout};}),
-    "#8B5CF6",function(d){return fmt(d.v);});
+    "#8B5CF6",function(d){return fmt(d.v);},20,function(d){openEquipementDetail(d.l);});
   var tb=document.getElementById("tb-rec");
   if(tb)tb.innerHTML=data.slice(0,100).map(function(d,i){
     var pp=d.tx>=70?"pg":d.tx>=50?"pb":d.tx>=35?"pa":"pr";
     var sig=d.n>=20&&d.tx<50?"<span class='pill pr'>Critique</span>":d.n>=10?"<span class='pill pa'>Surveiller</span>":"<span class='pill pg'>OK</span>";
-    return"<tr><td class='trank'>"+(i+1)+"</td><td>"+d.l+"</td><td>"+fN(d.n)+"</td><td>"+d.sites+"</td><td><span class='pill "+pp+"'>"+d.tx.toFixed(1)+"%</span></td><td>"+fmt(d.cout)+"</td><td>"+sig+"</td></tr>";
+    var safe=String(d.l).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/'/g,"&#39;");
+    return"<tr><td class='trank'>"+(i+1)+"</td><td style='color:var(--blue);cursor:pointer' data-eq='"+safe+"' onclick='openEquipementDetail(this.dataset.eq)' title='Cliquer pour le détail'>"+d.l+"</td><td>"+fN(d.n)+"</td><td>"+d.sites+"</td><td><span class='pill "+pp+"'>"+d.tx.toFixed(1)+"%</span></td><td>"+fmt(d.cout)+"</td><td>"+sig+"</td></tr>";
   }).join("");
 }
 
@@ -4216,12 +4486,40 @@ function renderPrev(){
       +Object.entries(pMap).sort(function(a,b){return b[1].n-a[1].n;}).slice(0,50).map(function(e,i){
         var tx=e[1].n?e[1].cl/e[1].n*100:0;
         var txC=tx>=85?"var(--green)":tx>=60?"var(--blue)":tx>=40?"var(--amber)":"var(--red)";
+        var safe=String(e[0]).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/'/g,"&#39;");
         return "<tr style='background:"+(i%2===0?"var(--card)":"var(--card2)")+"'>"
-          +"<td style='font-weight:600'>"+e[0]+"</td>"
+          +"<td style='font-weight:600;color:var(--blue);cursor:pointer' data-prest='"+safe+"' onclick='openPrestataireDetail(this.dataset.prest)' title='Cliquer pour le détail'>"+e[0]+"</td>"
           +"<td>"+fN(e[1].n)+"</td>"
           +"<td style='color:var(--green)'>"+fN(e[1].cl)+"</td>"
           +"<td><span style='font-weight:700;color:"+txC+"'>"+tx.toFixed(1)+"%</span></td>"
           +"<td style='color:var(--red)'>"+fN(data.filter(function(r){return r._prest===e[0]&&r._e==="APPRO";}).length)+"</td>"
+          +"</tr>";
+      }).join("")
+      +"</tbody></table></div>";
+  }
+
+  // Tableau taux par magasin (même logique que par prestataire)
+  var magMap={};
+  data.forEach(function(r){
+    if(!magMap[r._mag])magMap[r._mag]={n:0,cl:0,reg:r._reg};
+    magMap[r._mag].n++;if(r._e==="CL")magMap[r._mag].cl++;
+  });
+  var tbM=document.getElementById("pv-table-mag");
+  if(tbM){
+    tbM.innerHTML="<div class='ct' style='margin-bottom:8px'>Taux de clôture par magasin</div><div class='tscroll'><table><thead><tr>"
+      +"<th>Magasin</th><th>Région</th><th>Total</th><th>Clôturés</th><th>Taux</th><th>Att. appro.</th>"
+      +"</tr></thead><tbody>"
+      +Object.entries(magMap).sort(function(a,b){return b[1].n-a[1].n;}).slice(0,100).map(function(e,i){
+        var tx=e[1].n?e[1].cl/e[1].n*100:0;
+        var txC=tx>=85?"var(--green)":tx>=60?"var(--blue)":tx>=40?"var(--amber)":"var(--red)";
+        var safe=String(e[0]).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/'/g,"&#39;");
+        return "<tr style='background:"+(i%2===0?"var(--card)":"var(--card2)")+"'>"
+          +"<td style='font-weight:600;color:var(--blue);cursor:pointer' data-mag='"+safe+"' onclick='openStoreDetail(this.dataset.mag)' title='Cliquer pour le détail'>"+e[0]+"</td>"
+          +"<td style='color:var(--t2)'>"+(e[1].reg||"").replace(/_/g," ")+"</td>"
+          +"<td>"+fN(e[1].n)+"</td>"
+          +"<td style='color:var(--green)'>"+fN(e[1].cl)+"</td>"
+          +"<td><span style='font-weight:700;color:"+txC+"'>"+tx.toFixed(1)+"%</span></td>"
+          +"<td style='color:var(--red)'>"+fN(data.filter(function(r){return r._mag===e[0]&&r._e==="APPRO";}).length)+"</td>"
           +"</tr>";
       }).join("")
       +"</tbody></table></div>";
@@ -4835,11 +5133,10 @@ function renderGTOpex(){
   renderTauxRegion(wo, "Market", "gtopex-tc-market", "gtopex-tbl-market");
 }
 
-function renderFlop10Devis(quo, type, canvasId){
+function renderFlop10Devis(quo, type, containerId){
   var data = quo.filter(function(r){
     return r._t===type && (r._s==="OUV"||r._s==="AT"||r._s==="ATDA");
   });
-  console.log("GT Opex Devis", type, ":", data.length, "en attente");
   var mMap = {};
   data.forEach(function(r){
     var m=r._m||r["Compte"]||""; if(!m) return;
@@ -4847,27 +5144,16 @@ function renderFlop10Devis(quo, type, canvasId){
     mMap[m].n++;
   });
   var sorted = Object.entries(mMap).sort(function(a,b){return b[1].n-a[1].n;}).slice(0,10);
-  if(!sorted.length){
-    if(CHARTS[canvasId]){try{CHARTS[canvasId].destroy();}catch(e){}} return;
-  }
-  var labels = sorted.map(function(e){return e[0].length>18?e[0].substring(0,18)+"…":e[0];});
-  var vals   = sorted.map(function(e){return e[1].n;});
-  var colors = sorted.map(function(e){return REG_COLORS[e[1].reg]||"#378ADD";});
-  gtChart(canvasId,"bar",labels,
-    [{data:vals, backgroundColor:colors, borderRadius:4}],
-    {plugins:{legend:{display:false}},
-     indexAxis:"x",
-     scales:{
-       x:{ticks:{color:tc(),font:{size:8},maxRotation:35},grid:{display:false}},
-       y:{ticks:{color:tc(),font:{size:9}},grid:{color:gc()},title:{display:true,text:"Nb devis",color:tc(),font:{size:9}}}
-     }});
+  hbars(containerId, sorted.map(function(e){return{l:e[0],v:e[1].n};}),
+    function(d,i){return REG_COLORS[sorted[i]?sorted[i][1].reg:""]||"#378ADD";},
+    function(d){return fN(d.v)+" devis";}, 10,
+    function(d){openGTOpexFlopDetail(d.l,"devis",type);});
 }
 
-function renderFlop10WO(wo, type, canvasId){
+function renderFlop10WO(wo, type, containerId){
   var data = wo.filter(function(r){
     return r._t===type && r._e==="AT" && r._age>30;
   });
-  console.log("GT Opex WO att>30j", type, ":", data.length);
   var mMap = {};
   data.forEach(function(r){
     var m=r._m||""; if(!m) return;
@@ -4875,20 +5161,10 @@ function renderFlop10WO(wo, type, canvasId){
     mMap[m].n++;
   });
   var sorted = Object.entries(mMap).sort(function(a,b){return b[1].n-a[1].n;}).slice(0,10);
-  if(!sorted.length){
-    if(CHARTS[canvasId]){try{CHARTS[canvasId].destroy();}catch(e){}} return;
-  }
-  var labels = sorted.map(function(e){return e[0].length>18?e[0].substring(0,18)+"…":e[0];});
-  var vals   = sorted.map(function(e){return e[1].n;});
-  var colors = sorted.map(function(e){return REG_COLORS[e[1].reg]||"#E24B4A";});
-  gtChart(canvasId,"bar",labels,
-    [{data:vals, backgroundColor:colors, borderRadius:4}],
-    {plugins:{legend:{display:false}},
-     indexAxis:"x",
-     scales:{
-       x:{ticks:{color:tc(),font:{size:8},maxRotation:35},grid:{display:false}},
-       y:{ticks:{color:tc(),font:{size:9}},grid:{color:gc()},title:{display:true,text:"Nb WO",color:tc(),font:{size:9}}}
-     }});
+  hbars(containerId, sorted.map(function(e){return{l:e[0],v:e[1].n};}),
+    function(d,i){return REG_COLORS[sorted[i]?sorted[i][1].reg:""]||"#E24B4A";},
+    function(d){return fN(d.v)+" WO";}, 10,
+    function(d){openGTOpexFlopDetail(d.l,"wo",type);});
 }
 
 function renderTauxRegion(wo, type, canvasId, tblId){
@@ -4911,17 +5187,18 @@ function renderTauxRegion(wo, type, canvasId, tblId){
       borderColor: REG_COLORS[reg],
       backgroundColor: REG_COLORS[reg]+"22",
       tension: 0.3,
-      borderWidth: 2,
-      pointRadius: 2,
+      borderWidth: 2.5,
+      pointRadius: 3,
+      pointHoverRadius: 5,
       spanGaps: true
     };
   }).filter(Boolean);
 
   gtChart(canvasId,"line",mos.map(mL),datasets,{
-    plugins:{legend:{position:"bottom",labels:{color:tc(),font:{size:9},boxWidth:8}}},
+    plugins:{legend:{position:"bottom",labels:{color:tc(),font:{size:10},boxWidth:10,padding:10}}},
     scales:{
-      x:{ticks:{color:tc(),font:{size:8}},grid:{color:gc()}},
-      y:{min:0,max:100,ticks:{color:tc(),font:{size:9},callback:function(v){return v+"%";}},grid:{color:gc()}}
+      x:{ticks:{color:tc(),font:{size:10}},grid:{color:gc()}},
+      y:{min:0,max:100,ticks:{color:tc(),font:{size:10},callback:function(v){return v+"%";}},grid:{color:gc()}}
     }
   });
 
