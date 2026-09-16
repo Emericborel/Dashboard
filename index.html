@@ -457,6 +457,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
           style="width:260px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:var(--text);border-radius:7px;padding:6px 10px;font-size:11px">
         <div id="global-search-results" style="display:none;position:absolute;top:calc(100% + 4px);left:0;width:420px;max-height:420px;overflow-y:auto;background:var(--card);border:1px solid var(--border);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.4);z-index:500"></div>
       </div>
+      <button class="btn-sm" onclick="_showDiagPanel()" title="Diagnostic données chargées" style="padding:6px 9px;background:rgba(255,255,255,.06);color:var(--t3);border:1px solid rgba(255,255,255,.1);border-radius:6px;font-size:11px;cursor:pointer">🔧</button>
       <button class="btn-sm btn-reload" onclick="reload()">↺ Nouveau fichier</button>
     </div>
   </div>
@@ -576,13 +577,18 @@ tr:hover td{background:rgba(255,255,255,.025)}
       </div>
       <div class="g1 card">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:8px">
-          <div class="ct" style="margin-bottom:0">Tableau détail magasins</div>
+          <div class="ct" style="margin-bottom:0">Taux de clôture par magasin</div>
           <div style="display:flex;gap:8px">
             <button onclick="exporterMagasinsPDF()" style="padding:6px 14px;background:var(--red);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">📄 PDF</button>
             <button onclick="exporterMagasins()" style="padding:6px 14px;background:var(--green);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">📥 Excel</button>
           </div>
         </div>
-        <div class="tscroll"><table><thead><tr><th>#</th><th>Magasin</th><th>Région</th><th>Total WO</th><th>En attente</th><th>% Attente</th><th>TU ouverts</th><th>Âge moy.</th></tr></thead><tbody id="tb-mag"></tbody></table></div>
+        <div class="tscroll"><table><thead><tr><th>#</th><th>Magasin</th><th>Région</th><th>Total WO</th><th>WO Clôturés</th><th>Att. approbation</th><th>Annulées</th><th>Taux clôture</th><th>Actions</th></tr></thead><tbody id="tb-mag"></tbody></table></div>
+      </div>
+      <div class="g3">
+        <div class="card"><div class="ct">Top 10 magasins — WO Clôturés</div><div id="b-mag-top-cl"></div></div>
+        <div class="card"><div class="ct">Top 10 magasins — WO Envoyés</div><div id="b-mag-top-env"></div></div>
+        <div class="card"><div class="ct">Top 10 magasins — Devis approuvés ERP</div><div id="b-mag-top-quo"></div></div>
       </div>
     </div>
 
@@ -596,6 +602,10 @@ tr:hover td{background:rgba(255,255,255,.025)}
       <div class="g2">
         <div class="card"><div class="ct">Top sous-familles — Coût</div><div id="b-sf"></div></div>
         <div class="card"><div class="ct">Top prestataires — Coût devis</div><div id="b-qf"></div></div>
+      </div>
+      <div class="g1 card">
+        <div class="ct">Top sous-familles — Coût (devis approuvés ERP uniquement)</div>
+        <div id="b-sf-app"></div>
       </div>
       <div class="g2">
         <div class="card"><div class="ct">Coût par région (k€)</div><div class="cw" style="height:160px"><canvas id="c-qreg"></canvas></div></div>
@@ -725,6 +735,9 @@ tr:hover td{background:rgba(255,255,255,.025)}
           </select>
           <select id="al-prest" class="fs" style="min-width:160px" onchange="renderAlertes()">
             <option value="">Tous prestataires</option>
+          </select>
+          <select id="al-mag" class="fs" style="min-width:160px" onchange="renderAlertes()">
+            <option value="">Tous magasins</option>
           </select>
           <button onclick="exporterAlertes()" style="padding:6px 14px;background:var(--green);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">📥 Excel</button>
         </div>
@@ -1580,6 +1593,36 @@ function closeStoreDetail(){
   if(panel) panel.style.display = "none";
 }
 
+// Diagnostic à la demande — clic sur le bouton 🔧 du header. N'affiche rien
+// automatiquement ; utile pour comprendre en un coup d'œil ce qui est
+// réellement en mémoire si un type de données semble mal interprété.
+function _showDiagPanel(){
+  var old=document.getElementById("_diag_panel");
+  if(old){ old.remove(); return; }
+  function summary(arr, label, statutField, rawField){
+    if(!arr || arr.length===0) return "<div style='margin-bottom:10px'><b style='color:#F59E0B'>"+label+"</b> : aucune donnée en mémoire</div>";
+    var cols = Object.keys(arr[0]).filter(function(k){return k.indexOf("_")!==0;});
+    var codeMap={};
+    arr.forEach(function(r){ var c=r[statutField]; codeMap[c]=(codeMap[c]||0)+1; });
+    var rawSample = rawField ? arr[0][rawField] : "";
+    return "<div style='margin-bottom:14px'>"
+      + "<b style='color:#F59E0B'>"+label+"</b> — "+arr.length+" lignes<br>"
+      + "Colonnes : <span style='font-size:9px'>"+JSON.stringify(cols)+"</span><br>"
+      + (rawField ? "Échantillon "+rawField+" brut : <b>"+JSON.stringify(rawSample)+"</b><br>" : "")
+      + "Codes statut : <span style='font-size:9px'>"+JSON.stringify(codeMap)+"</span>"
+      + "</div>";
+  }
+  var box=document.createElement("div");
+  box.id="_diag_panel";
+  box.style.cssText="position:fixed;bottom:20px;right:20px;background:#12172B;border:2px solid #378ADD;border-radius:10px;padding:14px 18px;color:#fff;font-family:monospace;font-size:11px;z-index:99999;max-width:460px;max-height:70vh;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,.5)";
+  box.innerHTML = "<div style='font-weight:700;margin-bottom:10px;color:#378ADD;font-size:13px'>🔧 Diagnostic — données en mémoire</div>"
+    + summary(WO,"WO Curatif","_e","État")
+    + summary(PREV,"WO Préventif","_e","_etat")
+    + summary(QUO,"Devis (QUO)","_s","Statut du devis")
+    + "<div style='margin-top:8px;text-align:right'><button onclick='document.getElementById(\"_diag_panel\").remove()' style='background:#378ADD;border:none;color:#fff;padding:4px 10px;border-radius:5px;cursor:pointer;font-size:11px'>Fermer</button></div>";
+  document.body.appendChild(box);
+}
+
 // ─── Fonctions partagées pour tous les panneaux de détail (magasin, prestataire, équipement, GT Opex) ───
 
 function _buildWOTableHTML(woList, limit){
@@ -2195,10 +2238,11 @@ function renderMag(){
   var mMap={};
   wo.forEach(function(r){
     var m=r._m;if(!m)return;
-    if(!mMap[m])mMap[m]={n:0,at:0,cl:0,tu:0,reg:r._r,ages:[]};
+    if(!mMap[m])mMap[m]={n:0,at:0,cl:0,an:0,tu:0,reg:r._r,ages:[]};
     mMap[m].n++;
     if(r._e==="AT")mMap[m].at++;
     if(r._e==="CL")mMap[m].cl++;
+    if(r._e==="AN")mMap[m].an++;
     if(r._p==="TU"&&r._e!=="CL"&&r._e!=="AN")mMap[m].tu++;
     if(r._age>=0)mMap[m].ages.push(r._age);
   });
@@ -2209,7 +2253,7 @@ function renderMag(){
       var taux=m.n?m.cl/m.n*100:0;
       var pct=m.n?m.at/m.n*100:0;
       var mAge=m.ages.length?Math.round(m.ages.reduce(function(a,b){return a+b;},0)/m.ages.length):0;
-      return{mag:e[0],reg:m.reg,n:m.n,at:m.at,cl:m.cl,tu:m.tu,pct:pct,taux:taux,mAge:mAge};
+      return{mag:e[0],reg:m.reg,n:m.n,at:m.at,cl:m.cl,an:m.an,tu:m.tu,pct:pct,taux:taux,mAge:mAge};
     })
     .sort(function(a,b){return b.at-a.at;});
 
@@ -2228,18 +2272,36 @@ function renderMag(){
     function(d){var p=data[0]?d.v/data[0].at*100:0;return p>60?"var(--red)":p>30?"var(--amber)":"var(--blue)";},function(d){return fN(d.v);},20,
     function(d){openStoreDetail(d.l);});
 
+  // Top 10 magasins — WO Clôturés
+  hbars("b-mag-top-cl",data.slice().sort(function(a,b){return b.cl-a.cl;}).slice(0,10).map(function(d){return{l:d.mag,v:d.cl};}),
+    "var(--green)",function(d){return fN(d.v);},10,function(d){openStoreDetail(d.l);});
+  // Top 10 magasins — WO Envoyés (volume total)
+  hbars("b-mag-top-env",data.slice().sort(function(a,b){return b.n-a.n;}).slice(0,10).map(function(d){return{l:d.mag,v:d.n};}),
+    "var(--blue)",function(d){return fN(d.v);},10,function(d){openStoreDetail(d.l);});
+  // Top 10 magasins — Devis approuvés ERP
+  var quoAppMap={};
+  fQUO().forEach(function(r){
+    if(r._s!=="APP")return;
+    var m=r._m||r["Compte"]||"";if(!m)return;
+    quoAppMap[m]=(quoAppMap[m]||0)+1;
+  });
+  hbars("b-mag-top-quo",Object.entries(quoAppMap).sort(function(a,b){return b[1]-a[1];}).slice(0,10).map(function(e){return{l:e[0],v:e[1]};}),
+    "#8B5CF6",function(d){return fN(d.v);},10,function(d){openStoreDetail(d.l);});
+
   var regMap={};
   data.forEach(function(d){
     if(!regMap[d.reg])regMap[d.reg]={n:0,at:0};
     regMap[d.reg].n+=d.n;regMap[d.reg].at+=d.at;
   });
   var regs=Object.keys(regMap).sort();
-  pvCreateChart("c-mag-reg","bar",regs.map(function(r){return r.replace(/_/g," ");}),
-    [{data:regs.map(function(r){return regMap[r].n?+(regMap[r].at/regMap[r].n*100).toFixed(1):0;}),
-      backgroundColor:regs.map(function(r){var p=regMap[r].n?regMap[r].at/regMap[r].n*100:0;return p>30?"#E24B4A":p>15?"#BA7517":"#378ADD";}),borderRadius:4}],
-    {plugins:{legend:{display:false}},scales:{
-      x:{ticks:{color:tc(),font:{size:9}},grid:{color:gc()}},
-      y:{ticks:{color:tc(),font:{size:9},callback:function(v){return v+"%";}},grid:{color:gc()}}}});
+  try{
+    pvCreateChart("c-mag-reg","bar",regs.map(function(r){return r.replace(/_/g," ");}),
+      [{data:regs.map(function(r){return regMap[r].n?+(regMap[r].at/regMap[r].n*100).toFixed(1):0;}),
+        backgroundColor:regs.map(function(r){var p=regMap[r].n?regMap[r].at/regMap[r].n*100:0;return p>30?"#E24B4A":p>15?"#BA7517":"#378ADD";}),borderRadius:4}],
+      {plugins:{legend:{display:false}},scales:{
+        x:{ticks:{color:tc(),font:{size:9}},grid:{color:gc()}},
+        y:{ticks:{color:tc(),font:{size:9},callback:function(v){return v+"%";}},grid:{color:gc()}}}});
+  }catch(e){ console.log("c-mag-reg chart error:",e); }
 
   var tb=document.getElementById("tb-mag");
   if(!tb)return;
@@ -2252,10 +2314,9 @@ function renderMag(){
       +"<td style='color:var(--t2)'>"+d.reg.replace(/_/g," ")+"</td>"
       +"<td>"+fN(d.n)+"</td>"
       +"<td style='color:var(--green)'>"+fN(d.cl)+"</td>"
-      +"<td><span style='font-weight:700;color:"+txC+"'>"+d.taux.toFixed(1)+"%</span></td>"
       +"<td style='color:var(--red)'>"+fN(d.at)+"</td>"
-      +"<td style='color:"+(d.tu>0?"var(--red)":"var(--t3)")+"'>"+fN(d.tu)+"</td>"
-      +"<td>"+d.mAge+"j</td>"
+      +"<td style='color:var(--t3)'>"+fN(d.an)+"</td>"
+      +"<td><span style='font-weight:700;color:"+txC+"'>"+d.taux.toFixed(1)+"%</span></td>"
       +"<td style='white-space:nowrap'>"
         +"<button data-mag='"+safe+"' onclick='rapportMagasin(this.dataset.mag)' "
         +"style='padding:3px 8px;background:var(--blue);color:#fff;border:none;border-radius:4px;font-size:10px;cursor:pointer;margin-right:3px'>📋</button>"
@@ -2296,6 +2357,10 @@ function renderDevis(){
   var sfMap={};quo.forEach(function(r){if(r._sf){if(!sfMap[r._sf])sfMap[r._sf]=0;sfMap[r._sf]+=r._c;}});
   hbars("b-sf",Object.entries(sfMap).sort(function(a,b){return b[1]-a[1];}).slice(0,10).map(function(e){return{l:e[0],v:e[1]};}),
     function(d,i){return PAL[i%PAL.length];},function(d){return fmt(d.v);});
+  // SF — devis approuvés ERP uniquement
+  var sfAppMap={};quo.forEach(function(r){if(r._sf&&r._s==="APP"){if(!sfAppMap[r._sf])sfAppMap[r._sf]=0;sfAppMap[r._sf]+=r._c;}});
+  hbars("b-sf-app",Object.entries(sfAppMap).sort(function(a,b){return b[1]-a[1];}).slice(0,10).map(function(e){return{l:e[0],v:e[1]};}),
+    "var(--green)",function(d){return fmt(d.v);});
   // Fourn coût
   var qfMap={};quo.forEach(function(r){if(r._f!=="Inconnu"){if(!qfMap[r._f])qfMap[r._f]=0;qfMap[r._f]+=r._c;}});
   hbars("b-qf",Object.entries(qfMap).sort(function(a,b){return b[1]-a[1];}).slice(0,10).map(function(e){return{l:e[0],v:e[1]};}),
@@ -4075,6 +4140,7 @@ function copierLien(url){
 function renderAlertes(){
   var reg   = (document.getElementById("al-reg")   ? document.getElementById("al-reg").value   : "") || REGION_ACTIVE;
   var prest = document.getElementById("al-prest")  ? document.getElementById("al-prest").value  : "";
+  var mag   = document.getElementById("al-mag")    ? document.getElementById("al-mag").value    : "";
   var today = new Date();
   var SEUIL = 7;
 
@@ -4094,10 +4160,27 @@ function renderAlertes(){
     else prest="";
   }
 
+  // Mettre à jour la liste magasins selon la région choisie
+  var selM = document.getElementById("al-mag");
+  if(selM){
+    var prevMag = selM.value;
+    var woScopeM = reg ? WO.filter(function(r){return r._r===reg;}) : WO;
+    var mags = [...new Set(woScopeM.map(function(r){return r._m;}).filter(Boolean))].sort();
+    while(selM.options.length>1) selM.remove(1);
+    mags.forEach(function(m){
+      var o=document.createElement("option");
+      o.value=m; o.textContent=m;
+      selM.appendChild(o);
+    });
+    if(prevMag && mags.indexOf(prevMag)>=0) selM.value=prevMag;
+    else mag="";
+  }
+
   // Filtrer WO
   var woF = WO.filter(function(r){
     if(reg   && r._r !== reg)   return false;
     if(prest && r._f !== prest) return false;
+    if(mag   && r._m !== mag)   return false;
     return true;
   });
 
@@ -4105,6 +4188,7 @@ function renderAlertes(){
   var quoF = QUO.filter(function(r){
     if(reg   && r._r !== reg)   return false;
     if(prest && r._f !== prest) return false;
+    if(mag   && r._m !== mag)   return false;
     return true;
   });
 
@@ -4151,7 +4235,8 @@ function renderAlertes(){
     "#BA7517",
     woAT,
     ["Numéro","Compte","Region","Groupe d'affectation","Priorité","Créé","_age"],
-    ["N° WO","Magasin","Région","Prestataire","Priorité","Date création","Jours"]
+    ["N° WO","Magasin","Région","Prestataire","Priorité","Date création","Jours"],
+    "wo-at"
   );
 
   // ── TABLEAU WO TRÈS URGENTS ──
@@ -4161,7 +4246,8 @@ function renderAlertes(){
     "#E24B4A",
     woTU,
     ["Numéro","Compte","Region","Groupe d'affectation","État","Créé","_age"],
-    ["N° WO","Magasin","Région","Prestataire","Statut","Date création","Jours"]
+    ["N° WO","Magasin","Région","Prestataire","Statut","Date création","Jours"],
+    "wo-tu"
   );
 
   // ── TABLEAU DEVIS APPROUVÉS ERP (BC transmis) ──
@@ -4172,14 +4258,16 @@ function renderAlertes(){
       "#1D9E75",
       quoNA,
       ["Numéro","Compte","Region","Groupe d'affectation","Statut du devis","Coût total","_age"],
-      ["N° Devis","Magasin","Région","Prestataire","Statut","Montant","Jours"]
+      ["N° Devis","Magasin","Région","Prestataire","Statut","Montant","Jours"],
+      "quo-na"
     ) +
     alerteTableau(
       "📄 Devis en attente d'approbation depuis plus de "+SEUIL+" jours",
       "#378ADD",
       quoAT,
       ["Numéro","Compte","Region","Groupe d'affectation","Statut du devis","Coût total","_age"],
-      ["N° Devis","Magasin","Région","Prestataire","Statut","Montant","Jours"]
+      ["N° Devis","Magasin","Région","Prestataire","Statut","Montant","Jours"],
+      "quo-at"
     );
 }
 
@@ -4190,18 +4278,20 @@ function alerteKpi(label, val, bg, color){
     +"</div>";
 }
 
-function alerteTableau(titre, couleur, rows, cols, headers){
+function alerteTableau(titre, couleur, rows, cols, headers, id){
   if(!rows || rows.length===0){
     return "<div style='background:rgba(29,158,117,.06);border:1px solid rgba(29,158,117,.2);border-radius:8px;padding:12px 16px;margin-bottom:8px'>"
       +"<div style='font-size:12px;font-weight:700;color:#1D9E75'>✅ "+titre.replace(/[⏳🚨📄]/g,"").trim()+" — Aucune alerte</div>"
       +"</div>";
   }
+  var bodyId="al-body-"+id;
+  var chevId="al-chev-"+id;
   var html="<div style='margin-bottom:8px'>"
-    +"<div style='display:flex;align-items:center;justify-content:space-between;background:"+couleur+"18;border:1px solid "+couleur+"44;border-radius:8px 8px 0 0;padding:10px 14px'>"
-    +"<div style='font-size:12px;font-weight:700;color:"+couleur+"'>"+titre+"</div>"
+    +"<div onclick='_toggleAlerteTableau(\""+id+"\")' style='cursor:pointer;display:flex;align-items:center;justify-content:space-between;background:"+couleur+"18;border:1px solid "+couleur+"44;border-radius:8px 8px 0 0;padding:10px 14px'>"
+    +"<div style='font-size:12px;font-weight:700;color:"+couleur+"'><span id='"+chevId+"' style='display:inline-block;transition:transform .15s'>▾</span> "+titre+"</div>"
     +"<div style='font-size:11px;color:var(--t2);font-weight:600'>"+fN(rows.length)+" alertes</div>"
     +"</div>"
-    +"<div style='overflow-x:auto;border:1px solid "+couleur+"22;border-top:none;border-radius:0 0 8px 8px'>"
+    +"<div id='"+bodyId+"' style='overflow-x:auto;border:1px solid "+couleur+"22;border-top:none;border-radius:0 0 8px 8px'>"
     +"<table style='width:100%;border-collapse:collapse;font-size:11px'>"
     +"<thead><tr style='background:var(--card2)'>";
   headers.forEach(function(h){
@@ -4234,12 +4324,22 @@ function alerteTableau(titre, couleur, rows, cols, headers){
   return html;
 }
 
+function _toggleAlerteTableau(id){
+  var body=document.getElementById("al-body-"+id);
+  var chev=document.getElementById("al-chev-"+id);
+  if(!body) return;
+  var isHidden=body.style.display==="none";
+  body.style.display=isHidden?"":"none";
+  if(chev) chev.style.transform=isHidden?"rotate(0deg)":"rotate(-90deg)";
+}
+
 function exporterAlertes(){
   var reg   = document.getElementById("al-reg")   ? document.getElementById("al-reg").value   : "";
   var prest = document.getElementById("al-prest") ? document.getElementById("al-prest").value : "";
+  var mag   = document.getElementById("al-mag")   ? document.getElementById("al-mag").value   : "";
   var SEUIL = 7;
-  var woF=WO.filter(function(r){ return (!reg||r._r===reg)&&(!prest||r._f===prest); });
-  var quoF=QUO.filter(function(r){ return (!reg||r._r===reg)&&(!prest||r._f===prest); });
+  var woF=WO.filter(function(r){ return (!reg||r._r===reg)&&(!prest||r._f===prest)&&(!mag||r._m===mag); });
+  var quoF=QUO.filter(function(r){ return (!reg||r._r===reg)&&(!prest||r._f===prest)&&(!mag||r._m===mag); });
   var woAT=woF.filter(function(r){ return r._e==="AT"&&r._age>=SEUIL; });
   var woTU=woF.filter(function(r){ return r._p==="TU"&&r._e!=="CL"&&r._e!=="AN"&&r._age>=SEUIL; });
   var quoNA=quoF.filter(function(r){ return r._s!=="AP"&&r._s!=="AN"&&r._age>=SEUIL&&r._c>0; });
@@ -4279,107 +4379,121 @@ function chargerDepuisSheetAvecProgress(){
   var url=SCRIPT_URL||localStorage.getItem("mc_script_url")||"";
   if(!url){toast("Configurez l'URL Apps Script",true);_autoLoadEnCours=false;return;}
 
-  // Créer une modal de progression
+  // Créer une modal de progression — statut détaillé par type, chargés en parallèle
   var modal=document.createElement("div");
   modal.id="_load_modal";
   modal.style.cssText="position:fixed;inset:0;background:rgba(10,12,28,.9);z-index:99999;display:flex;align-items:center;justify-content:center";
-  modal.innerHTML="<div style='background:var(--card);border:1px solid var(--border);border-radius:12px;padding:28px 36px;min-width:320px;text-align:center'>"
-    +"<div style='font-size:18px;font-weight:700;color:var(--text);margin-bottom:16px'>⚡ Chargement automatique</div>"
-    +"<div id='_load_step' style='font-size:12px;color:var(--t2);margin-bottom:14px'>Initialisation...</div>"
+  modal.innerHTML="<div style='background:var(--card);border:1px solid var(--border);border-radius:12px;padding:28px 36px;min-width:340px'>"
+    +"<div style='font-size:18px;font-weight:700;color:var(--text);margin-bottom:14px;text-align:center'>⚡ Chargement automatique</div>"
+    +"<div id='_load_steps' style='font-size:12px;color:var(--t2);margin-bottom:14px;line-height:1.9'></div>"
     +"<div style='background:var(--card2);border-radius:8px;height:8px;overflow:hidden'>"
     +"<div id='_load_bar' style='height:100%;background:var(--green);width:0%;transition:width .3s;border-radius:8px'></div>"
     +"</div>"
-    +"<div id='_load_pct' style='font-size:11px;color:var(--t3);margin-top:8px'>0%</div>"
+    +"<div id='_load_pct' style='font-size:11px;color:var(--t3);margin-top:8px;text-align:center'>Les 4 fichiers se chargent en parallèle — patiente, ça peut prendre 1 à 3 minutes selon le volume</div>"
     +"</div>";
   document.body.appendChild(modal);
 
-  function setProgress(pct, msg){
-    var bar=document.getElementById("_load_bar");
-    var pctEl=document.getElementById("_load_pct");
-    var step=document.getElementById("_load_step");
-    if(bar) bar.style.width=pct+"%";
-    if(pctEl) pctEl.textContent=pct+"%";
-    if(step) step.textContent=msg;
+  var LABELS={WO:"WO Curatif",QUO:"Devis (QUO)",NPS:"NPS",PREV:"Préventif"};
+  var STATUTS={WO:"⏳ En attente…",QUO:"⏳ En attente…",NPS:"⏳ En attente…",PREV:"⏳ En attente…"};
+  function refreshSteps(){
+    var el=document.getElementById("_load_steps");
+    if(!el) return;
+    el.innerHTML=["WO","QUO","NPS","PREV"].map(function(k){
+      return "<div>"+LABELS[k]+" : "+STATUTS[k]+"</div>";
+    }).join("");
   }
+  refreshSteps();
 
   WO=[]; QUO=[]; NPS=[];
-  setProgress(5,"Connexion à Apps Script...");
+  var prevRows=null;
 
-  function chargerType(type, pctStart, pctEnd, label, cb){
-    setProgress(pctStart, "Chargement "+label+"...");
+  function chargerType(type, cb){
     var cbName="_GS_DATA_"+type+"_"+Date.now();
     var sc=document.createElement("script");
     var timeout=setTimeout(function(){
       try{document.head.removeChild(sc);}catch(e){}
       window[cbName]=function(){}; // stub vide au lieu de delete : si la réponse arrive malgré tout après le délai, elle ne plante pas avec "is not defined"
+      STATUTS[type]="⚠️ Timeout (5min)";
+      refreshSteps();
       cb({status:"error",rows:[]});
-      setProgress(pctEnd, "⚠️ "+label+" : timeout");
-    }, 240000);
+    }, 300000);
     window[cbName]=function(data){
       clearTimeout(timeout);
       try{document.head.removeChild(sc);}catch(e){}
       delete window[cbName];
-      setProgress(pctEnd, "✅ "+label+" chargé — "+fN((data.rows||[]).length)+" lignes");
+      STATUTS[type]="✅ "+fN((data.rows||[]).length)+" lignes";
+      refreshSteps();
       cb(data);
     };
     sc.onerror=function(){
       clearTimeout(timeout);
       try{document.head.removeChild(sc);}catch(e){}
       delete window[cbName];
-      setProgress(pctEnd,"⚠️ "+label+" : erreur de connexion");
+      STATUTS[type]="⚠️ Erreur de connexion";
+      refreshSteps();
       cb({status:"error",rows:[]});
     };
     sc.src=url+"?action=getData&type="+type+"&callback="+cbName+"&t="+Date.now();
     document.head.appendChild(sc);
   }
 
-  chargerType("WO",10,50,"WO Curatif (38 000+ lignes)",function(d){
-    WO=(d.status==="ok"||d.statut==="ok")?(d.rows||[]):[];
-    chargerType("QUO",55,80,"Devis National",function(d2){
-      QUO=(d2.status==="ok"||d2.statut==="ok")?(d2.rows||[]):[];
-      chargerType("NPS",83,90,"NPS National",function(d3){
-        NPS=(d3.status==="ok"||d3.statut==="ok")?(d3.rows||[]):[];
-        setProgress(92,"Chargement Préventif...");
-        chargerType("PREV",92,97,"WO Préventif",function(d4){
-          if((d4.status==="ok"||d4.statut==="ok")&&d4.rows&&d4.rows.length>0){
-            try{ parsePREV(d4.rows); }catch(e){ console.log("parsePREV err:",e); }
-          }
-        setProgress(98,"Traitement des données...");
-        setTimeout(function(){
-          // Normaliser les données du Sheet (dates en string)
-          WO = normaliserLignes(WO);
-          QUO = normaliserLignes(QUO);
-          NPS = normaliserLignes(NPS);
-          try{buildData();buildFilters();}catch(e){console.log("buildData error:",e);}
-          // Initialiser région
-          initRegionSelector();
-          appliquerRegionURL();
-          // Init alertes filtres
-          setProgress(100,"✅ Chargement terminé !");
-          setTimeout(function(){
-            var m=document.getElementById("_load_modal");
-            if(m) document.body.removeChild(m);
-            _autoLoadEnCours = false;
-            if(WO.length===0){
-              toast("⚠️ Aucune donnée WO reçue",true);
-              return;
-            }
-            // Afficher le dashboard directement
-            document.getElementById("splash").classList.add("hide");
-            var appEl=document.getElementById("app");
-            appEl.classList.add("show");
-            // Afficher sélecteur région dans le dashboard
-            var box=document.getElementById("region-selector-box");
-            if(box) box.style.display="block";
-            // Rendre tous les onglets
-            try{ renderAll(); }catch(e){ console.log("renderAll:",e); }
-            toast("✅ "+fN(WO.length)+" WO · "+fN(QUO.length)+" devis · "+fN(NPS.length)+" NPS chargés");
-          },800);
-        },100);
-        }); // fin PREV
-      });
-    });
-  });
+  // ─── Les 4 types se chargent EN PARALLÈLE (plus en séquence) : le temps
+  // total attendu devient le temps du plus lent des 4, pas la somme des 4.
+  var pending=4;
+  function onOneDone(){
+    pending--;
+    var bar=document.getElementById("_load_bar");
+    if(bar) bar.style.width=(Math.round((4-pending)/4*90)+5)+"%";
+    if(pending===0) finaliser();
+  }
+  chargerType("WO",function(d){ WO=(d.status==="ok"||d.statut==="ok")?(d.rows||[]):[]; onOneDone(); });
+  chargerType("QUO",function(d){ QUO=(d.status==="ok"||d.statut==="ok")?(d.rows||[]):[]; onOneDone(); });
+  chargerType("NPS",function(d){ NPS=(d.status==="ok"||d.statut==="ok")?(d.rows||[]):[]; onOneDone(); });
+  chargerType("PREV",function(d){ prevRows=(d.status==="ok"||d.statut==="ok")?(d.rows||[]):[]; onOneDone(); });
+
+  function finaliser(){
+    var pctEl=document.getElementById("_load_pct");
+    if(pctEl) pctEl.textContent="Traitement des données...";
+    setTimeout(function(){
+      // Normaliser les données du Sheet (dates en string)
+      WO = normaliserLignes(WO);
+      QUO = normaliserLignes(QUO);
+      NPS = normaliserLignes(NPS);
+      try{buildData();buildFilters();}catch(e){console.log("buildData error:",e);}
+      if(prevRows && prevRows.length>0){
+        try{ parsePREV(prevRows); }catch(e){ console.log("parsePREV err:",e); }
+      }
+      // Initialiser région
+      initRegionSelector();
+      appliquerRegionURL();
+      var bar=document.getElementById("_load_bar");
+      if(bar) bar.style.width="100%";
+      if(pctEl) pctEl.textContent="✅ Chargement terminé !";
+      setTimeout(function(){
+        var m=document.getElementById("_load_modal");
+        if(m) document.body.removeChild(m);
+        _autoLoadEnCours = false;
+        if(WO.length===0){
+          toast("⚠️ Aucune donnée WO reçue — vérifie la connexion Apps Script",true);
+          return;
+        }
+        // Afficher le dashboard directement, même si un des 3 autres types a échoué
+        document.getElementById("splash").classList.add("hide");
+        var appEl=document.getElementById("app");
+        appEl.classList.add("show");
+        // Afficher sélecteur région dans le dashboard
+        var box=document.getElementById("region-selector-box");
+        if(box) box.style.display="block";
+        // Rendre tous les onglets
+        try{ renderAll(); }catch(e){ console.log("renderAll:",e); }
+        var manque=[];
+        if(QUO.length===0) manque.push("Devis");
+        if(NPS.length===0) manque.push("NPS");
+        if(!prevRows||prevRows.length===0) manque.push("Préventif");
+        toast("✅ "+fN(WO.length)+" WO · "+fN(QUO.length)+" devis · "+fN(NPS.length)+" NPS · "+fN(PREV.length)+" Préventif chargés"+(manque.length?" — ⚠️ "+manque.join(", ")+" non reçu(s)":""));
+      },600);
+    },100);
+  }
 }
 
 // Hook: remplacer chargerDepuisSheet par la version avec progress
@@ -4995,19 +5109,17 @@ function exporterMagasins(){
   var mMap={};
   wo.forEach(function(r){
     var m=r._m;if(!m)return;
-    if(!mMap[m])mMap[m]={n:0,at:0,cl:0,tu:0,reg:r._r,ages:[]};
+    if(!mMap[m])mMap[m]={n:0,at:0,cl:0,an:0,reg:r._r};
     mMap[m].n++;
     if(r._e==="AT")mMap[m].at++;
     if(r._e==="CL")mMap[m].cl++;
-    if(r._p==="TU"&&r._e!=="CL"&&r._e!=="AN")mMap[m].tu++;
-    if(r._age>=0)mMap[m].ages.push(r._age);
+    if(r._e==="AN")mMap[m].an++;
   });
-  var rows=[["Magasin","Région","WO Total","Clôturés","Taux %","En attente","TU","Âge moy."]];
-  Object.entries(mMap).sort(function(a,b){return b[1].at-a[1].at;}).forEach(function(e){
+  var rows=[["Magasin","Région","Total WO","WO Clôturés","Att. approbation","Annulées","Taux clôture %"]];
+  Object.entries(mMap).sort(function(a,b){return b[1].n-a[1].n;}).forEach(function(e){
     var m=e[1];
     var taux=m.n?+(m.cl/m.n*100).toFixed(1):0;
-    var mAge=m.ages.length?Math.round(m.ages.reduce(function(a,b){return a+b;},0)/m.ages.length):0;
-    rows.push([e[0],m.reg.replace(/_/g," "),m.n,m.cl,taux,m.at,m.tu,mAge+"j"]);
+    rows.push([e[0],m.reg.replace(/_/g," "),m.n,m.cl,m.at,m.an,taux]);
   });
   var wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),"Magasins");
@@ -5020,18 +5132,16 @@ function exporterMagasinsPDF(){
   var mMap={};
   wo.forEach(function(r){
     var m=r._m;if(!m)return;
-    if(!mMap[m])mMap[m]={n:0,at:0,cl:0,as:0,reg:r._r,ages:[]};
+    if(!mMap[m])mMap[m]={n:0,at:0,cl:0,an:0,reg:r._r};
     mMap[m].n++;
     if(r._e==="AT")mMap[m].at++;
     if(r._e==="CL")mMap[m].cl++;
-    if(r._e==="AS")mMap[m].as++;
-    if(r._age>=0)mMap[m].ages.push(r._age);
+    if(r._e==="AN")mMap[m].an++;
   });
   var rows=Object.entries(mMap).sort(function(a,b){return b[1].n-a[1].n;}).map(function(e){
     var m=e[1];
     var taux=m.n?(m.cl/m.n*100):0;
-    var mAge=m.ages.length?Math.round(m.ages.reduce(function(a,b){return a+b;},0)/m.ages.length):0;
-    return {mag:e[0], reg:m.reg.replace(/_/g," "), n:m.n, at:m.at, taux:taux, as:m.as, age:mAge};
+    return {mag:e[0], reg:m.reg.replace(/_/g," "), n:m.n, cl:m.cl, at:m.at, an:m.an, taux:taux};
   });
   if(!rows.length){ toast("Aucune donnée à exporter avec les filtres actuels",true); return; }
 
@@ -5048,12 +5158,12 @@ function exporterMagasinsPDF(){
     var txC = r.taux>=70?"#085041":r.taux>=40?"#633806":"#791F1F";
     return "<tr style='background:"+(i%2===0?"#fff":"#f9fafb")+"'>"
       +"<td>"+(i+1)+"</td><td style='font-weight:600'>"+r.mag+"</td><td>"+r.reg+"</td>"
-      +"<td style='text-align:right'>"+r.n+"</td><td style='text-align:right;color:#791F1F'>"+r.at+"</td>"
-      +"<td style='text-align:right;font-weight:700;color:"+txC+"'>"+r.taux.toFixed(1)+"%</td>"
-      +"<td style='text-align:right'>"+r.as+"</td><td style='text-align:right'>"+r.age+"j</td></tr>";
+      +"<td style='text-align:right'>"+r.n+"</td><td style='text-align:right;color:#085041'>"+r.cl+"</td>"
+      +"<td style='text-align:right;color:#791F1F'>"+r.at+"</td><td style='text-align:right;color:#888'>"+r.an+"</td>"
+      +"<td style='text-align:right;font-weight:700;color:"+txC+"'>"+r.taux.toFixed(1)+"%</td></tr>";
   }).join("");
   w.document.write(
-    "<!DOCTYPE html><html><head><meta charset='UTF-8'><title>Tableau détail magasins</title>"
+    "<!DOCTYPE html><html><head><meta charset='UTF-8'><title>Taux de clôture par magasin</title>"
     +"<style>body{font-family:Arial,sans-serif;padding:28px;color:#1a1a2e}"
     +"h1{font-size:16px;border-bottom:3px solid #004B9B;padding-bottom:10px;margin-bottom:6px}"
     +".sub{font-size:10px;color:#888;margin-bottom:16px}"
@@ -5062,11 +5172,11 @@ function exporterMagasinsPDF(){
     +"td{padding:5px 8px;border-bottom:1px solid #f0f2f8}"
     +".footer{margin-top:20px;padding-top:8px;border-top:1px solid #e2e4eb;font-size:9px;color:#aaa}"
     +"</style></head><body>"
-    +"<h1>Tableau détail magasins</h1>"
+    +"<h1>Taux de clôture par magasin</h1>"
     +"<div class='sub'>"+(filtreLabel.length?filtreLabel.join(" · "):"Tous magasins, toutes périodes")+" · "+rows.length+" magasin(s)</div>"
     +"<table><thead><tr><th>#</th><th>Magasin</th><th>Région</th><th style='text-align:right'>Total WO</th>"
-    +"<th style='text-align:right'>En attente</th><th style='text-align:right'>Taux clôture</th>"
-    +"<th style='text-align:right'>Assignés</th><th style='text-align:right'>Âge moy.</th></tr></thead>"
+    +"<th style='text-align:right'>WO Clôturés</th><th style='text-align:right'>Att. approbation</th>"
+    +"<th style='text-align:right'>Annulées</th><th style='text-align:right'>Taux clôture</th></tr></thead>"
     +"<tbody>"+rowsHTML+"</tbody></table>"
     +"<div class='footer'>Carrefour — Direction Technique France · "+new Date().toLocaleDateString("fr-FR")+"</div>"
     +"</body></html>"
