@@ -1612,6 +1612,15 @@ function _showDiagPanel(){
       + "Codes statut : <span style='font-size:9px'>"+JSON.stringify(codeMap)+"</span>"
       + "</div>";
   }
+  var rawPrevHTML = "";
+  if(window._lastPrevRawSample !== undefined){
+    rawPrevHTML = "<div style='margin-bottom:14px;border-top:1px solid #333;padding-top:10px'>"
+      + "<b style='color:#8B5CF6'>PREV — dernière requête brute (avant parsePREV)</b><br>"
+      + "Statut réponse serveur : <b>"+window._lastPrevRawStatus+"</b><br>"
+      + "Nb lignes reçues : <b>"+window._lastPrevRawCount+"</b><br>"
+      + "Ligne 0 complète : <span style='font-size:9px'>"+JSON.stringify(window._lastPrevRawSample,null,1)+"</span>"
+      + "</div>";
+  }
   var box=document.createElement("div");
   box.id="_diag_panel";
   box.style.cssText="position:fixed;bottom:20px;right:20px;background:#12172B;border:2px solid #378ADD;border-radius:10px;padding:14px 18px;color:#fff;font-family:monospace;font-size:11px;z-index:99999;max-width:460px;max-height:70vh;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,.5)";
@@ -1619,6 +1628,7 @@ function _showDiagPanel(){
     + summary(WO,"WO Curatif","_e","État")
     + summary(PREV,"WO Préventif","_e","_etat")
     + summary(QUO,"Devis (QUO)","_s","Statut du devis")
+    + rawPrevHTML
     + "<div style='margin-top:8px;text-align:right'><button onclick='document.getElementById(\"_diag_panel\").remove()' style='background:#378ADD;border:none;color:#fff;padding:4px 10px;border-radius:5px;cursor:pointer;font-size:11px'>Fermer</button></div>";
   document.body.appendChild(box);
 }
@@ -4449,7 +4459,13 @@ function chargerDepuisSheetAvecProgress(){
   chargerType("WO",function(d){ WO=(d.status==="ok"||d.statut==="ok")?(d.rows||[]):[]; onOneDone(); });
   chargerType("QUO",function(d){ QUO=(d.status==="ok"||d.statut==="ok")?(d.rows||[]):[]; onOneDone(); });
   chargerType("NPS",function(d){ NPS=(d.status==="ok"||d.statut==="ok")?(d.rows||[]):[]; onOneDone(); });
-  chargerType("PREV",function(d){ prevRows=(d.status==="ok"||d.statut==="ok")?(d.rows||[]):[]; onOneDone(); });
+  chargerType("PREV",function(d){
+    prevRows=(d.status==="ok"||d.statut==="ok")?(d.rows||[]):[];
+    window._lastPrevRawStatus = d.status||d.statut||"(aucun statut)";
+    window._lastPrevRawSample = prevRows[0]||null;
+    window._lastPrevRawCount = prevRows.length;
+    onOneDone();
+  });
 
   function finaliser(){
     var pctEl=document.getElementById("_load_pct");
