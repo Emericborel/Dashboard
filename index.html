@@ -513,7 +513,12 @@ tr:hover td{background:rgba(255,255,255,.025)}
       </div>
     </div>
     <div class="fl"><label>Mois</label><select class="fs" id="f-mois" onchange="applyF()"><option value="">Tous</option></select></div>
-    <div class="fl"><label>CMM</label><select class="fs" id="f-cmm" onchange="applyF()"><option value="">Tous</option></select></div>
+    <div class="fl"><label>CMM</label>
+      <div class="msel" id="msel-cmm">
+        <button type="button" class="fs msel-btn" onclick="_toggleMultiSelectDropdown('cmm')" id="f-cmm-btn">Tous</button>
+        <div class="msel-dropdown" id="f-cmm-dropdown" style="display:none"></div>
+      </div>
+    </div>
     <div class="fl"><label>Du</label><input type="date" class="fs" id="f-date-debut" onchange="applyF()" style="padding:5px 8px"></div>
     <div class="fl"><label>Au</label><input type="date" class="fs" id="f-date-fin" onchange="applyF()" style="padding:5px 8px"></div>
     <button class="btn-reset" onclick="resetF()">✕ Réinitialiser</button>
@@ -689,6 +694,22 @@ tr:hover td{background:rgba(255,255,255,.025)}
         <div class="card"><div class="ct">Évolution NPS mensuel</div><div class="cw"><canvas id="c-nps-month"></canvas></div></div>
         <div class="card"><div class="ct">Top prestataires — NPS (min. 5 évaluations)</div><div id="b-nps-prest"></div></div>
       </div>
+      <div class="g2">
+        <div class="card"><div class="ct">🏆 Top 10 prestataires — Hyper</div><div id="b-nps-top-prest-hyper"></div></div>
+        <div class="card"><div class="ct">📉 Flop 10 prestataires — Hyper</div><div id="b-nps-flop-prest-hyper"></div></div>
+      </div>
+      <div class="g2">
+        <div class="card"><div class="ct">🏆 Top 10 prestataires — Market</div><div id="b-nps-top-prest-market"></div></div>
+        <div class="card"><div class="ct">📉 Flop 10 prestataires — Market</div><div id="b-nps-flop-prest-market"></div></div>
+      </div>
+      <div class="g2">
+        <div class="card"><div class="ct">🏆 Top 10 magasins — Hyper</div><div id="b-nps-top-mag-hyper"></div></div>
+        <div class="card"><div class="ct">📉 Flop 10 magasins — Hyper</div><div id="b-nps-flop-mag-hyper"></div></div>
+      </div>
+      <div class="g2">
+        <div class="card"><div class="ct">🏆 Top 10 magasins — Market</div><div id="b-nps-top-mag-market"></div></div>
+        <div class="card"><div class="ct">📉 Flop 10 magasins — Market</div><div id="b-nps-flop-mag-market"></div></div>
+      </div>
     </div>
 
     <!-- PRÉVENTIF -->
@@ -704,11 +725,18 @@ tr:hover td{background:rgba(255,255,255,.025)}
         <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
           <select id="pv-reg"   class="fs" style="min-width:160px" onchange="renderPrev()"><option value="">🌍 Toutes régions</option></select>
           <select id="pv-prest" class="fs" style="min-width:160px" onchange="renderPrev()"><option value="">Tous prestataires</option></select>
+          <select id="pv-mag"   class="fs" style="min-width:160px" onchange="renderPrev()"><option value="">Tous magasins</option></select>
+          <select id="pv-cmm"   class="fs" style="min-width:160px" onchange="renderPrev()"><option value="">Tous CMM</option></select>
           <select id="pv-type"  class="fs" style="min-width:130px" onchange="renderPrev()"><option value="">Tous types</option><option value="Hyper">Hyper</option><option value="Market">Market</option></select>
           <select id="pv-mois"  class="fs" style="min-width:130px" onchange="renderPrev()"><option value="">Tous mois</option></select>
         </div>
         <!-- KPIs -->
         <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:14px" id="pv-kpis"></div>
+        <!-- Camemberts Hyper / Market -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+          <div class="card"><div class="ct">Statuts WO Préventif — Hyper</div><div class="cw" style="height:180px"><canvas id="pv-c-statuts-hyper"></canvas></div></div>
+          <div class="card"><div class="ct">Statuts WO Préventif — Market</div><div class="cw" style="height:180px"><canvas id="pv-c-statuts-market"></canvas></div></div>
+        </div>
         <!-- Graphiques -->
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
           <div class="card"><div class="ct">Statuts WO Préventif</div><div class="cw" style="height:180px"><canvas id="pv-c-statuts"></canvas></div></div>
@@ -965,7 +993,7 @@ Direction Technique France — Carrefour</textarea>
 // ═══════════════════════════════════════════════════════════════
 var WO=[], QUO=[], NPS=[], BDD=[];
 var SCRIPT_URL = localStorage.getItem("mc_script_url") || "";
-var F={reg:"",type:"",prest:[],mag:[],mois:"",cmm:"",dateDebut:"",dateFin:""};
+var F={reg:"",type:"",prest:[],mag:[],mois:"",cmm:[],dateDebut:"",dateFin:""};
 var CHARTS={};
 var _woProc=false, _quoProc=false, _npsProc=false;
 var TAB="overview";
@@ -1633,6 +1661,7 @@ function _showDiagPanel(){
     + (BDD&&BDD.length ? "<br>Colonnes : <span style='font-size:9px'>"+JSON.stringify(Object.keys(BDD[0])).replace(/</g,"&lt;")+"</span>"
         +"<br>CMM distincts rattachés : <b>"+(typeof CMM_MAP_ENTRIES!=="undefined"?CMM_MAP_ENTRIES.length:"?")+"</b>"
         +"<br>Magasins WO non rattachés : <b>"+(typeof CMM_UNMATCHED!=="undefined"?CMM_UNMATCHED.length:"?")+"</b>"
+        +(typeof CMM_UNMATCHED!=="undefined"&&CMM_UNMATCHED.length ? "<br><span style='font-size:9px;color:#E24B4A'>"+CMM_UNMATCHED.slice().sort().join(" · ")+"</span>" : "")
       : "<br><span style='color:#E24B4A'>Feuille \"BDD\" absente, vide, ou pas encore créée</span>")
     + "</div>";
   var versionHTML = "<div style='margin-bottom:12px;padding:8px 10px;background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.35);border-radius:6px'>"
@@ -1934,12 +1963,15 @@ function buildData(){
          : _rawT.toLowerCase().indexOf("market") >= 0 || _rawT.toLowerCase().indexOf("super") >= 0 ? "Market"
          : _rawT;
   });
+  var MAG_TYPE_MAP={};
+  WO.forEach(function(r){ if(r._m && r._t && !MAG_TYPE_MAP[r._m]) MAG_TYPE_MAP[r._m]=r._t; });
   NPS.forEach(function(r){
     r._n=N(r["Valeur"]||0);
     r._cat=r._n>=9?"P":r._n>=7?"N":"D";
     r._f=exFourn(r["Groupe d'affectation"]);
     r._r=String(r["Region"]||r["Région"]||"INCONNU").trim();
     r._m=String(r["Compte"]||"").trim();
+    r._t=MAG_TYPE_MAP[r._m]||"";
     r._mo=toMonth(r["Créé"]);
     r._d=parseDate(r["Créé"]);
   });
@@ -2036,17 +2068,10 @@ function applyCMMMapping(){
 
   if(CMM_UNMATCHED.length) console.log("CMM : "+CMM_UNMATCHED.length+" magasin(s) sans correspondance BDD :", CMM_UNMATCHED);
 
-  // Peupler le filtre CMM
-  var selCmm=document.getElementById("f-cmm");
-  if(selCmm){
-    var cmms=[...new Set(CMM_MAP_ENTRIES.map(function(e){return e.cmm;}).filter(Boolean))].sort();
-    while(selCmm.options.length>1) selCmm.remove(1);
-    cmms.forEach(function(c){
-      var o=document.createElement("option");
-      o.value=c; o.textContent=c;
-      selCmm.appendChild(o);
-    });
-  }
+  // Peupler le filtre CMM (multi-select), respectant la région déjà choisie s'il y en a une
+  var cmms=[...new Set(CMM_MAP_ENTRIES.map(function(e){return e.cmm;}).filter(Boolean))].sort();
+  _buildMultiSelect("cmm",cmms);
+  _refreshCMMOptionsForRegion();
 }
 
 function buildFilters(){
@@ -2147,15 +2172,15 @@ document.addEventListener("click",function(e){
 function applyF(){
   F.reg=document.getElementById("f-reg").value||"";
   F.type=document.getElementById("f-type").value||"";
-  // F.prest et F.mag sont maintenus directement par le composant multi-select (_onMultiSelectChange)
+  // F.prest, F.mag et F.cmm sont maintenus directement par le composant multi-select (_onMultiSelectChange)
   F.mois=document.getElementById("f-mois").value||"";
-  F.cmm=document.getElementById("f-cmm").value||"";
   F.dateDebut=document.getElementById("f-date-debut").value||"";
   F.dateFin=document.getElementById("f-date-fin").value||"";
   if(F.dateDebut&&F.dateFin&&F.dateDebut>F.dateFin){
     toast("La date de début doit précéder la date de fin",true);
   }
-  var nb=[F.reg,F.type,F.mois,F.cmm,F.dateDebut,F.dateFin].filter(Boolean).length+(F.prest.length?1:0)+(F.mag.length?1:0);
+  _refreshCMMOptionsForRegion();
+  var nb=[F.reg,F.type,F.mois,F.dateDebut,F.dateFin].filter(Boolean).length+(F.prest.length?1:0)+(F.mag.length?1:0)+(F.cmm.length?1:0);
   var fc=document.getElementById("fcount");
   fc.style.display=nb?"":"none";
   fc.textContent=nb+" filtre(s) actif(s)";
@@ -2163,12 +2188,30 @@ function applyF(){
 }
 
 function resetF(){
-  ["f-reg","f-type","f-mois","f-cmm","f-date-debut","f-date-fin"].forEach(function(id){var e=document.getElementById(id);if(e)e.value="";});
-  F={reg:"",type:"",prest:[],mag:[],mois:"",cmm:"",dateDebut:"",dateFin:""};
+  ["f-reg","f-type","f-mois","f-date-debut","f-date-fin"].forEach(function(id){var e=document.getElementById(id);if(e)e.value="";});
+  F={reg:"",type:"",prest:[],mag:[],mois:"",cmm:[],dateDebut:"",dateFin:""};
   _resetMultiSelect("prest");
   _resetMultiSelect("mag");
+  _resetMultiSelect("cmm");
   document.getElementById("fcount").style.display="none";
   renderAll();
+}
+
+// Restreint la liste des CMM proposés à ceux du territoire correspondant à
+// la région sélectionnée (si une région est choisie), pour éviter de
+// proposer des CMM d'autres régions.
+function _refreshCMMOptionsForRegion(){
+  if(typeof CMM_MAP_ENTRIES==="undefined"||!CMM_MAP_ENTRIES.length) return;
+  var reg=F.reg; // ex: "CENTRE_ALPES"
+  var regNorm=reg?reg.replace(/_/g,"").toUpperCase():"";
+  var pool = reg
+    ? CMM_MAP_ENTRIES.filter(function(e){return String(e.territoire||"").replace(/[^A-Za-z0-9]/g,"").toUpperCase()===regNorm;})
+    : CMM_MAP_ENTRIES;
+  var cmms=[...new Set(pool.map(function(e){return e.cmm;}).filter(Boolean))].sort();
+  _MSEL_OPTIONS["cmm"]=cmms;
+  // Purge les sélections devenues hors périmètre
+  F.cmm=F.cmm.filter(function(c){return cmms.indexOf(c)>=0;});
+  _updateMultiSelectButtonLabel("cmm");
 }
 
 // Teste si une date (objet Date) tombe dans la plage F.dateDebut/F.dateFin (inclusif)
@@ -2188,7 +2231,7 @@ function fWO(){
     if(F.prest.length&&F.prest.indexOf(r._f)<0)return false;
     if(F.mag.length&&F.mag.indexOf(r._m)<0)return false;
     if(F.mois&&r._mo!==F.mois)return false;
-    if(F.cmm&&r._cmm!==F.cmm)return false;
+    if(F.cmm.length&&F.cmm.indexOf(r._cmm)<0)return false;
     if(!_inDateRange(r._d))return false;
     return true;
   });
@@ -2199,7 +2242,7 @@ function fQUO(){
     if(F.prest.length&&F.prest.indexOf(r._f)<0)return false;
     if(F.mag.length&&F.mag.indexOf(r._m)<0)return false;
     if(F.mois&&r._mo!==F.mois)return false;
-    if(F.cmm&&r._cmm!==F.cmm)return false;
+    if(F.cmm.length&&F.cmm.indexOf(r._cmm)<0)return false;
     if(!_inDateRange(r._d))return false;
     return true;
   });
@@ -2210,7 +2253,7 @@ function fNPS(){
     if(F.prest.length&&F.prest.indexOf(r._f)<0)return false;
     if(F.mag.length&&F.mag.indexOf(r._m)<0)return false;
     if(F.mois&&r._mo!==F.mois)return false;
-    if(F.cmm&&r._cmm!==F.cmm)return false;
+    if(F.cmm.length&&F.cmm.indexOf(r._cmm)<0)return false;
     if(!_inDateRange(r._d))return false;
     return true;
   });
@@ -2745,8 +2788,10 @@ function renderNPS(){
   var dist={};for(var i=0;i<=10;i++)dist[i]=0;
   nps.forEach(function(r){if(r._n>=0&&r._n<=10)dist[Math.round(r._n)]++;});
   dc("c-nps-dist");var dctx=document.getElementById("c-nps-dist");
-  if(dctx)CHARTS["c-nps-dist"]=new Chart(dctx,{type:"bar",data:{labels:Object.keys(dist),datasets:[{data:Object.values(dist),backgroundColor:Object.keys(dist).map(function(k){return k>=9?"#1D9E75":k>=7?"#BA7517":"#E24B4A";}),borderRadius:3}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{color:"rgba(232,234,240,.5)"}},y:{grid:{color:gc()},ticks:{color:"rgba(232,234,240,.5)"}}}}});
+  try{
+    if(dctx)CHARTS["c-nps-dist"]=new Chart(dctx,{type:"bar",data:{labels:Object.keys(dist),datasets:[{data:Object.values(dist),backgroundColor:Object.keys(dist).map(function(k){return k>=9?"#1D9E75":k>=7?"#BA7517":"#E24B4A";}),borderRadius:3}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{color:"rgba(232,234,240,.5)"}},y:{grid:{color:gc()},ticks:{color:"rgba(232,234,240,.5)"}}}}});
+  }catch(e){ console.log("c-nps-dist chart error:",e); }
   // Régions
   var rMap={};nps.filter(function(r){return r._r!=="INCONNU";}).forEach(function(r){if(!rMap[r._r])rMap[r._r]={n:0,p:0,d:0};rMap[r._r].n++;if(r._cat==="P")rMap[r._r].p++;if(r._cat==="D")rMap[r._r].d++;});
   hbars("b-nps-reg",Object.entries(rMap).map(function(e){var s=(e[1].p-e[1].d)/e[1].n*100;return{l:e[0].replace(/_/g," "),v:s,n:e[1].n};}).sort(function(a,b){return b.v-a.v;}),
@@ -2755,13 +2800,39 @@ function renderNPS(){
   var mMap={};nps.forEach(function(r){if(r._mo){if(!mMap[r._mo])mMap[r._mo]={n:0,p:0,d:0};mMap[r._mo].n++;if(r._cat==="P")mMap[r._mo].p++;if(r._cat==="D")mMap[r._mo].d++;}});
   var mos=Object.keys(mMap).sort();
   dc("c-nps-month");var mctx=document.getElementById("c-nps-month");
-  if(mctx&&mos.length)CHARTS["c-nps-month"]=new Chart(mctx,{type:"bar",data:{labels:mos.map(mL),datasets:[{data:mos.map(function(m){var v=mMap[m];return+((v.p-v.d)/v.n*100).toFixed(1);}),backgroundColor:mos.map(function(m){var v=mMap[m];return nC((v.p-v.d)/v.n*100);}),borderRadius:3}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{color:"rgba(232,234,240,.5)"}},y:{grid:{color:gc()},ticks:{color:"rgba(232,234,240,.5)"}}}}});
+  try{
+    if(mctx&&mos.length)CHARTS["c-nps-month"]=new Chart(mctx,{type:"bar",data:{labels:mos.map(mL),datasets:[{data:mos.map(function(m){var v=mMap[m];return+((v.p-v.d)/v.n*100).toFixed(1);}),backgroundColor:mos.map(function(m){var v=mMap[m];return nC((v.p-v.d)/v.n*100);}),borderRadius:3}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{color:"rgba(232,234,240,.5)"}},y:{grid:{color:gc()},ticks:{color:"rgba(232,234,240,.5)"}}}}});
+  }catch(e){ console.log("c-nps-month chart error:",e); }
   // Prestataires
   var pMap={};nps.forEach(function(r){if(!pMap[r._f])pMap[r._f]={n:0,p:0,d:0};pMap[r._f].n++;if(r._cat==="P")pMap[r._f].p++;if(r._cat==="D")pMap[r._f].d++;});
   delete pMap["Inconnu"];
   hbars("b-nps-prest",Object.entries(pMap).filter(function(e){return e[1].n>=5;}).map(function(e){var s=(e[1].p-e[1].d)/e[1].n*100;return{l:e[0],v:s};}).sort(function(a,b){return b.v-a.v;}).slice(0,20),
     function(d){return nC(d.v);},function(d){return(d.v>0?"+":"")+d.v.toFixed(1)+" NPS";});
+
+  // Top/Flop 10 — prestataires et magasins, séparés Hyper/Market
+  function scoreMap(rows, field){
+    var m={};
+    rows.forEach(function(r){
+      var k=r[field]; if(!k||k==="Inconnu") return;
+      if(!m[k]) m[k]={n:0,p:0,d:0};
+      m[k].n++; if(r._cat==="P")m[k].p++; if(r._cat==="D")m[k].d++;
+    });
+    return Object.entries(m).filter(function(e){return e[1].n>=5;}).map(function(e){
+      return {l:e[0], v:(e[1].p-e[1].d)/e[1].n*100, n:e[1].n};
+    });
+  }
+  function renderTopFlop(idTop, idFlop, scored){
+    var sorted=scored.slice().sort(function(a,b){return b.v-a.v;});
+    hbars(idTop, sorted.slice(0,10), function(d){return nC(d.v);}, function(d){return(d.v>0?"+":"")+d.v.toFixed(1)+" ("+fN(d.n)+")";});
+    hbars(idFlop, sorted.slice(-10).reverse(), function(d){return nC(d.v);}, function(d){return(d.v>0?"+":"")+d.v.toFixed(1)+" ("+fN(d.n)+")";});
+  }
+  var npsHyper=nps.filter(function(r){return r._t==="Hyper";});
+  var npsMarket=nps.filter(function(r){return r._t==="Market";});
+  renderTopFlop("b-nps-top-prest-hyper","b-nps-flop-prest-hyper", scoreMap(npsHyper,"_f"));
+  renderTopFlop("b-nps-top-prest-market","b-nps-flop-prest-market", scoreMap(npsMarket,"_f"));
+  renderTopFlop("b-nps-top-mag-hyper","b-nps-flop-mag-hyper", scoreMap(npsHyper,"_m"));
+  renderTopFlop("b-nps-top-mag-market","b-nps-flop-mag-market", scoreMap(npsMarket,"_m"));
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -4887,11 +4958,36 @@ function renderPrev(){
   }
   var reg  =(document.getElementById("pv-reg")   ||{value:""}).value;
   var prest=(document.getElementById("pv-prest")  ||{value:""}).value;
+  var mag  =(document.getElementById("pv-mag")    ||{value:""}).value;
+  var cmm  =(document.getElementById("pv-cmm")    ||{value:""}).value;
   var typeF=(document.getElementById("pv-type")   ||{value:""}).value;
   var mois =(document.getElementById("pv-mois")   ||{value:""}).value;
+
+  // Peupler magasin/CMM (respecte la région déjà choisie)
+  var selMagPv=document.getElementById("pv-mag");
+  if(selMagPv){
+    var prevMagPv=selMagPv.value;
+    var scope=reg?PREV.filter(function(r){return r._reg===reg;}):PREV;
+    var mags=[...new Set(scope.map(function(r){return r._mag;}).filter(Boolean))].sort();
+    while(selMagPv.options.length>1) selMagPv.remove(1);
+    mags.forEach(function(m){var o=document.createElement("option");o.value=m;o.textContent=m;selMagPv.appendChild(o);});
+    if(mags.indexOf(prevMagPv)>=0) selMagPv.value=prevMagPv; else mag="";
+  }
+  var selCmmPv=document.getElementById("pv-cmm");
+  if(selCmmPv){
+    var prevCmmPv=selCmmPv.value;
+    var scope2=reg?PREV.filter(function(r){return r._reg===reg;}):PREV;
+    var cmmsPv=[...new Set(scope2.map(function(r){return r._cmm;}).filter(Boolean))].sort();
+    while(selCmmPv.options.length>1) selCmmPv.remove(1);
+    cmmsPv.forEach(function(c){var o=document.createElement("option");o.value=c;o.textContent=c;selCmmPv.appendChild(o);});
+    if(cmmsPv.indexOf(prevCmmPv)>=0) selCmmPv.value=prevCmmPv; else cmm="";
+  }
+
   var data=PREV.filter(function(r){
     if(reg  &&r._reg!==reg)    return false;
     if(prest&&r._prest!==prest)return false;
+    if(mag  &&r._mag!==mag)    return false;
+    if(cmm  &&r._cmm!==cmm)    return false;
     if(typeF&&r._type!==typeF) return false;
     if(mois &&r._mo!==mois)    return false;
     return true;
@@ -4914,6 +5010,27 @@ function renderPrev(){
     {l:"En cours",            v:fN(ec),               s:"",c:"var(--blue)"},
     {l:"Att. approbation",    v:fN(appro),            s:"",c:"var(--red)"},
   ]);
+
+  // Camemberts Hyper / Market (indépendants du filtre Type, pour comparer les deux d'un coup d'œil)
+  function statutsPour(t){
+    var d2=data.filter(function(r){return r._type===t;});
+    var c={CL:0,AS:0,EC:0,APPRO:0,AN:0};
+    d2.forEach(function(r){ if(c[r._e]!==undefined) c[r._e]++; });
+    return c;
+  }
+  var sH=statutsPour("Hyper"), sM=statutsPour("Market");
+  pvCreateChart("pv-c-statuts-hyper","doughnut",
+    ["Clôturés","Assignés","En cours","Att. approbation","Annulés"],
+    [{data:[sH.CL,sH.AS,sH.EC,sH.APPRO,sH.AN],
+      backgroundColor:["#22c55e","#378ADD","#F59E0B","#E24B4A","#888"],
+      borderWidth:0}],
+    {plugins:{legend:{position:"right",labels:{color:tc(),font:{size:10},boxWidth:10}}}});
+  pvCreateChart("pv-c-statuts-market","doughnut",
+    ["Clôturés","Assignés","En cours","Att. approbation","Annulés"],
+    [{data:[sM.CL,sM.AS,sM.EC,sM.APPRO,sM.AN],
+      backgroundColor:["#22c55e","#378ADD","#F59E0B","#E24B4A","#888"],
+      borderWidth:0}],
+    {plugins:{legend:{position:"right",labels:{color:tc(),font:{size:10},boxWidth:10}}}});
 
   // Graphique statuts
   pvCreateChart("pv-c-statuts","doughnut",
