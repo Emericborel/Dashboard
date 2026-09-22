@@ -513,6 +513,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
       </div>
     </div>
     <div class="fl"><label>Mois</label><select class="fs" id="f-mois" onchange="applyF()"><option value="">Tous</option></select></div>
+    <div class="fl"><label>CMM</label><select class="fs" id="f-cmm" onchange="applyF()"><option value="">Tous</option></select></div>
     <div class="fl"><label>Du</label><input type="date" class="fs" id="f-date-debut" onchange="applyF()" style="padding:5px 8px"></div>
     <div class="fl"><label>Au</label><input type="date" class="fs" id="f-date-fin" onchange="applyF()" style="padding:5px 8px"></div>
     <button class="btn-reset" onclick="resetF()">✕ Réinitialiser</button>
@@ -962,9 +963,9 @@ Direction Technique France — Carrefour</textarea>
 // ═══════════════════════════════════════════════════════════════
 // ÉTAT GLOBAL
 // ═══════════════════════════════════════════════════════════════
-var WO=[], QUO=[], NPS=[];
+var WO=[], QUO=[], NPS=[], BDD=[];
 var SCRIPT_URL = localStorage.getItem("mc_script_url") || "";
-var F={reg:"",type:"",prest:[],mag:[],mois:"",dateDebut:"",dateFin:""};
+var F={reg:"",type:"",prest:[],mag:[],mois:"",cmm:"",dateDebut:"",dateFin:""};
 var CHARTS={};
 var _woProc=false, _quoProc=false, _npsProc=false;
 var TAB="overview";
@@ -1506,8 +1507,10 @@ function openStoreDetail(mag){
   var npsList = NPS.filter(function(r){return r._m===mag;});
 
   var region = woList[0]?woList[0]._r:(prevList[0]?prevList[0]._reg:"");
+  var cmmEntry = _matchCMM(mag);
   title.textContent = mag;
-  subtitle.textContent = region ? region.replace(/_/g," ") : "";
+  subtitle.textContent = (region ? region.replace(/_/g," ") : "")
+    + (cmmEntry ? "  ·  CMM : "+cmmEntry.cmm+"  ·  RPM : "+cmmEntry.rpm : "");
 
   var totalWO = woList.length;
   var cl = woList.filter(function(r){return r._e==="CL";}).length;
@@ -1930,6 +1933,104 @@ function buildData(){
 // ═══════════════════════════════════════════════════════════════
 // FILTRES
 // ═══════════════════════════════════════════════════════════════
+// ─── Rattachement Magasin → CMM/RPM (via la feuille BDD) ───
+// Les noms de magasins dans BDD ("MERIGNAC") et dans WO/QUO/PREV
+// ("MERIGNAC - HYPERMARCHES") ne correspondent pas exactement — on
+// normalise et on rapproche par sous-chaîne, avec un repli par mots-clés
+// pour les cas plus éloignés (ex: "LYON PART DIEU" / "LYON -LA PART DIEU").
+function _normMagName(s){
+  return String(s||"").toUpperCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+    .replace(/\bST\b/g,"SAINT")
+    .replace(/[^A-Z0-9]/g,"");
+}
+var _MAG_STOPWORDS={LA:1,LE:1,LES:1,DE:1,DU:1,DES:1,ET:1,S:1,SUR:1,SOUS:1,EN:1,A:1};
+function _magWords(s){
+  var norm=String(s||"").toUpperCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+    .replace(/\bST\b/g,"SAINT");
+  return norm.split(/[^A-Z0-9]+/).filter(function(t){return t && t.length>1 && !_MAG_STOPWORDS[t];});
+}
+
+var CMM_MAP_ENTRIES=[];   // liste des entrées BDD normalisées
+var CMM_MATCH_CACHE={};   // cache nom magasin WO → entrée BDD (ou null)
+var CMM_UNMATCHED=[];     // magasins WO sans correspondance BDD (visibilité)
+
+function _matchCMM(woMag){
+  if(!woMag) return null;
+  if(CMM_MATCH_CACHE.hasOwnProperty(woMag)) return CMM_MATCH_CACHE[woMag];
+  var wn=_normMagName(woMag);
+  var found=null;
+  for(var i=0;i<CMM_MAP_ENTRIES.length;i++){
+    var e=CMM_MAP_ENTRIES[i];
+    if(e.norm && (wn.indexOf(e.norm)>=0 || e.norm.indexOf(wn)>=0)){ found=e; break; }
+  }
+  if(!found){
+    var wwords=_magWords(woMag);
+    var wset={}; wwords.forEach(function(w){wset[w]=1;});
+    var best=null, bestScore=0.5; // seuil : stricte majorité des mots BDD retrouvés
+    CMM_MAP_ENTRIES.forEach(function(e){
+      if(!e.words.length) return;
+      var overlap=0;
+      e.words.forEach(function(w){ if(wset[w]) overlap++; });
+      var score=overlap/e.words.length;
+      if(score>bestScore){ bestScore=score; best=e; }
+    });
+    found=best;
+  }
+  CMM_MATCH_CACHE[woMag]=found;
+  if(!found && CMM_UNMATCHED.indexOf(woMag)<0) CMM_UNMATCHED.push(woMag);
+  return found;
+}
+
+function applyCMMMapping(){
+  CMM_MAP_ENTRIES=[]; CMM_MATCH_CACHE={}; CMM_UNMATCHED=[];
+  if(!BDD || !BDD.length) return; // optionnel : pas de feuille BDD = pas de filtre CMM, rien ne casse
+
+  CMM_MAP_ENTRIES=BDD.map(function(r){
+    var name=r["Name"]||r["name"]||"";
+    return {
+      name:name,
+      norm:_normMagName(name),
+      words:_magWords(name),
+      cmm:String(r["CMM"]||"").trim(),
+      mail:String(r["Mail CMM"]||"").trim(),
+      rpm:String(r["Responsable pôle maintenance"]||"").trim(),
+      format:String(r["Format"]||"").trim(),
+      territoire:String(r["Territoire"]||"").trim()
+    };
+  }).filter(function(e){return e.norm;});
+  CMM_MAP_ENTRIES.sort(function(a,b){return b.norm.length-a.norm.length;}); // le plus spécifique d'abord
+
+  function tag(r, magField){
+    var e=_matchCMM(r[magField]);
+    r._cmm = e ? e.cmm : "";
+    r._rpm = e ? e.rpm : "";
+  }
+  WO.forEach(function(r){ tag(r,"_m"); });
+  QUO.forEach(function(r){ tag(r,"_m"); });
+  NPS.forEach(function(r){ tag(r,"_m"); });
+  PREV.forEach(function(r){
+    var e=_matchCMM(r._mag);
+    r._cmm = e ? e.cmm : "";
+    r._rpm = e ? e.rpm : "";
+  });
+
+  if(CMM_UNMATCHED.length) console.log("CMM : "+CMM_UNMATCHED.length+" magasin(s) sans correspondance BDD :", CMM_UNMATCHED);
+
+  // Peupler le filtre CMM
+  var selCmm=document.getElementById("f-cmm");
+  if(selCmm){
+    var cmms=[...new Set(CMM_MAP_ENTRIES.map(function(e){return e.cmm;}).filter(Boolean))].sort();
+    while(selCmm.options.length>1) selCmm.remove(1);
+    cmms.forEach(function(c){
+      var o=document.createElement("option");
+      o.value=c; o.textContent=c;
+      selCmm.appendChild(o);
+    });
+  }
+}
+
 function buildFilters(){
   function uniq(arr){return[...new Set(arr.filter(Boolean))].sort();}
   function fill(id,vals,lbl){
@@ -2030,12 +2131,13 @@ function applyF(){
   F.type=document.getElementById("f-type").value||"";
   // F.prest et F.mag sont maintenus directement par le composant multi-select (_onMultiSelectChange)
   F.mois=document.getElementById("f-mois").value||"";
+  F.cmm=document.getElementById("f-cmm").value||"";
   F.dateDebut=document.getElementById("f-date-debut").value||"";
   F.dateFin=document.getElementById("f-date-fin").value||"";
   if(F.dateDebut&&F.dateFin&&F.dateDebut>F.dateFin){
     toast("La date de début doit précéder la date de fin",true);
   }
-  var nb=[F.reg,F.type,F.mois,F.dateDebut,F.dateFin].filter(Boolean).length+(F.prest.length?1:0)+(F.mag.length?1:0);
+  var nb=[F.reg,F.type,F.mois,F.cmm,F.dateDebut,F.dateFin].filter(Boolean).length+(F.prest.length?1:0)+(F.mag.length?1:0);
   var fc=document.getElementById("fcount");
   fc.style.display=nb?"":"none";
   fc.textContent=nb+" filtre(s) actif(s)";
@@ -2043,8 +2145,8 @@ function applyF(){
 }
 
 function resetF(){
-  ["f-reg","f-type","f-mois","f-date-debut","f-date-fin"].forEach(function(id){var e=document.getElementById(id);if(e)e.value="";});
-  F={reg:"",type:"",prest:[],mag:[],mois:"",dateDebut:"",dateFin:""};
+  ["f-reg","f-type","f-mois","f-cmm","f-date-debut","f-date-fin"].forEach(function(id){var e=document.getElementById(id);if(e)e.value="";});
+  F={reg:"",type:"",prest:[],mag:[],mois:"",cmm:"",dateDebut:"",dateFin:""};
   _resetMultiSelect("prest");
   _resetMultiSelect("mag");
   document.getElementById("fcount").style.display="none";
@@ -2068,6 +2170,7 @@ function fWO(){
     if(F.prest.length&&F.prest.indexOf(r._f)<0)return false;
     if(F.mag.length&&F.mag.indexOf(r._m)<0)return false;
     if(F.mois&&r._mo!==F.mois)return false;
+    if(F.cmm&&r._cmm!==F.cmm)return false;
     if(!_inDateRange(r._d))return false;
     return true;
   });
@@ -2078,6 +2181,7 @@ function fQUO(){
     if(F.prest.length&&F.prest.indexOf(r._f)<0)return false;
     if(F.mag.length&&F.mag.indexOf(r._m)<0)return false;
     if(F.mois&&r._mo!==F.mois)return false;
+    if(F.cmm&&r._cmm!==F.cmm)return false;
     if(!_inDateRange(r._d))return false;
     return true;
   });
@@ -2088,6 +2192,7 @@ function fNPS(){
     if(F.prest.length&&F.prest.indexOf(r._f)<0)return false;
     if(F.mag.length&&F.mag.indexOf(r._m)<0)return false;
     if(F.mois&&r._mo!==F.mois)return false;
+    if(F.cmm&&r._cmm!==F.cmm)return false;
     if(!_inDateRange(r._d))return false;
     return true;
   });
@@ -4403,18 +4508,18 @@ function chargerDepuisSheetAvecProgress(){
     +"</div>";
   document.body.appendChild(modal);
 
-  var LABELS={WO:"WO Curatif",QUO:"Devis (QUO)",NPS:"NPS",PREV:"Préventif"};
-  var STATUTS={WO:"⏳ En attente…",QUO:"⏳ En attente…",NPS:"⏳ En attente…",PREV:"⏳ En attente…"};
+  var LABELS={WO:"WO Curatif",QUO:"Devis (QUO)",NPS:"NPS",PREV:"Préventif",BDD:"BDD (CMM/RPM)"};
+  var STATUTS={WO:"⏳ En attente…",QUO:"⏳ En attente…",NPS:"⏳ En attente…",PREV:"⏳ En attente…",BDD:"⏳ En attente…"};
   function refreshSteps(){
     var el=document.getElementById("_load_steps");
     if(!el) return;
-    el.innerHTML=["WO","QUO","NPS","PREV"].map(function(k){
+    el.innerHTML=["WO","QUO","NPS","PREV","BDD"].map(function(k){
       return "<div>"+LABELS[k]+" : "+STATUTS[k]+"</div>";
     }).join("");
   }
   refreshSteps();
 
-  WO=[]; QUO=[]; NPS=[];
+  WO=[]; QUO=[]; NPS=[]; BDD=[];
   var prevRows=null;
 
   function chargerType(type, cb){
@@ -4431,7 +4536,7 @@ function chargerDepuisSheetAvecProgress(){
       clearTimeout(timeout);
       try{document.head.removeChild(sc);}catch(e){}
       delete window[cbName];
-      STATUTS[type]="✅ "+fN((data.rows||[]).length)+" lignes";
+      STATUTS[type]="✅ "+fN((data.rows||data.data||[]).length)+" lignes";
       refreshSteps();
       cb(data);
     };
@@ -4447,20 +4552,48 @@ function chargerDepuisSheetAvecProgress(){
     document.head.appendChild(sc);
   }
 
-  // ─── Les 4 types se chargent EN PARALLÈLE (plus en séquence) : le temps
-  // total attendu devient le temps du plus lent des 4, pas la somme des 4.
-  var pending=4;
+  // ─── Les 5 types se chargent EN PARALLÈLE (plus en séquence) : le temps
+  // total attendu devient le temps du plus lent, pas la somme de tous.
+  var pending=5;
   function onOneDone(){
     pending--;
     var bar=document.getElementById("_load_bar");
-    if(bar) bar.style.width=(Math.round((4-pending)/4*90)+5)+"%";
+    if(bar) bar.style.width=(Math.round((5-pending)/5*90)+5)+"%";
     if(pending===0) finaliser();
   }
   chargerType("WO",function(d){ WO=(d.status==="ok"||d.statut==="ok")?(d.rows||[]):[]; onOneDone(); });
   chargerType("QUO",function(d){ QUO=(d.status==="ok"||d.statut==="ok")?(d.rows||[]):[]; onOneDone(); });
   chargerType("NPS",function(d){ NPS=(d.status==="ok"||d.statut==="ok")?(d.rows||[]):[]; onOneDone(); });
+  chargerType("BDD",function(d){
+    // BDD (mapping Magasin → CMM/RPM) : optionnel — son absence ne bloque rien,
+    // le dashboard fonctionne normalement, juste sans le filtre CMM.
+    if((d.status==="ok"||d.statut==="ok") && d.headers && d.data){
+      BDD = d.data.map(function(rowArr){
+        var o={};
+        d.headers.forEach(function(h,i){ o[h] = rowArr[i]!==undefined&&rowArr[i]!==null ? rowArr[i] : ""; });
+        return o;
+      });
+    } else {
+      BDD = [];
+    }
+    onOneDone();
+  });
   chargerType("PREV",function(d){
-    prevRows=(d.status==="ok"||d.statut==="ok")?(d.rows||[]):[];
+    var rows=[];
+    if(d.status==="ok"||d.statut==="ok"){
+      if(d.headers && d.data){
+        // Nouveau format tableaux : reconstruction des objets en JS navigateur
+        // (évite le bug de clés U+FFFD perdues côté Apps Script)
+        rows = d.data.map(function(rowArr){
+          var o={};
+          d.headers.forEach(function(h,i){ o[h] = rowArr[i]!==undefined&&rowArr[i]!==null ? rowArr[i] : ""; });
+          return o;
+        });
+      } else if(d.rows){
+        rows = d.rows; // repli ancien format (avant redéploiement du script)
+      }
+    }
+    prevRows = rows;
     window._lastPrevRawStatus = d.status||d.statut||"(aucun statut)";
     window._lastPrevRawSample = prevRows[0]||null;
     window._lastPrevRawCount = prevRows.length;
@@ -4479,6 +4612,7 @@ function chargerDepuisSheetAvecProgress(){
       if(prevRows && prevRows.length>0){
         try{ parsePREV(prevRows); }catch(e){ console.log("parsePREV err:",e); }
       }
+      try{ applyCMMMapping(); }catch(e){ console.log("applyCMMMapping err:",e); }
       // Initialiser région
       initRegionSelector();
       appliquerRegionURL();
