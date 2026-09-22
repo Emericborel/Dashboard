@@ -4522,12 +4522,25 @@ function chargerDepuisSheetAvecProgress(){
   WO=[]; QUO=[]; NPS=[]; BDD=[];
   var prevRows=null;
 
-  function chargerType(type, cb){
-    var cbName="_GS_DATA_"+type+"_"+Date.now();
+  function chargerType(type, cb, _attempt){
+    _attempt = _attempt || 0;
+    var cbName="_GS_DATA_"+type+"_"+Date.now()+"_"+Math.floor(Math.random()*100000);
     var sc=document.createElement("script");
+    var retried=false;
+    var MAX_RETRIES=2;
+    function retryOrGiveUp(){
+      if(retried) return false;
+      retried=true;
+      if(_attempt>=MAX_RETRIES) return false;
+      STATUTS[type]="🔄 Nouvelle tentative ("+(_attempt+1)+"/"+MAX_RETRIES+")…";
+      refreshSteps();
+      setTimeout(function(){ chargerType(type, cb, _attempt+1); }, 1500*(_attempt+1));
+      return true;
+    }
     var timeout=setTimeout(function(){
       try{document.head.removeChild(sc);}catch(e){}
       window[cbName]=function(){}; // stub vide au lieu de delete : si la réponse arrive malgré tout après le délai, elle ne plante pas avec "is not defined"
+      if(retryOrGiveUp()) return;
       STATUTS[type]="⚠️ Timeout (5min)";
       refreshSteps();
       cb({status:"error",rows:[]});
@@ -4536,6 +4549,8 @@ function chargerDepuisSheetAvecProgress(){
       clearTimeout(timeout);
       try{document.head.removeChild(sc);}catch(e){}
       delete window[cbName];
+      var ok = (data.status==="ok"||data.statut==="ok");
+      if(!ok && retryOrGiveUp()) return;
       STATUTS[type]="✅ "+fN((data.rows||data.data||[]).length)+" lignes";
       refreshSteps();
       cb(data);
@@ -4544,6 +4559,7 @@ function chargerDepuisSheetAvecProgress(){
       clearTimeout(timeout);
       try{document.head.removeChild(sc);}catch(e){}
       delete window[cbName];
+      if(retryOrGiveUp()) return;
       STATUTS[type]="⚠️ Erreur de connexion";
       refreshSteps();
       cb({status:"error",rows:[]});
@@ -4552,8 +4568,10 @@ function chargerDepuisSheetAvecProgress(){
     document.head.appendChild(sc);
   }
 
-  // ─── Les 5 types se chargent EN PARALLÈLE (plus en séquence) : le temps
-  // total attendu devient le temps du plus lent, pas la somme de tous.
+  // ─── Les 5 types se chargent EN PARALLÈLE, avec un décalage de départ
+  // (1200ms entre chacun) pour réduire la contention observée côté serveur
+  // quand les 5 requêtes arrivent trop proches les unes des autres — tout en
+  // restant bien plus rapide qu'un chargement strictement séquentiel.
   var pending=5;
   function onOneDone(){
     pending--;
@@ -4562,8 +4580,13 @@ function chargerDepuisSheetAvecProgress(){
     if(pending===0) finaliser();
   }
   chargerType("WO",function(d){ WO=(d.status==="ok"||d.statut==="ok")?(d.rows||[]):[]; onOneDone(); });
-  chargerType("QUO",function(d){ QUO=(d.status==="ok"||d.statut==="ok")?(d.rows||[]):[]; onOneDone(); });
-  chargerType("NPS",function(d){ NPS=(d.status==="ok"||d.statut==="ok")?(d.rows||[]):[]; onOneDone(); });
+  setTimeout(function(){
+    chargerType("QUO",function(d){ QUO=(d.status==="ok"||d.statut==="ok")?(d.rows||[]):[]; onOneDone(); });
+  }, 1200);
+  setTimeout(function(){
+    chargerType("NPS",function(d){ NPS=(d.status==="ok"||d.statut==="ok")?(d.rows||[]):[]; onOneDone(); });
+  }, 2400);
+  setTimeout(function(){
   chargerType("BDD",function(d){
     // BDD (mapping Magasin → CMM/RPM) : optionnel — son absence ne bloque rien,
     // le dashboard fonctionne normalement, juste sans le filtre CMM.
@@ -4578,6 +4601,8 @@ function chargerDepuisSheetAvecProgress(){
     }
     onOneDone();
   });
+  }, 3600);
+  setTimeout(function(){
   chargerType("PREV",function(d){
     var rows=[];
     if(d.status==="ok"||d.statut==="ok"){
@@ -4599,6 +4624,7 @@ function chargerDepuisSheetAvecProgress(){
     window._lastPrevRawCount = prevRows.length;
     onOneDone();
   });
+  }, 4800);
 
   function finaliser(){
     var pctEl=document.getElementById("_load_pct");
