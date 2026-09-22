@@ -1624,6 +1624,13 @@ function _showDiagPanel(){
       + "Ligne 0 complète : <span style='font-size:9px'>"+JSON.stringify(window._lastPrevRawSample,null,1)+"</span>"
       + "</div>";
   }
+  var bddHTML = "<div style='margin-bottom:10px;border-top:1px solid #333;padding-top:10px'>"
+    + "<b style='color:#F59E0B'>BDD (CMM/RPM)</b> — "+(BDD?BDD.length:0)+" lignes"
+    + (BDD&&BDD.length ? "<br>Colonnes : <span style='font-size:9px'>"+JSON.stringify(Object.keys(BDD[0])).replace(/</g,"&lt;")+"</span>"
+        +"<br>CMM distincts rattachés : <b>"+(typeof CMM_MAP_ENTRIES!=="undefined"?CMM_MAP_ENTRIES.length:"?")+"</b>"
+        +"<br>Magasins WO non rattachés : <b>"+(typeof CMM_UNMATCHED!=="undefined"?CMM_UNMATCHED.length:"?")+"</b>"
+      : "<br><span style='color:#E24B4A'>Feuille \"BDD\" absente, vide, ou pas encore créée</span>")
+    + "</div>";
   var box=document.createElement("div");
   box.id="_diag_panel";
   box.style.cssText="position:fixed;bottom:20px;right:20px;background:#12172B;border:2px solid #378ADD;border-radius:10px;padding:14px 18px;color:#fff;font-family:monospace;font-size:11px;z-index:99999;max-width:460px;max-height:70vh;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,.5)";
@@ -1632,6 +1639,7 @@ function _showDiagPanel(){
     + summary(PREV,"WO Préventif","_e","_etat")
     + summary(QUO,"Devis (QUO)","_s","Statut du devis")
     + rawPrevHTML
+    + bddHTML
     + "<div style='margin-top:8px;text-align:right'><button onclick='document.getElementById(\"_diag_panel\").remove()' style='background:#378ADD;border:none;color:#fff;padding:4px 10px;border-radius:5px;cursor:pointer;font-size:11px'>Fermer</button></div>";
   document.body.appendChild(box);
 }
