@@ -797,7 +797,11 @@ tr:hover td{background:rgba(255,255,255,.025)}
               </select>
             </div>
             <div class="fl"><label>Groupe / Prestataire</label>
-              <select class="fs" id="rap-groupe" style="width:100%" onchange="previewRapport()"><option value="">Sélectionner un groupe…</option></select>
+              <select class="fs" id="rap-groupe" style="display:none" onchange="previewRapport()"><option value="">Sélectionner un groupe…</option></select>
+              <div class="msel" id="msel-rap-groupe" style="width:100%">
+                <button type="button" class="fs msel-btn" style="width:100%;text-align:left" onclick="_toggleRapGroupeDropdown()" id="rap-groupe-btn">Sélectionner un groupe…</button>
+                <div class="msel-dropdown" id="rap-groupe-dropdown" style="display:none;min-width:100%"></div>
+              </div>
             </div>
             <div class="fl"><label>Période</label>
               <div style="display:flex;gap:6px">
@@ -2902,9 +2906,9 @@ function buildRapportSelects(){
   // WO du territoire sélectionné (ou tout si national)
   var woScope = territoire ? WO.filter(function(r){return r._r===territoire;}) : WO;
 
-  // Prestataires actifs dans ce territoire (>=10 WO si régional, >=50 si national)
+  // Tous les prestataires actifs dans ce territoire, sans seuil minimum de volume
   var pCount={};woScope.forEach(function(r){if(r._f&&r._f!=="Inconnu")pCount[r._f]=(pCount[r._f]||0)+1;});
-  var seuil = territoire ? 10 : 50;
+  var seuil = 1;
   var prestsActifs = new Set(Object.keys(pCount).filter(function(p){return pCount[p]>=seuil;}));
 
   // Groupes — n'afficher que ceux ayant au moins une entité active dans le territoire
@@ -2927,7 +2931,7 @@ function buildRapportSelects(){
   var prests=Object.entries(pCount).filter(function(e){return e[1]>=seuil;}).sort(function(a,b){return b[1]-a[1];}).map(function(e){return e[0];});
   if(prests.length){
     var grp=document.createElement("optgroup");
-    grp.label="Prestataires individuels (≥"+seuil+" WO"+(territoire?" en région":"")+")";
+    grp.label="Tous les prestataires"+(territoire?" (en région)":"")+" ("+prests.length+")";
     prests.forEach(function(p){var o=document.createElement("option");o.value="__"+p;o.textContent=p+" ("+fN(pCount[p])+" WO)";grp.appendChild(o);});
     sel.appendChild(grp);
   }
@@ -2936,6 +2940,11 @@ function buildRapportSelects(){
   if(prevVal){
     var stillValid=Array.from(sel.options).some(function(o){return o.value===prevVal;});
     if(stillValid) sel.value=prevVal;
+  }
+  var rapBtn=document.getElementById("rap-groupe-btn");
+  if(rapBtn){
+    var curOpt=Array.from(sel.options).find(function(o){return o.value===sel.value;});
+    rapBtn.textContent = (curOpt && sel.value) ? curOpt.textContent : "Sélectionner un groupe…";
   }
 
   // ── Période (Du / Au) ──
@@ -2973,6 +2982,59 @@ function _rapportPeriodeLabel(woData){
   if(range.au) return "Jusqu'à "+mL(range.au)+" 2026";
   var allM=[...new Set((woData||[]).map(function(r){return r._mo;}).filter(Boolean))].sort();
   return allM.length>=2?"De "+mL(allM[0])+" 2026 à "+mL(allM[allM.length-1])+" 2026":allM.length===1?mL(allM[0])+" 2026":"Toute la période";
+}
+
+// ─── Dropdown recherche pour "Groupe / Prestataire" (rapport) ───
+// Le <select id="rap-groupe"> reste la source de vérité (caché) pour ne rien
+// casser ailleurs dans le code ; ce composant n'est qu'une couche de
+// recherche/affichage par-dessus.
+function _toggleRapGroupeDropdown(){
+  var dd=document.getElementById("rap-groupe-dropdown");
+  if(!dd)return;
+  var isOpen=dd.style.display!=="none";
+  document.querySelectorAll(".msel-dropdown").forEach(function(el){el.style.display="none";});
+  if(!isOpen){
+    dd.style.display="block";
+    _renderRapGroupeDropdown();
+  }
+}
+function _renderRapGroupeDropdown(){
+  var dd=document.getElementById("rap-groupe-dropdown");
+  if(!dd)return;
+  dd.innerHTML="<input type='text' class='msel-search' placeholder='Rechercher un prestataire ou groupe…' oninput='_filterRapGroupeItems(this.value)' onclick='event.stopPropagation()'>"
+    +"<div id='rap-groupe-items'></div>";
+  _filterRapGroupeItems("");
+}
+function _filterRapGroupeItems(term){
+  var itemsEl=document.getElementById("rap-groupe-items");
+  var sel=document.getElementById("rap-groupe");
+  if(!itemsEl||!sel)return;
+  term=(term||"").toLowerCase();
+  var html="";
+  Array.from(sel.children).forEach(function(node){
+    if(node.tagName==="OPTGROUP"){
+      var opts=Array.from(node.children).filter(function(o){return !term||o.textContent.toLowerCase().indexOf(term)>=0;});
+      if(!opts.length)return;
+      html+="<div style='font-size:9px;text-transform:uppercase;color:var(--t3);font-weight:700;padding:6px 6px 2px'>"+node.label+"</div>";
+      opts.forEach(function(o){
+        html+="<div class='msel-item' style='justify-content:space-between' onclick='_selectRapGroupe(\""+o.value.replace(/"/g,'\\"')+"\")'><span>"+o.textContent+"</span></div>";
+      });
+    } else if(node.tagName==="OPTION" && node.value && (!term||node.textContent.toLowerCase().indexOf(term)>=0)){
+      html+="<div class='msel-item' onclick='_selectRapGroupe(\""+node.value.replace(/"/g,'\\"')+"\")'>"+node.textContent+"</div>";
+    }
+  });
+  itemsEl.innerHTML = html || "<div style='padding:8px;color:var(--t3);font-size:11px'>Aucun résultat</div>";
+}
+function _selectRapGroupe(value){
+  var sel=document.getElementById("rap-groupe");
+  var btn=document.getElementById("rap-groupe-btn");
+  if(!sel)return;
+  sel.value=value;
+  var opt=Array.from(sel.options).find(function(o){return o.value===value;});
+  if(btn) btn.textContent = opt ? opt.textContent : "Sélectionner un groupe…";
+  var dd=document.getElementById("rap-groupe-dropdown");
+  if(dd) dd.style.display="none";
+  previewRapport();
 }
 
 function addGroupe(){
