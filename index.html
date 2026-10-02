@@ -1297,6 +1297,24 @@ function parseDate(v){
 // Normalise un libellé de statut pour un matching tolérant aux accents
 // cassés, aux variantes d'apostrophe (' vs ’) et aux espaces superflus —
 // évite qu'un statut valide tombe silencieusement en "Autre" (AU).
+// Récupère une valeur par nom de colonne, en tolérant les en-têtes corrompues
+// (U+FFFD ou sa forme double-encodée "ï¿½") — essaie d'abord les clés exactes
+// données, puis cherche par sous-chaîne dans les clés réelles de l'objet.
+function _getFuzzy(r, keys){
+  for(var i=0;i<keys.length;i++){
+    if(r[keys[i]]!==undefined&&r[keys[i]]!==null&&r[keys[i]]!=="") return String(r[keys[i]]);
+  }
+  var strip=function(s){return String(s).replace(/[\s\uFFFD]|\u00EF\u00BF\u00BD/g,"").toLowerCase();};
+  var rkeys=Object.keys(r);
+  for(var i=0;i<keys.length;i++){
+    var kl=strip(keys[i]);
+    for(var j=0;j<rkeys.length;j++){
+      var rkl=strip(rkeys[j]);
+      if(rkl===kl||rkl.indexOf(kl)===0||kl.indexOf(rkl)===0) return String(r[rkeys[j]]||"");
+    }
+  }
+  return "";
+}
 function normStatus(s){
   return String(s||"")
     .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
@@ -1904,7 +1922,7 @@ function buildData(){
   var EM=buildStatusMap({"Clôturé achevé":"CL","Assignée":"AS","En cours":"EC","En attente d'approbation":"AT","Annulé":"AN"});
   var PM=buildStatusMap({"1 - Très urgent":"TU","2 - Urgent":"UR","3 - Standard":"ST"});
   WO.forEach(function(r){
-    r._e=EM[normStatus(r["État"])]||"AU";
+    r._e=EM[normStatus(_getFuzzy(r,["État","Etat","tat"]))]||"AU";
     r._p=PM[normStatus(r["Priorité"])]||"ST";
     r._f=exFourn(r["Groupe d'affectation"]);
     r._r=String(r["Region"]||r["Région"]||"INCONNU").trim();
