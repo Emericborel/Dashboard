@@ -1933,12 +1933,44 @@ function debugDump(){
   }catch(e){ console.log("debugDump error:", e); }
 }
 
+// Remet les noms de colonnes canoniques quand les accents ont été perdus ou
+// remplacés par U+FFFD à la source (export ServiceNow) ou retirés côté serveur
+// ("Numro", "Cr", "tat"...). Sans effet si les en-têtes sont déjà propres.
+var _CANON_COLS=["Numéro","Créé","Créé par","État","Équipement","Sous Famille d'Équipement","Fin de tâche","Priorité","Bons de commande référencé","Coût total"];
+function _skelKey(s){return String(s).replace(/\uFFFD|\u00EF\u00BF\u00BD/g,"").replace(/[^A-Za-z0-9]/g,"").toLowerCase();}
+function _canonKeys(rows){
+  if(!rows||!rows.length) return;
+  var skCanon={};
+  _CANON_COLS.forEach(function(c){skCanon[_skelKey(c)]=c;});
+  var first=rows[0], renames=[];
+  Object.keys(first).forEach(function(k){
+    if(k.charAt(0)==="_") return;
+    var c=skCanon[_skelKey(k)];
+    if(c && c!==k && first[c]===undefined) renames.push([k,c]);
+  });
+  if(!renames.length) return;
+  rows.forEach(function(r){
+    renames.forEach(function(p){
+      if(r[p[0]]!==undefined){ r[p[1]]=r[p[0]]; delete r[p[0]]; }
+    });
+  });
+}
+// Squelette d'un libellé de statut : on ne garde que les lettres a-z, donc les
+// lettres accentuées (ou leur remplaçant U+FFFD) disparaissent des deux côtés.
+function _skelStatus(s){return String(s||"").toLowerCase().replace(/[^a-z]/g,"");}
+
 function buildData(){
   var today=new Date();
-  var EM=buildStatusMap({"Clôturé achevé":"CL","Assignée":"AS","En cours":"EC","En attente d'approbation":"AT","Annulé":"AN"});
+  _canonKeys(WO); _canonKeys(QUO); _canonKeys(NPS);
+  var EM_RAW={"Clôturé achevé":"CL","Assignée":"AS","En cours":"EC","En attente d'approbation":"AT","Annulé":"AN"};
+  var EM=buildStatusMap(EM_RAW);
+  // Table "squelette" construite sur les libellés d'ORIGINE (accents inclus) : les
+  // lettres accentuées disparaissent, comme leur remplaçant U+FFFD côté données.
+  var EMSK={}; Object.keys(EM_RAW).forEach(function(k){EMSK[_skelStatus(k)]=EM_RAW[k];});
   var PM=buildStatusMap({"1 - Très urgent":"TU","2 - Urgent":"UR","3 - Standard":"ST"});
   WO.forEach(function(r){
-    r._e=EM[normStatus(_getFuzzy(r,["État","Etat","tat"]))]||"AU";
+    var _etRaw=_getFuzzy(r,["État","Etat","tat"]);
+    r._e=EM[normStatus(_etRaw)]||EMSK[_skelStatus(_etRaw)]||"AU";
     r._p=PM[normStatus(r["Priorité"])]||"ST";
     r._f=exFourn(r["Groupe d'affectation"]);
     r._r=String(r["Region"]||r["Région"]||"INCONNU").trim();
