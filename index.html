@@ -458,7 +458,8 @@ tr:hover td{background:rgba(255,255,255,.025)}
         <div id="global-search-results" style="display:none;position:absolute;top:calc(100% + 4px);left:0;width:420px;max-height:420px;overflow-y:auto;background:var(--card);border:1px solid var(--border);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.4);z-index:500"></div>
       </div>
       <button class="btn-sm" onclick="_showDiagPanel()" title="Diagnostic données chargées" style="padding:6px 9px;background:rgba(255,255,255,.06);color:var(--t3);border:1px solid rgba(255,255,255,.1);border-radius:6px;font-size:11px;cursor:pointer">🔧</button>
-      <button class="btn-sm btn-reload" onclick="reload()">↺ Nouveau fichier</button>
+      <button class="btn-sm" id="btn-maj-drive" onclick="majDriveAdmin()" title="Chercher les nouveaux fichiers (mail / Drive) et mettre à jour les données" style="display:none;padding:6px 10px;background:rgba(55,138,221,.15);color:var(--blue);border:1px solid var(--blue);border-radius:6px;font-size:11px;cursor:pointer">🔄 Mettre à jour</button>
+            <button class="btn-sm btn-reload" onclick="reload()">↺ Nouveau fichier</button>
     </div>
   </div>
   <div id="modal-wo-detail" style="display:none;position:fixed;inset:0;background:rgba(10,12,28,.85);z-index:9999;overflow-y:auto;padding:20px">
@@ -477,7 +478,10 @@ tr:hover td{background:rgba(255,255,255,.025)}
         <div style="font-size:15px;font-weight:700" id="store-detail-title">Magasin</div>
         <div style="font-size:11px;color:var(--t3)" id="store-detail-subtitle"></div>
       </div>
+      <div style="display:flex;gap:8px">
+      <button onclick="exportDetailPanelPDF()" title="Télécharger le détail complet en PDF" style="background:var(--blue);border:1px solid var(--blue);color:#fff;font-size:13px;padding:5px 12px;border-radius:7px;cursor:pointer">📄 PDF</button>
       <button onclick="closeStoreDetail()" style="background:none;border:1px solid var(--border);color:var(--t2);font-size:13px;padding:5px 12px;border-radius:7px;cursor:pointer">✕ Fermer</button>
+      </div>
     </div>
     <div id="store-detail-body" style="padding:20px 24px"></div>
   </div>
@@ -1544,6 +1548,111 @@ function exportWODetailPDF(){
   setTimeout(function(){ w.print(); }, 250);
 }
 
+
+// ── Export PDF du panneau de détail (prestataire, magasin, famille, équipement, flops…) ──
+// Contrairement à l'affichage (100 lignes max, défilement), le PDF contient la liste COMPLÈTE.
+var _panelCtx = {wo:null, quo:null};
+function _esc(x){ return String(x==null?"":x).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+function _pdfWOTable(list){
+  var sorted = list.slice().sort(function(a,b){ return (b._d?b._d.getTime():0)-(a._d?a._d.getTime():0); });
+  var rows = sorted.map(function(r){
+    return "<tr><td>"+_esc(r["Numéro"])+"</td><td>"+_esc(eLabels[r._e]||r._e)+"</td><td>"+_esc(r._m||"")+"</td><td>"+_esc(r._f||"")+"</td><td>"+_esc(r["Créé"])+"</td><td>"+_esc(r["Titre de la demande"])+"</td></tr>";
+  }).join("");
+  return "<table class='pt'><thead><tr><th>N° WO</th><th>Statut</th><th>Magasin</th><th>Prestataire</th><th>Créé</th><th>Titre</th></tr></thead><tbody>"+rows+"</tbody></table>";
+}
+function _pdfQUOTable(list){
+  var sorted = list.slice().sort(function(a,b){ return (b._d?b._d.getTime():0)-(a._d?a._d.getTime():0); });
+  var rows = sorted.map(function(r){
+    return "<tr><td>"+_esc(r["Numéro"])+"</td><td>"+_esc(qLabels[r._s]||r._s)+"</td><td>"+_esc(r._m||"")+"</td><td>"+_esc(r._f||"")+"</td><td style='text-align:right'>"+_esc(fmt(r._c))+"</td></tr>";
+  }).join("");
+  return "<table class='pt'><thead><tr><th>N° Devis</th><th>Statut</th><th>Magasin</th><th>Prestataire</th><th style='text-align:right'>Coût</th></tr></thead><tbody>"+rows+"</tbody></table>";
+}
+function exportDetailPanelPDF(){
+  var body = document.getElementById("store-detail-body");
+  var titleEl = document.getElementById("store-detail-title");
+  var subEl = document.getElementById("store-detail-subtitle");
+  if(!body || !body.innerHTML){ toast("Aucun détail à exporter", true); return; }
+  var clone = body.cloneNode(true);
+  // Remplacer chaque tableau limité/défilant par la liste complète
+  Array.prototype.slice.call(clone.querySelectorAll("table")).forEach(function(t){
+    var h = (t.querySelector("th")||{}).textContent||"";
+    var holder = t.parentNode;
+    var html = null;
+    if(h.indexOf("N° WO")===0 && _panelCtx.wo) html = _pdfWOTable(_panelCtx.wo);
+    else if(h.indexOf("N° Devis")===0 && _panelCtx.quo) html = _pdfQUOTable(_panelCtx.quo);
+    if(html){ var d=document.createElement("div"); d.innerHTML=html; holder.parentNode.replaceChild(d, holder); }
+  });
+  // Les titres "(100 plus récents sur N)" ne s'appliquent plus
+  var bodyHTML = clone.innerHTML.replace(/100 plus récents sur /g,"");
+  var w = window.open("","_blank");
+  if(!w){ toast("Autorisez les pop-ups pour exporter en PDF", true); return; }
+  var titre = _esc(titleEl?titleEl.textContent:"Détail");
+  w.document.write(
+    "<!DOCTYPE html><html><head><meta charset='UTF-8'><title>"+titre+"</title><style>"
+    +":root{--bg:#fff;--bg2:#f1f4f9;--bg3:#e8edf5;--card:#fff;--card2:#f6f8fb;--text:#1a1a2e;--t2:#444;--t3:#777;--border:#d5dbe6;--blue:#004B9B;--green:#15803d;--amber:#b45309;--red:#dc2626;--purple:#6d28d9}"
+    +"@page{size:A4 landscape;margin:12mm}"
+    +"body{font-family:Arial,sans-serif;color:#1a1a2e;background:#fff;margin:0;font-size:12px}"
+    +"h1{font-size:18px;margin:0 0 2px;color:#004B9B}.sub{font-size:11px;color:#777;margin-bottom:14px;padding-bottom:10px;border-bottom:2px solid #004B9B}"
+    +"*{max-height:none!important;overflow:visible!important;resize:none!important;box-shadow:none!important}"
+    +"table{width:100%;border-collapse:collapse;font-size:10px}.pt th,.pt td,table th,table td{border-bottom:1px solid #e3e7ef;padding:4px 6px;text-align:left;vertical-align:top}"
+    +"thead{display:table-header-group}tr{page-break-inside:avoid}thead th{background:#eef2f8;position:static!important}"
+    +".foot{margin-top:18px;font-size:9px;color:#888}"
+    +"</style></head><body>"
+    +"<h1>"+titre+"</h1><div class='sub'>"+_esc(subEl?subEl.textContent:"")+" · Édité le "+new Date().toLocaleDateString("fr-FR")+"</div>"
+    +bodyHTML
+    +"<div class='foot'>Carrefour — Direction Technique France · Dashboard Maintenance Curative &amp; Préventive</div>"
+    +"</body></html>"
+  );
+  w.document.close(); w.focus();
+  setTimeout(function(){ w.print(); }, 400);
+}
+
+
+// ── Bouton « Mettre à jour depuis Drive/Gmail » — réservé à l'admin ──
+// Affiché seulement si un jeton est enregistré dans CE navigateur. Activation : ouvrir le dashboard
+// avec ?admin=1 (une seule fois), saisir le jeton généré par definirTokenAdmin() dans Apps Script.
+function _adminToken(){ try{ return localStorage.getItem("mc_admin_token")||""; }catch(e){ return ""; } }
+function _initAdminBtn(){
+  try{
+    if(/[?&]admin=1/.test(location.search) && !_adminToken()){
+      var t = prompt("Jeton admin (généré par definirTokenAdmin() dans Apps Script) :");
+      if(t){ localStorage.setItem("mc_admin_token", t.trim()); }
+    }
+  }catch(e){}
+  var b = document.getElementById("btn-maj-drive");
+  if(b) b.style.display = _adminToken() ? "" : "none";
+}
+var _majEnCours = false;
+function majDriveAdmin(){
+  if(_majEnCours) return;
+  if(!SCRIPT_URL){ toast("Configurez d'abord l'URL Apps Script", true); return; }
+  var token = _adminToken();
+  if(!token){ toast("Jeton admin manquant", true); return; }
+  _majEnCours = true;
+  var b = document.getElementById("btn-maj-drive");
+  if(b){ b.disabled = true; b.textContent = "⏳ Recherche…"; }
+  var cb = "_GS_MAJ_"+Date.now();
+  var sc = document.createElement("script");
+  function fin(){ _majEnCours=false; if(b){ b.disabled=false; b.textContent="🔄 Mettre à jour"; } try{document.head.removeChild(sc);}catch(e){} }
+  var to = setTimeout(function(){ window[cb]=function(){}; fin(); toast("Délai dépassé — vérifie le journal Apps Script (la mise à jour peut continuer côté serveur)", true); }, 400000);
+  window[cb] = function(r){
+    clearTimeout(to); delete window[cb]; fin();
+    if(!r || r.status==="error"){ toast((r&&r.message)||"Erreur", true); return; }
+    if(r.status==="busy"){ toast(r.message, true); return; }
+    if(r.misAJour){
+      toast("✅ Nouveaux fichiers pris en compte : "+(r.gmail?"mail":"")+(r.gmail&&r.drive.length?" + ":"")+(r.drive.length?"Drive ("+r.drive.join(", ")+")":"")+" — rechargement…");
+      setTimeout(function(){ chargerDepuisSheetAvecProgress(); }, 800);
+    } else {
+      var m = (r.manquants&&r.manquants.length) ? " Manquant cette semaine : "+r.manquants.join(", ")+"." : "";
+      toast("Aucun nouveau fichier — les données sont déjà à jour."+m);
+    }
+  };
+  sc.onerror = function(){ clearTimeout(to); window[cb]=function(){}; fin(); toast("Impossible de joindre Apps Script", true); };
+  sc.src = SCRIPT_URL + "?action=majDrive&token=" + encodeURIComponent(token) + "&callback=" + cb;
+  document.head.appendChild(sc);
+}
+window.addEventListener("load", _initAdminBtn);
+
 function _kpiCardSD(label, value, color){
   return "<div style='background:var(--bg2);border-radius:8px;padding:10px 14px;min-width:110px;flex:1'>"
     + "<div style='font-size:9px;color:var(--t3);text-transform:uppercase;margin-bottom:4px'>"+label+"</div>"
@@ -1571,6 +1680,7 @@ function openStoreDetail(mag){
   subtitle.textContent = (region ? region.replace(/_/g," ") : "")
     + (cmmEntry ? "  ·  CMM : "+cmmEntry.cmm+"  ·  RPM : "+cmmEntry.rpm : "");
 
+  _panelCtx.wo = woList; _panelCtx.quo = quoList;
   var totalWO = woList.length;
   var cl = woList.filter(function(r){return r._e==="CL";}).length;
   var taux = totalWO ? (cl/totalWO*100) : 0;
@@ -1698,7 +1808,7 @@ function _showDiagPanel(){
   var versionHTML = "<div style='margin-bottom:12px;padding:8px 10px;background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.35);border-radius:6px'>"
     + "<b style='color:#F59E0B'>Version du code servi (PREV) :</b> "+(window._lastPrevBuildVersion||"jamais chargé")+"<br>"
     + "<b style='color:#F59E0B'>Version du code servi (BDD) :</b> "+(window._lastBddBuildVersion||"jamais chargé")+"<br>"
-    + "<span style='font-size:9px;color:#888'>Attendu : 2026-10-02-ENCDETECT-v4 — si différent ou absent, le déploiement n'est pas à jour.</span>"
+    + "<span style='font-size:9px;color:#888'>Attendu : 2026-10-21-MAJBOUTON-v7b — si différent ou absent, le déploiement n'est pas à jour.</span>"
     + "</div>";
   // Diagnostic ciblé : dump brut de WO[0] + test en direct de _getFuzzy,
   // pour comprendre précisément pourquoi le matching État échoue encore
@@ -1733,6 +1843,7 @@ function _showDiagPanel(){
 // ─── Fonctions partagées pour tous les panneaux de détail (magasin, prestataire, équipement, GT Opex) ───
 
 function _buildWOTableHTML(woList, limit){
+  _panelCtx.wo = woList;
   limit = limit || 100;
   var sorted = woList.slice().sort(function(a,b){
     var da=a._d?a._d.getTime():0, db=b._d?b._d.getTime():0;
@@ -1758,6 +1869,7 @@ function _buildWOTableHTML(woList, limit){
 }
 
 function _buildQUOTableHTML(quoList, limit){
+  _panelCtx.quo = quoList;
   limit = limit || 100;
   var sorted = quoList.slice().sort(function(a,b){
     var da=a._d?a._d.getTime():0, db=b._d?b._d.getTime():0;
