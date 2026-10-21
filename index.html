@@ -1634,7 +1634,7 @@ function majDriveAdmin(){
   var cb = "_GS_MAJ_"+Date.now();
   var sc = document.createElement("script");
   function fin(){ _majEnCours=false; if(b){ b.disabled=false; b.textContent="🔄 Mettre à jour"; } try{document.head.removeChild(sc);}catch(e){} }
-  var to = setTimeout(function(){ window[cb]=function(){}; fin(); toast("Délai dépassé — vérifie le journal Apps Script (la mise à jour peut continuer côté serveur)", true); }, 400000);
+  var to = setTimeout(function(){ window[cb]=function(){}; fin(); toast("Délai dépassé — vérifie le journal Apps Script (la mise à jour peut continuer côté serveur)", true); }, 1500000);
   window[cb] = function(r){
     clearTimeout(to); delete window[cb]; fin();
     if(!r || r.status==="error"){ toast((r&&r.message)||"Erreur", true); return; }
@@ -1808,7 +1808,7 @@ function _showDiagPanel(){
   var versionHTML = "<div style='margin-bottom:12px;padding:8px 10px;background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.35);border-radius:6px'>"
     + "<b style='color:#F59E0B'>Version du code servi (PREV) :</b> "+(window._lastPrevBuildVersion||"jamais chargé")+"<br>"
     + "<b style='color:#F59E0B'>Version du code servi (BDD) :</b> "+(window._lastBddBuildVersion||"jamais chargé")+"<br>"
-    + "<span style='font-size:9px;color:#888'>Attendu : 2026-10-21-MAJBOUTON-v7b — si différent ou absent, le déploiement n'est pas à jour.</span>"
+    + "<span style='font-size:9px;color:#888'>Attendu : 2026-10-21-ATOMIQUE-v9 — si différent ou absent, le déploiement n'est pas à jour.</span>"
     + "</div>";
   // Diagnostic ciblé : dump brut de WO[0] + test en direct de _getFuzzy,
   // pour comprendre précisément pourquoi le matching État échoue encore
@@ -4949,7 +4949,7 @@ function chargerDepuisSheetAvecProgress(){
   WO=[]; QUO=[]; NPS=[]; BDD=[];
   var prevRows=null;
 
-  function chargerType(type, cb, _attempt){
+  function chargerType(type, cb, _attempt, _busy){
     _attempt = _attempt || 0;
     var cbName="_GS_DATA_"+type+"_"+Date.now()+"_"+Math.floor(Math.random()*100000);
     var sc=document.createElement("script");
@@ -4976,6 +4976,13 @@ function chargerDepuisSheetAvecProgress(){
       clearTimeout(timeout);
       try{document.head.removeChild(sc);}catch(e){}
       delete window[cbName];
+      // Le serveur est en train de réécrire cette feuille : attendre puis relire (jamais de données partielles)
+      if(data && data.status==="busy" && (_busy||0)<40){
+        STATUTS[type]="⏳ Mise à jour des données en cours… (nouvelle tentative)";
+        refreshSteps();
+        setTimeout(function(){ chargerType(type, cb, _attempt, (_busy||0)+1); }, 15000);
+        return;
+      }
       var ok = (data.status==="ok"||data.statut==="ok");
       if(!ok && retryOrGiveUp()) return;
       STATUTS[type]="✅ "+fN((data.rows||data.data||[]).length)+" lignes";
