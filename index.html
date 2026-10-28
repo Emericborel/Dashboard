@@ -1945,7 +1945,7 @@ function _showDiagPanel(){
   var versionHTML = "<div style='margin-bottom:12px;padding:8px 10px;background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.35);border-radius:6px'>"
     + "<b style='color:#F59E0B'>Version du code servi (PREV) :</b> "+(window._lastPrevBuildVersion||"jamais chargé")+"<br>"
     + "<b style='color:#F59E0B'>Version du code servi (BDD) :</b> "+(window._lastBddBuildVersion||"jamais chargé")+"<br>"
-    + "<span style='font-size:9px;color:#888'>Attendu : 2026-10-28-FIABILITE-v12 — si différent ou absent, le déploiement n'est pas à jour.</span>"
+    + "<span style='font-size:9px;color:#888'>Attendu : 2026-10-28-FIABILITE-v13 — si différent ou absent, le déploiement n'est pas à jour.</span>"
     + "</div>";
   // Diagnostic ciblé : dump brut de WO[0] + test en direct de _getFuzzy,
   // pour comprendre précisément pourquoi le matching État échoue encore
@@ -6677,7 +6677,13 @@ function renderComparatif(){
   if(rgUp) L.push("Région avec la plus forte hausse de WO : <b>"+_cmpEsc(String(rgUp.l).replace(/_/g," "))+"</b> (+"+fN(rgUp.n-rgUp.n1)+").");
   var ins=document.getElementById("cmp-insights");
   if(ins) ins.innerHTML="<div class='ct'>🔎 Faits marquants</div><ul style='margin:6px 0 0 18px;padding:0;font-size:12px;line-height:1.8;color:var(--t2)'>"+L.map(function(x){return "<li>"+x+"</li>";}).join("")+"</ul>"
-    +"<div style='font-size:10px;color:var(--t3);margin-top:8px'>Données N-1 : "+yN1+" — "+fN(N1.WO.length)+" WO, "+fN(N1.QUO.length)+" devis chargés · N : "+yN+" — "+fN(WO.length)+" WO, "+fN(QUO.length)+" devis. Dépenses = "+(dvMode==="APP"?"devis approuvés ERP":"tous les devis")+".</div>";
+    +"<div style='font-size:10px;color:var(--t3);margin-top:8px'>Données N-1 : "+yN1+" — "+fN(N1.WO.length)+" WO, "+fN(N1.QUO.length)+" devis chargés · N : "+yN+" — "+fN(WO.length)+" WO, "+fN(QUO.length)+" devis. Dépenses = "+(dvMode==="APP"?"devis approuvés ERP":"tous les devis")+".</div>"
+    +"<div style='font-size:10px;color:var(--t3);margin-top:4px'>🔧 Diagnostic devis N-1 : "+(function(){
+        var q=N1.QUO; if(!q.length) return "aucune ligne";
+        var yr={},st={},ap=0,sm=0,wd=0; q.forEach(function(r){ if(r._d){wd++; var y=r._d.getFullYear(); yr[y]=(yr[y]||0)+1;} var s=r._s+"/"+String(r["Statut du devis"]||"").slice(0,22); st[s]=(st[s]||0)+1; if(r._s==="APP"){ap++; sm+=r._c;} });
+        var top=Object.keys(st).sort(function(a,b){return st[b]-st[a];}).slice(0,4).map(function(k){return k+" ("+st[k]+")";}).join(", ");
+        return fN(q.length)+" lignes · "+fN(wd)+" avec date · années : "+Object.keys(yr).map(function(y){return y+" ("+yr[y]+")";}).join(", ")+" · approuvés : "+fN(ap)+" pour "+fmt(sm)+" · statuts : "+top+" · colonnes : "+Object.keys(q[0]).filter(function(k){return k[0]!=="_";}).slice(0,15).join(" | ");
+      })()+"</div>";
 
   _cmpModel = {yN:yN, yN1:yN1, per:per, aligne:aligne,
     kpi:[["Indicateur",String(yN1),String(yN)],
