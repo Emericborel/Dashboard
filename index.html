@@ -197,6 +197,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
 /* FILTERS */
 .fbar{background:var(--bg2);border-bottom:1px solid var(--border);padding:6px 14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;flex-shrink:0}
 .fl{display:flex;flex-direction:column;gap:2px}
+.fb-sub{padding:6px 12px;background:none;border:1px solid var(--border);color:var(--t2);border-radius:6px;font-size:11px;font-weight:600;cursor:pointer}
+.fb-sub.on{background:var(--blue);border-color:var(--blue);color:#fff}
 .fl label{font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:.07em;font-weight:600}
 select.fs{background:var(--bg);border:1px solid rgba(255,255,255,.1);color:var(--text);border-radius:6px;padding:4px 8px;font-size:11px;min-width:120px;cursor:pointer}
 .msel{position:relative}
@@ -494,6 +496,8 @@ tr:hover td{background:rgba(255,255,255,.025)}
     <div class="tab" onclick="go('aging')">🕐 Aging WO</div>
     <div class="tab" onclick="go('budget')">💰 Budget</div>
     <div class="tab" onclick="go('recurrence')">🔁 Récurrence</div>
+    <div class="tab" onclick="go('comparatif')">📆 Comparatif N-1</div>
+    <div class="tab" onclick="go('fiabilite')">🧪 Fiabilité</div>
     <div class="tab" onclick="go('bc')">⚠ Sans BC</div>
     <div class="tab" onclick="go('nps')">⭐ NPS</div>
     <div class="tab" onclick="go('prev')">🔧 Préventif</div>
@@ -669,6 +673,127 @@ tr:hover td{background:rgba(255,255,255,.025)}
       <div class="g1 card">
         <div class="ct">Tableau détail équipements récurrents</div>
         <div class="tscroll"><table><thead><tr><th>#</th><th>Équipement</th><th>Nb WO</th><th>Sites</th><th>Taux clôture</th><th>Coût total</th><th>Signal</th></tr></thead><tbody id="tb-rec"></tbody></table></div>
+      </div>
+    </div>
+
+    <!-- COMPARATIF N-1 -->
+    <div class="page" id="page-comparatif">
+      <div class="card" style="margin-bottom:12px">
+        <div style="display:flex;flex-wrap:wrap;gap:10px 14px;align-items:flex-end">
+          <div class="fl"><label>Du mois</label><select class="fs" id="cmp-m1" onchange="renderComparatif()"></select></div>
+          <div class="fl"><label>Au mois</label><select class="fs" id="cmp-m2" onchange="renderComparatif()"></select></div>
+          <div class="fl"><label>Type client</label><select class="fs" id="cmp-type" onchange="renderComparatif()"><option value="">Tous</option><option value="Hyper">Hyper</option><option value="Market">Market</option></select></div>
+          <div class="fl"><label>Région</label><select class="fs" id="cmp-reg" onchange="renderComparatif()"><option value="">Toutes</option></select></div>
+          <div class="fl"><label>Sous-famille d'équipement</label><select class="fs" id="cmp-sf" onchange="renderComparatif()" style="min-width:190px"><option value="">Toutes</option></select></div>
+          <div class="fl"><label>Dépenses = devis</label><select class="fs" id="cmp-dv" onchange="renderComparatif()"><option value="APP">Approuvés ERP</option><option value="ALL">Tous statuts</option></select></div>
+          <div class="fl"><label>Volume min. (WO)</label><input class="fs" type="number" id="cmp-minvol" value="5" min="1" max="500" style="width:70px" onchange="renderComparatif()"></div>
+          <div class="fl"><label>Tri équipements</label><select class="fs" id="cmp-sort" onchange="renderComparatif()">
+            <option value="dn">Plus forte hausse (WO)</option><option value="dp">Plus forte hausse (%)</option><option value="cd">Plus forte hausse dépense</option><option value="n">Plus de WO cette année</option><option value="bd">Plus forte baisse (WO)</option></select></div>
+          <label style="font-size:11px;color:var(--t2);display:flex;align-items:center;gap:6px;padding-bottom:4px" title="N-1 est coupé au même jour de l'année que la dernière donnée de N : évite de comparer un mois en cours à un mois complet"><input type="checkbox" id="cmp-aligne" checked onchange="renderComparatif()"> N-1 coupé au même jour</label>
+          <button onclick="exporterComparatif()" style="padding:6px 14px;background:var(--blue);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">📥 Excel</button>
+          <button onclick="chargerN1(true)" title="Recharger les données N-1 depuis le Sheet" style="padding:6px 10px;background:none;border:1px solid var(--border);color:var(--t2);border-radius:6px;font-size:11px;cursor:pointer">↺ N-1</button>
+        </div>
+        <div style="font-size:10px;color:var(--t3);margin-top:8px">Cet onglet utilise ses propres filtres : les filtres de la barre du haut ne s'y appliquent pas.</div>
+      </div>
+      <div id="cmp-status"></div>
+      <div id="cmp-body" style="display:none">
+        <div class="kg" id="kg-cmp"></div>
+        <div class="card g1" id="cmp-insights"></div>
+        <div class="g2">
+          <div class="card"><div class="ct">WO par mois — N vs N-1</div><div class="cw" style="height:240px"><canvas id="c-cmp-wo"></canvas></div></div>
+          <div class="card"><div class="ct">Dépenses devis par mois (k€) — N vs N-1</div><div class="cw" style="height:240px"><canvas id="c-cmp-cout"></canvas></div></div>
+        </div>
+        <div class="g1 card">
+          <div class="ct">Équipements — nombre de WO N-1 vs N et dépenses associées</div>
+          <div class="tscroll" style="max-height:520px"><table><thead><tr><th>#</th><th>Équipement</th><th>WO N-1</th><th>WO N</th><th>Δ</th><th>Δ %</th><th>Sites N</th><th>Dépense N-1</th><th>Dépense N</th><th>Δ dépense</th><th>Signal</th></tr></thead><tbody id="tb-cmp-eq"></tbody></table></div>
+        </div>
+        <div class="g1 card">
+          <div class="ct">Sous-familles d'équipement — dépenses devis N-1 vs N</div>
+          <div class="tscroll" style="max-height:460px"><table><thead><tr><th>#</th><th>Sous-famille</th><th>Dépense N-1</th><th>Dépense N</th><th>Δ €</th><th>Δ %</th><th>WO N-1</th><th>WO N</th><th>Coût / WO N-1</th><th>Coût / WO N</th></tr></thead><tbody id="tb-cmp-sf"></tbody></table></div>
+        </div>
+        <div class="g1 card">
+          <div class="ct">Prestataires — volume, taux de clôture et dépenses</div>
+          <div class="tscroll" style="max-height:460px"><table><thead><tr><th>#</th><th>Prestataire</th><th>WO N-1</th><th>WO N</th><th>Δ %</th><th>Taux N-1</th><th>Taux N</th><th>Δ pts</th><th>Dépense N-1</th><th>Dépense N</th><th>Δ %</th></tr></thead><tbody id="tb-cmp-pr"></tbody></table></div>
+        </div>
+        <div class="g1 card">
+          <div class="ct">Régions</div>
+          <div class="tscroll" style="max-height:320px"><table><thead><tr><th>Région</th><th>WO N-1</th><th>WO N</th><th>Δ %</th><th>Taux N-1</th><th>Taux N</th><th>Dépense N-1</th><th>Dépense N</th><th>Δ %</th></tr></thead><tbody id="tb-cmp-rg"></tbody></table></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FIABILITÉ -->
+    <div class="page" id="page-fiabilite">
+      <div class="card" style="margin-bottom:12px">
+        <div style="display:flex;flex-wrap:wrap;gap:10px 14px;align-items:flex-end">
+          <div class="fl"><label>Type client</label><select class="fs" id="fb-type" onchange="renderFiabilite()"><option value="">Tous</option><option value="Hyper">Hyper</option><option value="Market">Market</option></select></div>
+          <div class="fl"><label>Région</label><select class="fs" id="fb-reg" onchange="renderFiabilite()"><option value="">Toutes</option></select></div>
+          <div class="fl"><label>Du mois</label><select class="fs" id="fb-m1" onchange="renderFiabilite()"></select></div>
+          <div class="fl"><label>Au mois</label><select class="fs" id="fb-m2" onchange="renderFiabilite()"></select></div>
+          <div style="display:flex;gap:6px;margin-left:auto;flex-wrap:wrap">
+            <button class="fb-sub" id="fb-sub-rep"  onclick="fbSub('rep')">🔁 Pannes répétées</button>
+            <button class="fb-sub" id="fb-sub-frag" onclick="fbSub('frag')">🏪 Fragilité par site</button>
+            <button class="fb-sub" id="fb-sub-pc"   onclick="fbSub('pc')">🛠 Préventif vs curatif</button>
+          </div>
+        </div>
+        <div style="font-size:10px;color:var(--t3);margin-top:8px">Cet onglet utilise ses propres filtres : les filtres de la barre du haut ne s'y appliquent pas.</div>
+      </div>
+
+      <!-- A. PANNES RÉPÉTÉES -->
+      <div id="fb-sec-rep">
+        <div class="card" style="margin-bottom:12px">
+          <div style="display:flex;flex-wrap:wrap;gap:10px 14px;align-items:flex-end">
+            <div class="fl"><label>Fenêtre de réintervention</label><select class="fs" id="fb-win" onchange="renderFiabilite()"><option value="15">15 jours</option><option value="30" selected>30 jours</option><option value="60">60 jours</option><option value="90">90 jours</option></select></div>
+            <div class="fl"><label>Détection</label><select class="fs" id="fb-mode" onchange="renderFiabilite()" style="min-width:230px"><option value="strict">Strict : même magasin + équipement + titre de demande similaire</option><option value="eq">Large : même magasin + même équipement</option></select></div>
+            <div class="fl"><label>Volume min. (WO clôturés)</label><input class="fs" type="number" id="fb-minrep" value="30" min="1" max="1000" style="width:80px" onchange="renderFiabilite()"></div>
+            <label style="font-size:11px;color:var(--t2);display:flex;align-items:center;gap:6px;padding-bottom:4px" title="Exclut les équipements génériques (Travaux…, Multitechnique, Divers) pour lesquels deux WO ne concernent pas forcément le même matériel"><input type="checkbox" id="fb-excl" checked onchange="renderFiabilite()"> Exclure équipements génériques</label>
+          </div>
+          <div style="font-size:11px;color:var(--t3);margin-top:8px;line-height:1.6">Une <b>réintervention</b> = un nouveau WO (non annulé) créé sur le même magasin et le même équipement dans la fenêtre choisie <b>après la clôture</b> d'un WO. Elle est imputée au prestataire du WO clôturé (la réparation n'a pas tenu). Seuls les WO clôturés depuis plus que la fenêtre sont comptés, pour ne pas sous-estimer les réinterventions récentes.</div>
+        </div>
+        <div class="kg" id="fb-rep-kg"></div>
+        <div class="g2">
+          <div class="card"><div class="ct">Taux de réintervention par prestataire (plus élevés)</div><div id="fb-rep-bars"></div></div>
+          <div class="card"><div class="ct">Taux de réintervention par sous-famille</div><div id="fb-rep-sfbars"></div></div>
+        </div>
+        <div class="g1 card"><div class="ct">Prestataires — réinterventions (cliquer pour le détail)</div>
+          <div class="tscroll" style="max-height:480px"><table><thead><tr><th>#</th><th>Prestataire</th><th>WO clôturés analysés</th><th>Réinterventions</th><th>Taux de réintervention</th><th>Écart vs moyenne</th><th>Délai médian avant réintervention</th><th>Signal</th></tr></thead><tbody id="fb-rep-tb"></tbody></table></div></div>
+        <div class="g1 card"><div class="ct">Équipements à pannes répétitives (≥ 3 réinterventions) — cliquer pour l'historique</div>
+          <div class="tscroll" style="max-height:480px"><table><thead><tr><th>#</th><th>Magasin</th><th>Équipement</th><th>WO sur la période</th><th>Réinterventions</th><th>Prestataires intervenus</th><th>Dernier WO</th></tr></thead><tbody id="fb-chron-tb"></tbody></table></div></div>
+      </div>
+
+      <!-- B. FRAGILITÉ PAR SITE -->
+      <div id="fb-sec-frag" style="display:none">
+        <div class="card" style="margin-bottom:12px">
+          <div style="display:flex;flex-wrap:wrap;gap:10px 14px;align-items:flex-end">
+            <div class="fl"><label>Poids fréquence pannes</label><input class="fs" type="number" id="fb-w1" value="30" min="0" max="100" style="width:70px" onchange="renderFiabilite()"></div>
+            <div class="fl"><label>Poids réinterventions</label><input class="fs" type="number" id="fb-w2" value="20" min="0" max="100" style="width:70px" onchange="renderFiabilite()"></div>
+            <div class="fl"><label>Poids retard WO ouverts</label><input class="fs" type="number" id="fb-w3" value="20" min="0" max="100" style="width:70px" onchange="renderFiabilite()"></div>
+            <div class="fl"><label>Poids dépenses</label><input class="fs" type="number" id="fb-w4" value="20" min="0" max="100" style="width:70px" onchange="renderFiabilite()"></div>
+            <div class="fl"><label>Poids NPS</label><input class="fs" type="number" id="fb-w5" value="10" min="0" max="100" style="width:70px" onchange="renderFiabilite()"></div>
+            <div class="fl"><label>WO min. par site</label><input class="fs" type="number" id="fb-minsite" value="10" min="1" max="500" style="width:70px" onchange="renderFiabilite()"></div>
+            <button onclick="exporterFragilite()" style="padding:6px 14px;background:var(--blue);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">📥 Excel</button>
+          </div>
+          <div style="font-size:11px;color:var(--t3);margin-top:8px;line-height:1.6">Chaque composante est convertie en <b>rang (0-100) parmi les sites du même type client</b> (un Hyper n'est pas comparé à un Market), puis pondérée. Indice élevé = site fragile. <b>Retard cumulé</b> = somme des âges (en mois) des WO encore ouverts, plafonnés à 6 mois. <b>Dépenses</b> = devis approuvés ERP. <b>NPS</b> : score bas = fragile (site neutre si moins de 3 évaluations). Les pondérations sont normalisées automatiquement.</div>
+        </div>
+        <div class="kg" id="fb-frag-kg"></div>
+        <div class="card g1"><div class="ct">Top 15 des sites les plus fragiles</div><div id="fb-frag-bars"></div></div>
+        <div class="g1 card"><div class="ct">Classement des sites (cliquer pour le détail magasin)</div>
+          <div class="tscroll" style="max-height:620px"><table><thead><tr><th>#</th><th>Magasin</th><th>Type</th><th>Région</th><th>CMM</th><th>WO</th><th>Réinterventions</th><th>WO ouverts</th><th>Âge moyen ouverts</th><th>Dépenses</th><th>NPS</th><th>Indice</th><th>Niveau</th><th>Facteur principal</th></tr></thead><tbody id="fb-frag-tb"></tbody></table></div></div>
+      </div>
+
+      <!-- C. PRÉVENTIF vs CURATIF -->
+      <div id="fb-sec-pc" style="display:none">
+        <div class="card" style="margin-bottom:12px">
+          <div style="display:flex;flex-wrap:wrap;gap:10px 14px;align-items:flex-end">
+            <div class="fl"><label>« Bien couvert » si réalisation ≥</label><input class="fs" type="number" id="fb-good" value="80" min="1" max="100" style="width:70px" onchange="renderFiabilite()"> </div>
+            <div class="fl"><label>« Mal couvert » si réalisation &lt;</label><input class="fs" type="number" id="fb-bad" value="60" min="1" max="100" style="width:70px" onchange="renderFiabilite()"></div>
+          </div>
+          <div style="font-size:11px;color:var(--t3);margin-top:8px;line-height:1.6">Le préventif est rattaché à une famille d'après le <b>code de plan</b> du titre (ex. <code>MAG_EXT_FROID_6M</code>) puis relié aux sous-familles du curatif (table de correspondance dans le code, <code>FB_FAM</code>). Pour chaque famille, on compare le <b>curatif par site</b> entre les sites bien et mal couverts en préventif. Si les sites bien couverts n'ont pas moins de curatif, le préventif ne produit pas l'effet attendu (qualité des visites, périmètre du plan…). Corrélation, pas preuve : à confirmer par l'analyse terrain.</div>
+        </div>
+        <div class="kg" id="fb-pc-kg"></div>
+        <div class="g1 card"><div class="ct">Familles — préventif réalisé vs curatif (cliquer pour les sites à traiter)</div>
+          <div class="tscroll" style="max-height:520px"><table><thead><tr><th>Famille</th><th>Plans préventifs</th><th>Réalisés</th><th>Taux réalisation</th><th>WO curatifs</th><th>Curatif / préventif réalisé</th><th>Sites bien couverts<br><span style="font-weight:400">curatif / site</span></th><th>Sites mal couverts<br><span style="font-weight:400">curatif / site</span></th><th>Verdict</th></tr></thead><tbody id="fb-pc-tb"></tbody></table></div></div>
+        <div class="card g1" id="fb-pc-note" style="font-size:11px;color:var(--t3)"></div>
       </div>
     </div>
 
@@ -897,6 +1022,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
           </div>
           <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
             <select class="fs" id="gtopex-mois" style="min-width:130px" onchange="renderGTOpex()"><option value="">Toute la période</option></select>
+            <label style="font-size:11px;color:var(--t3);display:flex;align-items:center;gap:5px" title="Les prestataires avec moins de WO sont exclus du Top/Flop (un petit volume fausse le taux)">Min. WO <input type="number" id="gtopex-minwo" value="20" min="1" max="500" style="width:56px;padding:4px 6px;background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:11px" onchange="renderGTOpex()"></label>
             <button onclick="genererRapportGTDirect()" style="padding:6px 14px;background:var(--amber);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">⚡ PDF rapide</button>
             <button onclick="ouvrirModalRapportGT()" style="padding:6px 14px;background:var(--red);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">📄 PDF personnalisé</button>
             <button onclick="exporterGTOpex()" style="padding:6px 14px;background:var(--blue);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">📥 Excel</button>
@@ -912,6 +1038,16 @@ tr:hover td{background:rgba(255,255,255,.025)}
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
           <div class="card"><div class="ct">Hyper</div><div id="gtopex-wo-hyper"></div></div>
           <div class="card"><div class="ct">Market</div><div id="gtopex-wo-market"></div></div>
+        </div>
+        <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:8px">🏆 Top 10 Prestataires — Taux de clôture</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+          <div class="card"><div class="ct">Hyper</div><div id="gtopex-ptop-hyper"></div></div>
+          <div class="card"><div class="ct">Market</div><div id="gtopex-ptop-market"></div></div>
+        </div>
+        <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:8px">🔻 Flop 10 Prestataires — Taux de clôture</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+          <div class="card"><div class="ct">Hyper</div><div id="gtopex-pflop-hyper"></div></div>
+          <div class="card"><div class="ct">Market</div><div id="gtopex-pflop-market"></div></div>
         </div>
         <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:8px">📈 Taux de Clôture par région</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
@@ -1016,7 +1152,7 @@ var _woProc=false, _quoProc=false, _npsProc=false;
 var TAB="overview";
 var FILES={wo:null,quo:null,nps:null,prev:null};
 var BUDGETS={};
-var TABS=["overview","taux","magasins","devis","aging","budget","recurrence","bc","nps","prev","alertes","rapports","contacts"];
+var TABS=["overview","taux","magasins","devis","aging","budget","recurrence","comparatif","fiabilite","bc","nps","prev","alertes","rapports","contacts"];
 
 // ═══════════════════════════════════════════════════════════════
 // UTILITAIRES
@@ -1640,6 +1776,7 @@ function majDriveAdmin(){
     if(!r || r.status==="error"){ toast((r&&r.message)||"Erreur", true); return; }
     if(r.status==="busy"){ toast(r.message, true); return; }
     if(r.misAJour){
+      try{ if(typeof N1!=="undefined" && N1.etat==="ok") N1.etat="idle"; }catch(e){}
       toast("✅ Nouveaux fichiers pris en compte : "+(r.gmail?"mail":"")+(r.gmail&&r.drive.length?" + ":"")+(r.drive.length?"Drive ("+r.drive.join(", ")+")":"")+" — rechargement…");
       setTimeout(function(){ chargerDepuisSheetAvecProgress(); }, 800);
     } else {
@@ -1808,7 +1945,7 @@ function _showDiagPanel(){
   var versionHTML = "<div style='margin-bottom:12px;padding:8px 10px;background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.35);border-radius:6px'>"
     + "<b style='color:#F59E0B'>Version du code servi (PREV) :</b> "+(window._lastPrevBuildVersion||"jamais chargé")+"<br>"
     + "<b style='color:#F59E0B'>Version du code servi (BDD) :</b> "+(window._lastBddBuildVersion||"jamais chargé")+"<br>"
-    + "<span style='font-size:9px;color:#888'>Attendu : 2026-10-21-ATOMIQUE-v9 — si différent ou absent, le déploiement n'est pas à jour.</span>"
+    + "<span style='font-size:9px;color:#888'>Attendu : 2026-10-28-FIABILITE-v12 — si différent ou absent, le déploiement n'est pas à jour.</span>"
     + "</div>";
   // Diagnostic ciblé : dump brut de WO[0] + test en direct de _getFuzzy,
   // pour comprendre précisément pourquoi le matching État échoue encore
@@ -2462,6 +2599,8 @@ function fNPS(){
 // ═══════════════════════════════════════════════════════════════
 function go(tab){
   if(tab==="prev") setTimeout(renderPrev,50);
+  if(tab==="comparatif") setTimeout(initComparatif,50);
+  if(tab==="fiabilite") setTimeout(initFiabilite,50);
   if(tab==="alertes") setTimeout(renderAlertes,50);
   if(tab==="rapports"){ setTimeout(initRapportMagasin,100); setTimeout(initGTOpex,200); }
   TAB=tab;
@@ -6138,9 +6277,783 @@ function renderGTOpex(){
   renderFlop10WO(wo, "Hyper",  "gtopex-wo-hyper");
   renderFlop10WO(wo, "Market", "gtopex-wo-market");
 
+  // ── VUE 2bis : Top / Flop 10 prestataires par taux de clôture ──
+  renderTopFlopPrest(wo, "Hyper",  "gtopex-ptop-hyper",  "gtopex-pflop-hyper");
+  renderTopFlopPrest(wo, "Market", "gtopex-ptop-market", "gtopex-pflop-market");
+
   // ── VUE 3 : Taux clôture mensuel par région ──
   renderTauxRegion(wo, "Hyper",  "gtopex-tc-hyper",  "gtopex-tbl-hyper");
   renderTauxRegion(wo, "Market", "gtopex-tc-market", "gtopex-tbl-market");
+}
+
+
+// Top / Flop 10 prestataires par taux de clôture (par type de client, période du sélecteur GT Opex).
+// Seuil minimum de WO réglable : un prestataire avec 2 WO à 100% ne doit pas truster le Top.
+function renderTopFlopPrest(wo, type, topId, flopId){
+  var minWO = parseInt((document.getElementById("gtopex-minwo")||{value:"20"}).value,10) || 1;
+  var map = {};
+  wo.forEach(function(r){
+    if(r._t!==type) return;
+    var f = r._f; if(!f || f==="Inconnu") return;
+    if(!map[f]) map[f]={n:0,cl:0};
+    map[f].n++; if(r._e==="CL") map[f].cl++;
+  });
+  var arr = Object.keys(map).filter(function(k){return map[k].n>=minWO;}).map(function(k){
+    return {l:k, n:map[k].n, cl:map[k].cl, v:map[k].cl/map[k].n*100};
+  });
+  // Égalité de taux : le plus gros volume d'abord pour le Top, le plus gros volume d'abord aussi pour le Flop (plus d'impact)
+  var top  = arr.slice().sort(function(a,b){return b.v-a.v || b.n-a.n;}).slice(0,10);
+  var flop = arr.slice().sort(function(a,b){return a.v-b.v || b.n-a.n;}).slice(0,10);
+  var colTop  = function(d){return d.v>=85?"#1D9E75":d.v>=70?"#378ADD":"#BA7517";};
+  var colFlop = function(d){return d.v<50?"#E24B4A":d.v<70?"#D85A30":"#BA7517";};
+  var lbl = function(d){return d.v.toFixed(1)+"% · "+fN(d.n)+" WO";};
+  var click = function(d){openPrestataireDetail(d.l);};
+  hbars(topId,  top,  colTop,  lbl, 10, click);
+  hbars(flopId, flop, colFlop, lbl, 10, click);
+  if(!arr.length){
+    var msg="<p style='color:var(--t3);font-size:11px;padding:6px'>Aucun prestataire avec au moins "+minWO+" WO sur cette période.</p>";
+    var a=document.getElementById(topId), b=document.getElementById(flopId);
+    if(a) a.innerHTML=msg; if(b) b.innerHTML=msg;
+  }
+}
+
+
+// ═══════════════════════════════════════════════════════════════
+// COMPARATIF N-1 — données de l'année précédente (WO_N1_Brut / QUO_N1_Brut)
+// Chargées à la demande (à l'ouverture de l'onglet) pour ne pas alourdir le chargement principal.
+// ═══════════════════════════════════════════════════════════════
+var N1 = {WO:[], QUO:[], etat:"idle", err:"", yN:null, yN1:null, cutoff:null};
+var _cmpModel = null;
+
+function _jsonpType(type, cb, busyN){
+  var cbn = "_GS_N1_"+type+"_"+Date.now()+"_"+Math.floor(Math.random()*100000);
+  var sc = document.createElement("script");
+  var finished = false;
+  function end(d){ if(finished) return; finished = true; clearTimeout(to); try{document.head.removeChild(sc);}catch(e){} window[cbn]=function(){}; cb(d); }
+  var to = setTimeout(function(){ end({status:"error", message:"Délai dépassé"}); }, 900000);
+  window[cbn] = function(d){
+    if(d && d.status==="busy" && (busyN||0)<40){            // feuille en cours de réécriture côté serveur
+      finished = true; clearTimeout(to); try{document.head.removeChild(sc);}catch(e){} window[cbn]=function(){};
+      setTimeout(function(){ _jsonpType(type, cb, (busyN||0)+1); }, 15000);
+      return;
+    }
+    end(d || {status:"error", message:"Réponse vide"});
+  };
+  sc.onerror = function(){ end({status:"error", message:"Connexion impossible"}); };
+  sc.src = SCRIPT_URL+"?action=getData&type="+type+"&callback="+cbn+"&t="+Date.now();
+  document.head.appendChild(sc);
+}
+
+function chargerN1(force){
+  if(N1.etat==="loading") return;
+  if(N1.etat==="ok" && !force) return;
+  if(!SCRIPT_URL){ N1.etat="err"; N1.err="L'URL Apps Script n'est pas configurée (onglet Contacts)."; renderComparatif(); return; }
+  N1.etat = "loading"; N1.err = ""; N1.step = {WO:"⏳ en attente", QUO:"⏳ en attente"};
+  renderComparatif();
+  var woRes=null, quoRes=null, pend=2;
+  function fin(){
+    pend--; if(pend>0) return;
+    var woOk = woRes && (woRes.status==="ok") && (woRes.rows||[]).length;
+    if(!woOk){
+      N1.etat="err"; N1.WO=[]; N1.QUO=[];
+      var m = (woRes&&woRes.message)||"";
+      N1.err = /introuvable|vide/i.test(m)
+        ? "nodata"
+        : "Chargement impossible"+(m?" ("+m+")":"")+".";
+      renderComparatif(); return;
+    }
+    try{
+      N1.WO = _prepN1WO(woRes.rows);
+      N1.QUO = (quoRes && quoRes.status==="ok" && quoRes.rows) ? _prepN1QUO(quoRes.rows) : [];
+      N1.etat = "ok";
+    }catch(e){ console.log("prepN1 error:", e); N1.etat="err"; N1.err="Erreur de traitement des données N-1 : "+e.message; }
+    renderComparatif();
+  }
+  _jsonpType("WO_N1", function(d){ woRes=d; N1.step.WO = d.status==="ok" ? "✅ "+fN((d.rows||[]).length)+" lignes" : "⚠️ "+(d.message||"erreur"); renderComparatif(); fin(); });
+  setTimeout(function(){
+    _jsonpType("QUO_N1", function(d){ quoRes=d; N1.step.QUO = d.status==="ok" ? "✅ "+fN((d.rows||[]).length)+" lignes" : "ℹ️ "+(d.message||"non disponible"); renderComparatif(); fin(); });
+  }, 1500);
+}
+
+function _cmpTypeClient(r){
+  var t = String(r["Type de client"]||"").trim(), l = t.toLowerCase();
+  return l.indexOf("hyper")>=0 ? "Hyper" : (l.indexOf("market")>=0 || l.indexOf("super")>=0) ? "Market" : t;
+}
+function _cmpEq(r){ return String(r["Équipement"]||"").trim().substring(0,60); }
+function _cmpSf(r){ return String(r["Sous Famille d'Équipement"]||"").trim(); }
+// Clé de rapprochement N / N-1 : ignore accents, U+FFFD (corruption ServiceNow) et ponctuation
+function _cmpKey(s){ return String(s).toUpperCase().replace(/[^A-Z0-9]/g,""); }
+
+function _prepN1WO(rows){
+  _canonKeys(rows);
+  var EM_RAW={"Clôturé achevé":"CL","Assignée":"AS","En cours":"EC","En attente d'approbation":"AT","Annulé":"AN"};
+  var EM=buildStatusMap(EM_RAW), EMSK={};
+  Object.keys(EM_RAW).forEach(function(k){EMSK[_skelStatus(k)]=EM_RAW[k];});
+  rows.forEach(function(r){
+    var et=_getFuzzy(r,["État","Etat","tat"]);
+    r._e = EM[normStatus(et)] || EMSK[_skelStatus(et)] || "AU";
+    r._f = exFourn(r["Groupe d'affectation"]);
+    r._r = String(r["Region"]||r["Région"]||"INCONNU").trim();
+    r._m = String(r["Compte"]||"").trim();
+    r._t = _cmpTypeClient(r);
+    r._d = parseDate(r["Créé"]);
+    r._mo = toMonth(r["Créé"]);
+    var fin = parseDate(r["Fin de tâche"]);
+    if(fin && r._e==="CL" && r._d){ var dd=(fin-r._d)/86400000; r._ttr=(dd>=0&&dd<=730)?dd:null; } else r._ttr=null;
+  });
+  return rows;
+}
+function _prepN1QUO(rows){
+  _canonKeys(rows);
+  var SM=buildStatusMap({"Approuvé ERP":"APP","Approuvé":"APP","Annulé":"ANN","En attente d'approbation DA":"ATDA","En attente d'approbation":"AT","Ouvert":"OUV","Assigné":"AS","En cours":"EC","Clôturé achevé":"CL"});
+  rows.forEach(function(r){
+    r._s = SM[normStatus(r["Statut du devis"])] || "AU";
+    r._f = exFourn(r["Groupe d'affectation"]);
+    var v = r["Coût total"];
+    if(v===undefined){ var k=Object.keys(r).find(function(x){return x.toLowerCase().replace(/[^a-z]/g,"").indexOf("co")===0 && x.toLowerCase().indexOf("total")>0;}); v = k?r[k]:0; }
+    if(v===undefined||v===null||v==="") v=0;
+    r._c = typeof v==="number" ? v : (parseFloat(String(v).replace(/,/,".").replace(/[^0-9.-]/g,""))||0);
+    r._r = String(r["Region"]||r["Région"]||"INCONNU").trim();
+    r._m = String(r["Compte"]||"").trim();
+    r._t = _cmpTypeClient(r);
+    r._d = parseDate(r["Créé"]);
+    r._mo = toMonth(r["Créé"]);
+  });
+  return rows;
+}
+
+function initComparatif(){
+  var m1=document.getElementById("cmp-m1"), m2=document.getElementById("cmp-m2");
+  if(m1 && !m1.options.length){
+    var NOMS=["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"];
+    NOMS.forEach(function(n,i){ [m1,m2].forEach(function(s){ var o=document.createElement("option"); o.value=i+1; o.textContent=n; s.appendChild(o); }); });
+    var maxD=null; WO.forEach(function(r){ if(r._d && (!maxD || r._d>maxD)) maxD=r._d; });
+    m1.value = 1; m2.value = maxD ? (maxD.getMonth()+1) : 12;
+  }
+  chargerN1(false);
+  renderComparatif();
+}
+
+function _cmpFillSelects(){
+  function fill(id, vals, first){
+    var s=document.getElementById(id); if(!s) return;
+    var cur=s.value; while(s.options.length>1) s.remove(1);
+    vals.forEach(function(v){ var o=document.createElement("option"); o.value=v; o.textContent=String(v).replace(/_/g," "); s.appendChild(o); });
+    if(cur) s.value=cur;
+  }
+  var regs={}, sfs={};
+  WO.concat(N1.WO).forEach(function(r){
+    if(r._r && r._r!=="INCONNU") regs[r._r]=1;
+    var sf=_cmpSf(r); if(!sf) return;
+    var k=_cmpKey(sf);
+    if(!sfs[k] || (sfs[k].indexOf("\uFFFD")>=0 && sf.indexOf("\uFFFD")<0)) sfs[k]=sf;
+  });
+  fill("cmp-reg", Object.keys(regs).sort());
+  fill("cmp-sf",  Object.keys(sfs).map(function(k){return sfs[k];}).sort());
+}
+
+function _cmpDelta(n, n1, goodUp){
+  var d=n-n1, p = n1 ? d/n1*100 : null;
+  var col = d===0 ? "var(--t2)" : ((d>0)===goodUp ? "#5DCAA5" : "#F09595");
+  var arrow = d>0?"▲":d<0?"▼":"■";
+  var txt = p===null ? (n>0?"nouveau":"—") : ((p>0?"+":"")+p.toFixed(1).replace(".",",")+" %");
+  return "<span style='color:"+col+";font-weight:700;white-space:nowrap'>"+arrow+" "+txt+"</span>";
+}
+function _cmpPts(n, n1){ // écart de taux en points
+  var d=n-n1, col=Math.abs(d)<0.05?"var(--t2)":(d>0?"#5DCAA5":"#F09595");
+  return "<span style='color:"+col+";font-weight:700;white-space:nowrap'>"+(d>0?"+":"")+d.toFixed(1).replace(".",",")+" pts</span>";
+}
+function _cmpEsc(x){ return String(x==null?"":x).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/'/g,"&#39;"); }
+function _cmpFmtDeltaE(n, n1){ var d=n-n1; return (d>0?"+":d<0?"−":"")+fmt(Math.abs(d)); }
+
+function renderComparatif(){
+  var st=document.getElementById("cmp-status"), body=document.getElementById("cmp-body");
+  if(!st||!body) return;
+  if(!WO.length){ st.innerHTML="<div class='card' style='color:var(--t3);font-size:12px'>Chargez d'abord les données de l'année en cours.</div>"; body.style.display="none"; return; }
+  if(N1.etat==="loading"){
+    body.style.display="none";
+    st.innerHTML="<div class='card'><div style='font-size:13px;font-weight:700;margin-bottom:6px'>⏳ Chargement des données de l'année précédente…</div>"
+      +"<div style='font-size:12px;color:var(--t2)'>WO N-1 : "+((N1.step||{}).WO||"")+"<br>Devis N-1 : "+((N1.step||{}).QUO||"")+"</div>"
+      +"<div style='font-size:11px;color:var(--t3);margin-top:8px'>Selon la taille des fichiers, cela peut prendre 1 à 2 minutes.</div></div>";
+    return;
+  }
+  if(N1.etat==="err"){
+    body.style.display="none";
+    if(N1.err==="nodata"){
+      st.innerHTML="<div class='card'><div style='font-size:13px;font-weight:700;margin-bottom:8px'>📂 Aucune donnée N-1 pour le moment</div>"
+        +"<div style='font-size:12px;color:var(--t2);line-height:1.7'>1. Exporte depuis ServiceNow les <b>WO Curatif</b> et les <b>Devis (QUO)</b> de l'année précédente.<br>"
+        +"2. Dépose-les dans le dossier Drive du dashboard, avec un nom contenant l'année (ex. <code>WO Curatif National 2025.csv</code>, <code>QUO NATIONAL 2025.csv</code>) ou « N-1 ».<br>"
+        +"3. Clique sur <b>🔄 Mettre à jour</b> (ou attends le contrôle automatique de 10 minutes), puis <b>↺ N-1</b> ici.</div></div>";
+    } else {
+      st.innerHTML="<div class='card' style='color:var(--red);font-size:12px'>⚠️ "+_cmpEsc(N1.err)+" <button onclick='chargerN1(true)' style='margin-left:8px;padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:none;color:var(--text);cursor:pointer'>Réessayer</button></div>";
+    }
+    return;
+  }
+  if(N1.etat!=="ok"){ body.style.display="none"; st.innerHTML=""; return; }
+
+  _cmpFillSelects();
+  st.innerHTML="";
+  body.style.display="block";
+
+  // ── Paramètres ──
+  var m1=parseInt(document.getElementById("cmp-m1").value,10)||1, m2=parseInt(document.getElementById("cmp-m2").value,10)||12;
+  if(m2<m1){ var t=m1; m1=m2; m2=t; }
+  var fType=document.getElementById("cmp-type").value, fReg=document.getElementById("cmp-reg").value, fSf=document.getElementById("cmp-sf").value;
+  var dvMode=document.getElementById("cmp-dv").value, minVol=parseInt(document.getElementById("cmp-minvol").value,10)||1;
+  var aligne=document.getElementById("cmp-aligne").checked, sortMode=document.getElementById("cmp-sort").value;
+
+  // Années : N = année de la donnée la plus récente ; N-1 = année dominante du fichier N-1
+  var maxD=null, cnt={};
+  WO.forEach(function(r){ if(r._d && (!maxD||r._d>maxD)) maxD=r._d; });
+  N1.WO.forEach(function(r){ if(r._d){ var y=r._d.getFullYear(); cnt[y]=(cnt[y]||0)+1; } });
+  var yN = maxD ? maxD.getFullYear() : new Date().getFullYear();
+  var yN1 = Object.keys(cnt).sort(function(a,b){return cnt[b]-cnt[a];})[0];
+  yN1 = yN1 ? parseInt(yN1,10) : yN-1;
+  var cm = maxD ? maxD.getMonth()+1 : 12, cd = maxD ? maxD.getDate() : 31;
+
+  function keep(r, y, isN1){
+    var d=r._d; if(!d || d.getFullYear()!==y) return false;
+    var m=d.getMonth()+1; if(m<m1||m>m2) return false;
+    if(isN1 && aligne && (m>cm || (m===cm && d.getDate()>cd))) return false;
+    if(fType && r._t!==fType) return false;
+    if(fReg && r._r!==fReg) return false;
+    if(fSf && _cmpKey(_cmpSf(r))!==_cmpKey(fSf)) return false;
+    return true;
+  }
+  var woN  = WO.filter(function(r){return keep(r,yN,false);});
+  var woP  = N1.WO.filter(function(r){return keep(r,yN1,true);});
+  var dvOk = function(r){ return dvMode==="ALL" || r._s==="APP"; };
+  var quoN = QUO.filter(function(r){return keep(r,yN,false) && dvOk(r);});
+  var quoP = N1.QUO.filter(function(r){return keep(r,yN1,true) && dvOk(r);});
+  var noQuoN1 = !N1.QUO.length;
+
+  // ── Agrégats ──
+  function agg(rows, keyFn, init, add){
+    var m={}; rows.forEach(function(r){
+      var k=keyFn(r); if(k===""||k==null) return; var kk=_cmpKey(k);
+      if(!kk) return;
+      if(!m[kk]) m[kk]=init(k);
+      else if(String(m[kk].l).indexOf("\uFFFD")>=0 && String(k).indexOf("\uFFFD")<0) m[kk].l=k;   // préférer le libellé sans caractère corrompu
+      add(m[kk], r);
+    }); return m;
+  }
+  function woAgg(rows, keyFn){ return agg(rows, keyFn, function(k){return {l:k,n:0,cl:0,sites:{}};}, function(o,r){ o.n++; if(r._e==="CL") o.cl++; o.sites[r._m]=1; }); }
+  function quoAgg(rows, keyFn){ return agg(rows, keyFn, function(k){return {l:k,n:0,c:0};}, function(o,r){ o.n++; o.c+=r._c; }); }
+  function sum(rows){ return rows.reduce(function(s,r){return s+r._c;},0); }
+  function ttrAvg(rows){ var s=0,n=0; rows.forEach(function(r){ if(r._ttr>0){s+=r._ttr;n++;} }); return n? s/n : 0; }
+  function cl(rows){ var c=0; rows.forEach(function(r){ if(r._e==="CL") c++; }); return c; }
+
+  // ── KPIs ──
+  var nN=woN.length, nP=woP.length;
+  var txN=nN?cl(woN)/nN*100:0, txP=nP?cl(woP)/nP*100:0;
+  var cN=sum(quoN), cP=sum(quoP);
+  var ttrN=ttrAvg(woN), ttrP=ttrAvg(woP);
+  var cwN=nN?cN/nN:0, cwP=nP?cP/nP:0;
+  var sub=function(prev,d){ return "N-1 : "+prev+" · "+d; };
+  kg("kg-cmp",[
+    {l:"WO "+yN, v:fN(nN), s:sub(fN(nP), _cmpDelta(nN,nP,false)), c:"var(--blue)"},
+    {l:"Taux de clôture", v:txN.toFixed(1).replace(".",",")+"%", s:sub(txP.toFixed(1).replace(".",",")+"%", _cmpPts(txN,txP)), c:"var(--green)"},
+    {l:"Dépenses devis", v:fmt(cN), s:noQuoN1?"Devis N-1 non chargés":sub(fmt(cP), _cmpDelta(cN,cP,false)), c:"var(--amber)"},
+    {l:"Devis ("+(dvMode==="APP"?"approuvés":"tous")+")", v:fN(quoN.length), s:noQuoN1?"—":sub(fN(quoP.length), _cmpDelta(quoN.length,quoP.length,false)), c:"var(--purple)"},
+    {l:"Coût moyen / devis", v:fmt(quoN.length?cN/quoN.length:0), s:noQuoN1?"—":sub(fmt(quoP.length?cP/quoP.length:0), _cmpDelta(quoN.length?cN/quoN.length:0, quoP.length?cP/quoP.length:0, false)), c:"var(--coral)"},
+    {l:"Dépense / WO", v:fmt(cwN), s:noQuoN1?"—":sub(fmt(cwP), _cmpDelta(cwN,cwP,false)), c:"var(--red)"},
+    {l:"Délai de traitement moyen", v:ttrN?ttrN.toFixed(1).replace(".",",")+" j":"—", s:sub(ttrP?ttrP.toFixed(1).replace(".",",")+" j":"—", ttrN&&ttrP?_cmpDelta(ttrN,ttrP,false):"—"), c:"var(--teal)"}
+  ]);
+
+  // ── Graphiques mensuels ──
+  var labels=[], woA=[], woB=[], cA=[], cB=[];
+  for(var m=m1;m<=m2;m++){
+    labels.push(mL("2000-"+("0"+m).slice(-2)));
+    woA.push(woP.filter(function(r){return r._d.getMonth()+1===m;}).length);
+    woB.push(woN.filter(function(r){return r._d.getMonth()+1===m;}).length);
+    cA.push(Math.round(quoP.filter(function(r){return r._d.getMonth()+1===m;}).reduce(function(s,r){return s+r._c;},0)/1000));
+    cB.push(Math.round(quoN.filter(function(r){return r._d.getMonth()+1===m;}).reduce(function(s,r){return s+r._c;},0)/1000));
+  }
+  var scales={x:{ticks:{color:tc(),font:{size:10}},grid:{display:false}},y:{ticks:{color:tc(),font:{size:10}},grid:{color:"rgba(128,128,128,.12)"}}};
+  gtChart("c-cmp-wo","bar",labels,[
+    {label:String(yN1),data:woA,backgroundColor:"rgba(150,160,180,.55)",borderRadius:3},
+    {label:String(yN), data:woB,backgroundColor:"rgba(55,138,221,.85)",borderRadius:3}],{scales:scales});
+  gtChart("c-cmp-cout","bar",labels,[
+    {label:String(yN1),data:cA,backgroundColor:"rgba(150,160,180,.55)",borderRadius:3},
+    {label:String(yN), data:cB,backgroundColor:"rgba(216,90,48,.85)",borderRadius:3}],{scales:scales});
+
+  // ── Équipements ──
+  var eqWoN=woAgg(woN,_cmpEq), eqWoP=woAgg(woP,_cmpEq), eqQN=quoAgg(quoN,_cmpEq), eqQP=quoAgg(quoP,_cmpEq);
+  var eqKeys={}; [eqWoN,eqWoP].forEach(function(m){Object.keys(m).forEach(function(k){eqKeys[k]=1;});});
+  var eqRows=Object.keys(eqKeys).map(function(k){
+    var a=eqWoP[k], b=eqWoN[k];
+    var n1=a?a.n:0, n=b?b.n:0;
+    return {k:k, l:(b||a).l, n1:n1, n:n, d:n-n1, p:n1?(n-n1)/n1*100:(n>0?Infinity:0), sites:b?Object.keys(b.sites).length:0,
+            c1:eqQP[k]?eqQP[k].c:0, c:eqQN[k]?eqQN[k].c:0};
+  }).filter(function(e){return e.n1+e.n>=minVol;});
+  var sorters={
+    dn:function(a,b){return b.d-a.d;}, bd:function(a,b){return a.d-b.d;},
+    dp:function(a,b){var pa=isFinite(a.p)?a.p:1e6+a.n, pb=isFinite(b.p)?b.p:1e6+b.n; return pb-pa;},
+    cd:function(a,b){return (b.c-b.c1)-(a.c-a.c1);}, n:function(a,b){return b.n-a.n;}
+  };
+  eqRows.sort(sorters[sortMode]||sorters.dn);
+  var tbE=document.getElementById("tb-cmp-eq");
+  if(tbE) tbE.innerHTML = eqRows.slice(0,150).map(function(e,i){
+    var sig;
+    if(e.n1===0) sig="<span class='pill pa'>Nouveau</span>";
+    else if(e.n===0) sig="<span class='pill pb'>Absent en "+yN+"</span>";
+    else if(e.p>=50&&e.d>=5) sig="<span class='pill pr'>Dérive</span>";
+    else if(e.p>=20&&e.d>=3) sig="<span class='pill pa'>Hausse</span>";
+    else if(e.p<=-30&&e.d<=-3) sig="<span class='pill pg'>Baisse</span>";
+    else sig="<span class='pill pb'>Stable</span>";
+    return "<tr><td class='trank'>"+(i+1)+"</td><td style='color:var(--blue);cursor:pointer' data-eq='"+_cmpEsc(e.l)+"' onclick='openEquipementDetail(this.dataset.eq)' title='Détail (année en cours)'>"+_cmpEsc(e.l)+"</td>"
+      +"<td>"+fN(e.n1)+"</td><td><b>"+fN(e.n)+"</b></td><td>"+(e.d>0?"+":"")+fN(e.d)+"</td><td>"+_cmpDelta(e.n,e.n1,false)+"</td><td>"+fN(e.sites)+"</td>"
+      +"<td>"+fmt(e.c1)+"</td><td><b>"+fmt(e.c)+"</b></td><td>"+(noQuoN1?"—":_cmpFmtDeltaE(e.c,e.c1))+"</td><td>"+sig+"</td></tr>";
+  }).join("") || "<tr><td colspan='11' style='color:var(--t3);padding:10px'>Aucun équipement avec au moins "+minVol+" WO sur la période.</td></tr>";
+
+  // ── Sous-familles (dépenses) ──
+  var sfWoN=woAgg(woN,_cmpSf), sfWoP=woAgg(woP,_cmpSf), sfQN=quoAgg(quoN,_cmpSf), sfQP=quoAgg(quoP,_cmpSf);
+  var sfKeys={}; [sfWoN,sfWoP,sfQN,sfQP].forEach(function(m){Object.keys(m).forEach(function(k){sfKeys[k]=1;});});
+  var sfRows=Object.keys(sfKeys).map(function(k){
+    var l=(sfQN[k]||sfQP[k]||sfWoN[k]||sfWoP[k]).l;
+    var n1=sfWoP[k]?sfWoP[k].n:0, n=sfWoN[k]?sfWoN[k].n:0, c1=sfQP[k]?sfQP[k].c:0, c=sfQN[k]?sfQN[k].c:0;
+    return {k:k,l:l,n1:n1,n:n,c1:c1,c:c,d:c-c1};
+  }).sort(function(a,b){return b.d-a.d;});
+  var tbS=document.getElementById("tb-cmp-sf");
+  if(tbS) tbS.innerHTML = sfRows.map(function(s,i){
+    return "<tr><td class='trank'>"+(i+1)+"</td><td>"+_cmpEsc(s.l)+"</td><td>"+fmt(s.c1)+"</td><td><b>"+fmt(s.c)+"</b></td><td>"+(noQuoN1?"—":_cmpFmtDeltaE(s.c,s.c1))+"</td><td>"+(noQuoN1?"—":_cmpDelta(s.c,s.c1,false))+"</td>"
+      +"<td>"+fN(s.n1)+"</td><td>"+fN(s.n)+"</td><td>"+(s.n1?fmt(s.c1/s.n1):"—")+"</td><td>"+(s.n?fmt(s.c/s.n):"—")+"</td></tr>";
+  }).join("") || "<tr><td colspan='10' style='color:var(--t3);padding:10px'>Aucune donnée</td></tr>";
+
+  // ── Prestataires ──
+  var prWoN=woAgg(woN,function(r){return r._f==="Inconnu"?"":r._f;}), prWoP=woAgg(woP,function(r){return r._f==="Inconnu"?"":r._f;});
+  var prQN=quoAgg(quoN,function(r){return r._f==="Inconnu"?"":r._f;}), prQP=quoAgg(quoP,function(r){return r._f==="Inconnu"?"":r._f;});
+  var prKeys={}; [prWoN,prWoP].forEach(function(m){Object.keys(m).forEach(function(k){prKeys[k]=1;});});
+  var prRows=Object.keys(prKeys).map(function(k){
+    var a=prWoP[k], b=prWoN[k];
+    var n1=a?a.n:0, n=b?b.n:0;
+    return {k:k,l:(b||a).l,n1:n1,n:n,t1:n1?a.cl/n1*100:0,t:n?b.cl/n*100:0,c1:prQP[k]?prQP[k].c:0,c:prQN[k]?prQN[k].c:0};
+  }).filter(function(p){return p.n1+p.n>=minVol;}).sort(function(a,b){return b.n-a.n;});
+  var tbP=document.getElementById("tb-cmp-pr");
+  if(tbP) tbP.innerHTML = prRows.slice(0,150).map(function(p,i){
+    var both=p.n1>0&&p.n>0;
+    return "<tr><td class='trank'>"+(i+1)+"</td><td style='color:var(--blue);cursor:pointer' data-pr='"+_cmpEsc(p.l)+"' onclick='openPrestataireDetail(this.dataset.pr)'>"+_cmpEsc(p.l)+"</td>"
+      +"<td>"+fN(p.n1)+"</td><td><b>"+fN(p.n)+"</b></td><td>"+_cmpDelta(p.n,p.n1,false)+"</td>"
+      +"<td>"+(p.n1?p.t1.toFixed(1).replace(".",",")+"%":"—")+"</td><td><b>"+(p.n?p.t.toFixed(1).replace(".",",")+"%":"—")+"</b></td><td>"+(both?_cmpPts(p.t,p.t1):"—")+"</td>"
+      +"<td>"+fmt(p.c1)+"</td><td><b>"+fmt(p.c)+"</b></td><td>"+(noQuoN1?"—":_cmpDelta(p.c,p.c1,false))+"</td></tr>";
+  }).join("") || "<tr><td colspan='11' style='color:var(--t3);padding:10px'>Aucun prestataire</td></tr>";
+
+  // ── Régions ──
+  var rgWoN=woAgg(woN,function(r){return r._r==="INCONNU"?"":r._r;}), rgWoP=woAgg(woP,function(r){return r._r==="INCONNU"?"":r._r;});
+  var rgQN=quoAgg(quoN,function(r){return r._r==="INCONNU"?"":r._r;}), rgQP=quoAgg(quoP,function(r){return r._r==="INCONNU"?"":r._r;});
+  var rgKeys={}; [rgWoN,rgWoP].forEach(function(m){Object.keys(m).forEach(function(k){rgKeys[k]=1;});});
+  var rgRows=Object.keys(rgKeys).map(function(k){
+    var a=rgWoP[k], b=rgWoN[k]; var n1=a?a.n:0, n=b?b.n:0;
+    return {k:k,l:(b||a).l,n1:n1,n:n,t1:n1?a.cl/n1*100:0,t:n?b.cl/n*100:0,c1:rgQP[k]?rgQP[k].c:0,c:rgQN[k]?rgQN[k].c:0};
+  }).sort(function(a,b){return b.n-a.n;});
+  var tbR=document.getElementById("tb-cmp-rg");
+  if(tbR) tbR.innerHTML = rgRows.map(function(g){
+    return "<tr><td>"+_cmpEsc(String(g.l).replace(/_/g," "))+"</td><td>"+fN(g.n1)+"</td><td><b>"+fN(g.n)+"</b></td><td>"+_cmpDelta(g.n,g.n1,false)+"</td>"
+      +"<td>"+(g.n1?g.t1.toFixed(1).replace(".",",")+"%":"—")+"</td><td><b>"+(g.n?g.t.toFixed(1).replace(".",",")+"%":"—")+"</b></td>"
+      +"<td>"+fmt(g.c1)+"</td><td><b>"+fmt(g.c)+"</b></td><td>"+(noQuoN1?"—":_cmpDelta(g.c,g.c1,false))+"</td></tr>";
+  }).join("");
+
+  // ── Faits marquants (lecture automatique) ──
+  var per = (m1===m2?mL("2000-"+("0"+m1).slice(-2)):mL("2000-"+("0"+m1).slice(-2))+" → "+mL("2000-"+("0"+m2).slice(-2)));
+  var L=[];
+  L.push("Sur <b>"+per+"</b>, "+fN(nN)+" WO en "+yN+" contre "+fN(nP)+" en "+yN1+" ("+_cmpDelta(nN,nP,false)+")"
+    +(aligne?" — N-1 arrêté au "+String(cd).padStart(2,"0")+"/"+String(cm).padStart(2,"0")+" pour une comparaison à jour équivalent.":"."));
+  if(!noQuoN1) L.push("Dépenses devis : <b>"+fmt(cN)+"</b> vs "+fmt(cP)+" ("+_cmpDelta(cN,cP,false)+"), soit "+fmt(cwN)+" par WO contre "+fmt(cwP)+" ("+_cmpDelta(cwN,cwP,false)+").");
+  var up=eqRows.filter(function(e){return e.d>0;}).sort(sorters.dn).slice(0,3);
+  if(up.length) L.push("Équipements en plus forte hausse : "+up.map(function(e){return "<b>"+_cmpEsc(e.l)+"</b> (+"+fN(e.d)+" WO"+(isFinite(e.p)?", "+(e.p>0?"+":"")+e.p.toFixed(0)+" %":", nouveau")+")";}).join(" · ")+".");
+  var dn=eqRows.filter(function(e){return e.d<0;}).sort(sorters.bd).slice(0,2);
+  if(dn.length) L.push("En amélioration : "+dn.map(function(e){return "<b>"+_cmpEsc(e.l)+"</b> ("+fN(e.d)+" WO)";}).join(" · ")+".");
+  if(!noQuoN1){
+    var sfUp=sfRows.filter(function(s){return s.d>0;}).slice(0,2), sfDn=sfRows.slice().reverse().filter(function(s){return s.d<0;}).slice(0,1);
+    if(sfUp.length) L.push("Sous-familles dont la dépense augmente le plus : "+sfUp.map(function(s){return "<b>"+_cmpEsc(s.l)+"</b> ("+_cmpFmtDeltaE(s.c,s.c1)+")";}).join(" · ")+(sfDn.length?". À l'inverse, <b>"+_cmpEsc(sfDn[0].l)+"</b> baisse de "+fmt(-sfDn[0].d):"")+".");
+  }
+  var pr2=prRows.filter(function(p){return p.n1>=Math.max(minVol,10)&&p.n>=Math.max(minVol,10);});
+  if(pr2.length){
+    var worst=pr2.slice().sort(function(a,b){return (a.t-a.t1)-(b.t-b.t1);})[0], best=pr2.slice().sort(function(a,b){return (b.t-b.t1)-(a.t-a.t1);})[0];
+    if(worst && worst.t-worst.t1<-2) L.push("Taux de clôture en recul : <b>"+_cmpEsc(worst.l)+"</b> ("+worst.t1.toFixed(1).replace(".",",")+"% → "+worst.t.toFixed(1).replace(".",",")+"%).");
+    if(best && best.t-best.t1>2) L.push("Meilleure progression : <b>"+_cmpEsc(best.l)+"</b> ("+best.t1.toFixed(1).replace(".",",")+"% → "+best.t.toFixed(1).replace(".",",")+"%).");
+  }
+  var rgUp=rgRows.filter(function(g){return g.n-g.n1>0;}).sort(function(a,b){return (b.n-b.n1)-(a.n-a.n1);})[0];
+  if(rgUp) L.push("Région avec la plus forte hausse de WO : <b>"+_cmpEsc(String(rgUp.l).replace(/_/g," "))+"</b> (+"+fN(rgUp.n-rgUp.n1)+").");
+  var ins=document.getElementById("cmp-insights");
+  if(ins) ins.innerHTML="<div class='ct'>🔎 Faits marquants</div><ul style='margin:6px 0 0 18px;padding:0;font-size:12px;line-height:1.8;color:var(--t2)'>"+L.map(function(x){return "<li>"+x+"</li>";}).join("")+"</ul>"
+    +"<div style='font-size:10px;color:var(--t3);margin-top:8px'>Données N-1 : "+yN1+" — "+fN(N1.WO.length)+" WO, "+fN(N1.QUO.length)+" devis chargés · N : "+yN+" — "+fN(WO.length)+" WO, "+fN(QUO.length)+" devis. Dépenses = "+(dvMode==="APP"?"devis approuvés ERP":"tous les devis")+".</div>";
+
+  _cmpModel = {yN:yN, yN1:yN1, per:per, aligne:aligne,
+    kpi:[["Indicateur",String(yN1),String(yN)],
+      ["WO",nP,nN],["Taux de clôture %",+txP.toFixed(1),+txN.toFixed(1)],["Dépenses devis €",Math.round(cP),Math.round(cN)],
+      ["Nb devis",quoP.length,quoN.length],["Dépense / WO €",Math.round(cwP),Math.round(cwN)],["Délai moyen (j)",+ttrP.toFixed(1),+ttrN.toFixed(1)]],
+    mois:[["Mois","WO "+yN1,"WO "+yN,"Dépenses k€ "+yN1,"Dépenses k€ "+yN]].concat(labels.map(function(l,i){return [l,woA[i],woB[i],cA[i],cB[i]];})),
+    eq:[["Équipement","WO "+yN1,"WO "+yN,"Écart","Écart %","Sites "+yN,"Dépense "+yN1+" €","Dépense "+yN+" €"]].concat(eqRows.map(function(e){return [e.l,e.n1,e.n,e.d,isFinite(e.p)?+e.p.toFixed(1):"nouveau",e.sites,Math.round(e.c1),Math.round(e.c)];})),
+    sf:[["Sous-famille","Dépense "+yN1+" €","Dépense "+yN+" €","Écart €","WO "+yN1,"WO "+yN]].concat(sfRows.map(function(s){return [s.l,Math.round(s.c1),Math.round(s.c),Math.round(s.d),s.n1,s.n];})),
+    pr:[["Prestataire","WO "+yN1,"WO "+yN,"Taux "+yN1+" %","Taux "+yN+" %","Dépense "+yN1+" €","Dépense "+yN+" €"]].concat(prRows.map(function(p){return [p.l,p.n1,p.n,+p.t1.toFixed(1),+p.t.toFixed(1),Math.round(p.c1),Math.round(p.c)];})),
+    rg:[["Région","WO "+yN1,"WO "+yN,"Taux "+yN1+" %","Taux "+yN+" %","Dépense "+yN1+" €","Dépense "+yN+" €"]].concat(rgRows.map(function(g){return [String(g.l).replace(/_/g," "),g.n1,g.n,+g.t1.toFixed(1),+g.t.toFixed(1),Math.round(g.c1),Math.round(g.c)];}))
+  };
+}
+
+function exporterComparatif(){
+  if(!_cmpModel){ toast("Rien à exporter : ouvre d'abord l'onglet et attends le chargement N-1", true); return; }
+  var wb=XLSX.utils.book_new(), M=_cmpModel;
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([["Comparatif "+M.yN1+" vs "+M.yN,"Période : "+M.per+(M.aligne?" (N-1 coupé au même jour)":"")],[]].concat(M.kpi)), "KPI");
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(M.mois), "Mensuel");
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(M.eq), "Equipements");
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(M.sf), "Sous-familles");
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(M.pr), "Prestataires");
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(M.rg), "Regions");
+  XLSX.writeFile(wb, "Comparatif_"+M.yN1+"_vs_"+M.yN+"_"+new Date().toISOString().slice(0,10)+".xlsx");
+  toast("✅ Export comparatif généré");
+}
+
+
+// ═══════════════════════════════════════════════════════════════
+// FIABILITÉ — pannes répétées · fragilité par site · préventif vs curatif
+// ═══════════════════════════════════════════════════════════════
+var FB_SUBV = "rep";
+var _fbCache = {key:"", val:null};
+var _fbLast = {pairs:[], chronic:[], win:30, pc:[]};
+var FB_GENERIC = /^(travaux|autre|divers|multitechnique|technique)\b/i;
+var FB_STOP = {"magasin":1,"demande":1,"intervention":1,"merci":1,"bonjour":1,"pour":1,"dans":1,"avec":1,"suite":1,"depuis":1,"plus":1,"sans":1,"mise":1,"remplacement":1,"reparation":1,"hypermarche":1,"supermarche":1};
+
+// Correspondance code de plan préventif (titre du WO préventif) → sous-familles du curatif.
+// À ADAPTER si besoin : plan = regex testée sur le code (MAJUSCULES), cur = regex testée sur la sous-famille curative (MAJUSCULES).
+var FB_FAM = [
+  {fam:"Froid alimentaire",          plan:/FROID/,                                             cur:/FROID/},
+  {fam:"CVC",                        plan:/^CVC/,                                              cur:/^CVC$/},
+  {fam:"Boulangerie / pâtisserie",   plan:/BOUL/,                                              cur:/BOULANGERIE|PATISSERIE/},
+  {fam:"Rôtisserie (hottes)",        plan:/ROTISSERIE/,                                        cur:/ROTISSERIE/},
+  {fam:"Groupe électrogène",         plan:/GROUPE_ELECTROGENE/,                                cur:/SECOURS/},
+  {fam:"Électricité & contrôles",    plan:/CONTROLE INSTALL ELECT|ONDULEUR|TRANSFO|THERMO_ELEC/, cur:/^ELECTRICITE$/},
+  {fam:"Portes & rideaux",           plan:/PORTE|RIDEAUX/,                                     cur:/PORTE|PORTILLON|METALLERIE/},
+  {fam:"Station-service",            plan:/STATION/,                                           cur:/STATION/},
+  {fam:"Bac à graisse / eaux usées", plan:/BAC_A_GRAISSE/,                                     cur:/^RESEAU EU$|^EU$/},
+  {fam:"Toiture",                    plan:/TOITURE/,                                           cur:/TOITURE/}
+];
+
+function fbSub(s){ FB_SUBV = s; renderFiabilite(); }
+
+function initFiabilite(){
+  var m1=document.getElementById("fb-m1"), m2=document.getElementById("fb-m2");
+  if(m1 && !m1.options.length){
+    var NOMS=["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"];
+    NOMS.forEach(function(n,i){ [m1,m2].forEach(function(s){ var o=document.createElement("option"); o.value=i+1; o.textContent=n; s.appendChild(o); }); });
+    var maxD=null; WO.forEach(function(r){ if(r._d && (!maxD||r._d>maxD)) maxD=r._d; });
+    m1.value=1; m2.value = maxD ? (maxD.getMonth()+1) : 12;
+  }
+  var reg=document.getElementById("fb-reg");
+  if(reg && reg.options.length<=1){
+    var rs={}; WO.forEach(function(r){ if(r._r && r._r!=="INCONNU") rs[r._r]=1; });
+    Object.keys(rs).sort().forEach(function(v){ var o=document.createElement("option"); o.value=v; o.textContent=v.replace(/_/g," "); reg.appendChild(o); });
+  }
+  renderFiabilite();
+}
+
+function _fbParams(){
+  var g=function(id,d){ var e=document.getElementById(id); return e?e.value:d; };
+  var m1=parseInt(g("fb-m1","1"),10)||1, m2=parseInt(g("fb-m2","12"),10)||12; if(m2<m1){var t=m1;m1=m2;m2=t;}
+  return {type:g("fb-type",""), reg:g("fb-reg",""), m1:m1, m2:m2,
+          win:parseInt(g("fb-win","30"),10)||30, mode:g("fb-mode","eq"),
+          excl:(document.getElementById("fb-excl")||{checked:true}).checked,
+          minRep:parseInt(g("fb-minrep","30"),10)||1, minSite:parseInt(g("fb-minsite","10"),10)||1};
+}
+function _fbInScope(r, o, dateField){
+  if(o.type && r._t!==o.type) return false;
+  if(o.reg && r._r!==o.reg) return false;
+  var d = dateField ? dateField : r._d;
+  if(!d) return false;
+  var m=d.getMonth()+1; return m>=o.m1 && m<=o.m2;
+}
+function _fbTokens(t){
+  var s=String(t||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9 ]/g," ");
+  var o={}; s.split(/\s+/).forEach(function(w){ if(w.length>=4 && !FB_STOP[w]) o[w]=1; }); return o;
+}
+function _fbSimilar(a,b){
+  var ta=a._tok||(a._tok=_fbTokens(a["Titre de la demande"])), tb=b._tok||(b._tok=_fbTokens(b["Titre de la demande"]));
+  var ka=Object.keys(ta), kb=Object.keys(tb); if(!ka.length||!kb.length) return false;
+  var inter=0; ka.forEach(function(k){ if(tb[k]) inter++; });
+  return inter/(ka.length+kb.length-inter) >= 0.25;
+}
+function _fbFin(r){ if(r._fin===undefined){ r._fin = parseDate(r["Fin de tâche"]); } return r._fin; }
+
+// Détection des réinterventions : pour chaque WO clôturé, y a-t-il un WO (non annulé) créé après sa clôture,
+// sur le même magasin + même équipement, dans la fenêtre ? Mis en cache (coûteux sur 70 000 WO).
+function _fbPairs(win, mode, excl){
+  var key=win+"|"+mode+"|"+excl+"|"+WO.length;
+  if(_fbCache.key===key) return _fbCache.val;
+  var groups={}, maxD=null;
+  WO.forEach(function(r){
+    if(r._d && (!maxD||r._d>maxD)) maxD=r._d;
+    if(!r._d) return;
+    var eq=_cmpEq(r); if(!eq||!r._m) return;
+    if(excl && FB_GENERIC.test(eq)) return;
+    var k=r._m+"||"+_cmpKey(eq);
+    (groups[k]=groups[k]||[]).push(r);
+  });
+  var list=[], W=win*86400000;
+  Object.keys(groups).forEach(function(k){
+    var g=groups[k]; g.sort(function(a,b){return a._d-b._d;});
+    for(var i=0;i<g.length;i++){
+      var w=g[i]; if(w._e!=="CL") continue;
+      var F=_fbFin(w); if(!F||F<w._d) continue;
+      var rep=null;
+      for(var j=i+1;j<g.length;j++){
+        var w2=g[j]; if(w2._e==="AN") continue;
+        if(w2._d<=F) continue;
+        if(w2._d-F>W) break;
+        if(mode==="strict" && !_fbSimilar(w,w2)) continue;
+        rep=w2; break;
+      }
+      list.push({w:w, F:F, rep:rep, eligible:(maxD-F)>=W, key:k, days:rep?Math.round((rep._d-F)/86400000):null});
+    }
+  });
+  var val={list:list, groups:groups, maxD:maxD};
+  _fbCache={key:key, val:val};
+  return val;
+}
+
+function _fbMedian(a){ if(!a.length) return null; var s=a.slice().sort(function(x,y){return x-y;}), m=Math.floor(s.length/2); return s.length%2?s[m]:(s[m-1]+s[m])/2; }
+function _fbPct(v){ return v.toFixed(1).replace(".",",")+"%"; }
+
+function renderFiabilite(){
+  if(!WO.length){ var pg=document.getElementById("fb-sec-rep"); return; }
+  ["rep","frag","pc"].forEach(function(s){
+    var sec=document.getElementById("fb-sec-"+s); if(sec) sec.style.display = (FB_SUBV===s)?"":"none";
+    var b=document.getElementById("fb-sub-"+s); if(b) b.classList.toggle("on", FB_SUBV===s);
+  });
+  var o=_fbParams();
+  try{
+    if(FB_SUBV==="rep") _fbRenderRep(o);
+    else if(FB_SUBV==="frag") _fbRenderFrag(o);
+    else _fbRenderPC(o);
+  }catch(e){ console.error("Fiabilité:", e); toast("Erreur analyse : "+e.message, true); }
+}
+
+// ── A. Pannes répétées ───────────────────────────────────────────
+function _fbRenderRep(o){
+  var P=_fbPairs(o.win,o.mode,o.excl);
+  var inScope=function(p){ return _fbInScope(p.w,o,p.F); };
+  var all=P.list.filter(inScope);
+  var el=all.filter(function(p){return p.eligible;});
+  var reps=el.filter(function(p){return p.rep;});
+  var rate=el.length?reps.length/el.length*100:0;
+  var med=_fbMedian(reps.map(function(p){return p.days;}));
+
+  // équipements chroniques (toutes réinterventions du périmètre, éligibles ou non)
+  var cm={};
+  all.forEach(function(p){ if(!p.rep) return; var c=cm[p.key]||(cm[p.key]={key:p.key,n:0,m:p.w._m,eq:_cmpEq(p.w),provs:{}}); c.n++; c.provs[p.w._f]=1; });
+  var chronic=Object.keys(cm).map(function(k){return cm[k];}).filter(function(c){return c.n>=3;}).sort(function(a,b){return b.n-a.n;});
+
+  kg("fb-rep-kg",[
+    {l:"WO clôturés analysés", v:fN(el.length), s:"clôturés depuis plus de "+o.win+" j", c:"var(--blue)"},
+    {l:"Réinterventions détectées", v:fN(reps.length), s:"nouveau WO sous "+o.win+" j", c:"var(--red)"},
+    {l:"Taux de réintervention", v:_fbPct(rate), s:"réparations qui n'ont pas tenu", c:"var(--amber)"},
+    {l:"Délai médian avant réintervention", v:med===null?"—":Math.round(med)+" j", s:"après la clôture", c:"var(--purple)"},
+    {l:"Équipements à pannes répétitives", v:fN(chronic.length), s:"≥ 3 réinterventions", c:"var(--coral)"}
+  ]);
+
+  // par prestataire
+  var pm={};
+  el.forEach(function(p){ var f=p.w._f; if(!f||f==="Inconnu") return; var a=pm[f]||(pm[f]={l:f,n:0,r:0,d:[]}); a.n++; if(p.rep){a.r++; a.d.push(p.days);} });
+  var pr=Object.keys(pm).map(function(k){var a=pm[k]; a.t=a.n?a.r/a.n*100:0; a.med=_fbMedian(a.d); return a;}).filter(function(a){return a.n>=o.minRep;}).sort(function(a,b){return b.t-a.t || b.n-a.n;});
+  var colR=function(d){ return d.t>=rate*1.5?"#E24B4A":d.t>=rate*1.2?"#BA7517":d.t<=rate*0.7?"#1D9E75":"#378ADD"; };
+  hbars("fb-rep-bars", pr.slice(0,15).map(function(a){return {l:a.l,v:a.t,n:a.n,r:a.r,t:a.t};}), colR,
+        function(d){return _fbPct(d.v)+" · "+d.r+"/"+fN(d.n);}, 15, function(d){fbOpenRepDetail(d.l);});
+  // par sous-famille
+  var sm={};
+  el.forEach(function(p){ var s=_cmpSf(p.w)||"(non renseignée)"; var a=sm[s]||(sm[s]={l:s,n:0,r:0}); a.n++; if(p.rep) a.r++; });
+  var sf=Object.keys(sm).map(function(k){var a=sm[k]; a.t=a.n?a.r/a.n*100:0; return a;}).filter(function(a){return a.n>=o.minRep;}).sort(function(a,b){return b.t-a.t;});
+  hbars("fb-rep-sfbars", sf.slice(0,15).map(function(a){return {l:a.l,v:a.t,n:a.n,r:a.r,t:a.t};}), colR,
+        function(d){return _fbPct(d.v)+" · "+d.r+"/"+fN(d.n);}, 15);
+
+  var tb=document.getElementById("fb-rep-tb");
+  if(tb) tb.innerHTML = pr.map(function(a,i){
+    var ratio=rate?a.t/rate:1;
+    var sig = a.t>=rate*1.5 ? "<span class='pill pr'>Élevé</span>" : a.t>=rate*1.2 ? "<span class='pill pa'>À surveiller</span>" : a.t<=rate*0.7 ? "<span class='pill pg'>Bon</span>" : "<span class='pill pb'>Dans la moyenne</span>";
+    var ec=a.t-rate, col=Math.abs(ec)<0.05?"var(--t2)":(ec>0?"#F09595":"#5DCAA5");
+    return "<tr><td class='trank'>"+(i+1)+"</td><td style='color:var(--blue);cursor:pointer' data-pr='"+_cmpEsc(a.l)+"' onclick='fbOpenRepDetail(this.dataset.pr)'>"+_cmpEsc(a.l)+"</td>"
+      +"<td>"+fN(a.n)+"</td><td>"+fN(a.r)+"</td><td><b>"+_fbPct(a.t)+"</b></td><td><span style='color:"+col+";font-weight:700'>"+(ec>0?"+":"")+ec.toFixed(1).replace(".",",")+" pts</span></td>"
+      +"<td>"+(a.med===null?"—":Math.round(a.med)+" j")+"</td><td>"+sig+"</td></tr>";
+  }).join("") || "<tr><td colspan='8' style='color:var(--t3);padding:10px'>Aucun prestataire avec au moins "+o.minRep+" WO clôturés analysables sur cette période.</td></tr>";
+
+  var tc=document.getElementById("fb-chron-tb");
+  if(tc) tc.innerHTML = chronic.slice(0,100).map(function(c,i){
+    var g=P.groups[c.key]||[]; var last=g.length?g[g.length-1]:null;
+    return "<tr><td class='trank'>"+(i+1)+"</td><td>"+_cmpEsc(c.m)+"</td><td style='color:var(--blue);cursor:pointer' onclick='fbOpenChronic("+i+")'>"+_cmpEsc(c.eq)+"</td>"
+      +"<td>"+fN(g.length)+"</td><td><b>"+c.n+"</b></td><td>"+_cmpEsc(Object.keys(c.provs).join(", "))+"</td><td>"+(last?last._d.toLocaleDateString("fr-FR"):"—")+"</td></tr>";
+  }).join("") || "<tr><td colspan='7' style='color:var(--t3);padding:10px'>Aucun équipement avec 3 réinterventions ou plus sur cette période.</td></tr>";
+
+  _fbLast = {pairs:all, chronic:chronic, win:o.win, groups:P.groups};
+}
+
+function fbOpenRepDetail(prest){
+  var rows=_fbLast.pairs.filter(function(p){return p.rep && p.w._f===prest;}).sort(function(a,b){return a.days-b.days;});
+  var h="<div style='margin-bottom:8px;font-size:12px;color:var(--t2)'>"+fN(rows.length)+" réintervention(s) à moins de "+_fbLast.win+" jours après clôture, imputées à ce prestataire.</div>"
+    +"<table style='width:100%;border-collapse:collapse;font-size:11px'><thead><tr>"
+    +["WO clôturé","Clôturé le","WO de réintervention","Délai (j)","Magasin","Équipement","Titre du WO de réintervention"].map(function(t){return "<th style='padding:6px 8px;text-align:left'>"+t+"</th>";}).join("")+"</tr></thead><tbody>"
+    +rows.map(function(p){ return "<tr><td style='padding:5px 8px'>"+_cmpEsc(p.w["Numéro"])+"</td><td style='padding:5px 8px'>"+p.F.toLocaleDateString("fr-FR")+"</td><td style='padding:5px 8px'>"+_cmpEsc(p.rep["Numéro"])+"</td><td style='padding:5px 8px'><b>"+p.days+"</b></td><td style='padding:5px 8px'>"+_cmpEsc(p.w._m)+"</td><td style='padding:5px 8px'>"+_cmpEsc(_cmpEq(p.w))+"</td><td style='padding:5px 8px'>"+_cmpEsc(p.rep["Titre de la demande"])+"</td></tr>"; }).join("")
+    +"</tbody></table>";
+  _openDetailPanel(prest, "Pannes répétées — fenêtre "+_fbLast.win+" jours", h);
+}
+function fbOpenChronic(i){
+  var c=_fbLast.chronic[i]; if(!c) return;
+  var g=(_fbLast.groups[c.key]||[]).slice().sort(function(a,b){return a._d-b._d;});
+  var h="<div style='margin-bottom:8px;font-size:12px;color:var(--t2)'>"+fN(g.length)+" WO sur cet équipement, dont "+c.n+" réintervention(s).</div>"
+    +"<table style='width:100%;border-collapse:collapse;font-size:11px'><thead><tr>"
+    +["Numéro WO","Statut","Créé le","Clôturé le","Prestataire","Titre"].map(function(t){return "<th style='padding:6px 8px;text-align:left'>"+t+"</th>";}).join("")+"</tr></thead><tbody>"
+    +g.map(function(r){ var F=_fbFin(r); return "<tr><td style='padding:5px 8px'>"+_cmpEsc(r["Numéro"])+"</td><td style='padding:5px 8px'>"+_cmpEsc(eLabels[r._e]||r._e)+"</td><td style='padding:5px 8px'>"+r._d.toLocaleDateString("fr-FR")+"</td><td style='padding:5px 8px'>"+(F?F.toLocaleDateString("fr-FR"):"—")+"</td><td style='padding:5px 8px'>"+_cmpEsc(r._f)+"</td><td style='padding:5px 8px'>"+_cmpEsc(r["Titre de la demande"])+"</td></tr>"; }).join("")
+    +"</tbody></table>";
+  _openDetailPanel(c.eq, c.m+" — historique de l'équipement", h);
+}
+
+// ── B. Fragilité par site ────────────────────────────────────────
+var _fbFrag = [];
+function _fbRank(vals){ // rang percentile 0-100 (égalités → rang moyen)
+  var n=vals.length; if(n<2) return vals.map(function(){return 50;});
+  var s=vals.slice().sort(function(a,b){return a-b;});
+  var first={}, cnt={}; s.forEach(function(v,i){ if(first[v]===undefined) first[v]=i; cnt[v]=(cnt[v]||0)+1; });
+  return vals.map(function(v){ return (first[v]+(cnt[v]-1)/2)/(n-1)*100; });
+}
+function _fbRenderFrag(o){
+  var P=_fbPairs(o.win,o.mode,o.excl);
+  var S={};
+  var get=function(r){ return S[r._m]||(S[r._m]={m:r._m,t:r._t,reg:r._r,n:0,open:0,ageSum:0,retard:0,rep:0,dep:0,np:0,nd:0,nn:0}); };
+  WO.forEach(function(r){
+    if(!r._m || !_fbInScope(r,o)) return;
+    var s=get(r); s.n++;
+    if(r._e!=="CL" && r._e!=="AN"){ var a=Math.max(0,r._age||0); s.open++; s.ageSum+=a; s.retard+=Math.min(a,180)/30; }
+  });
+  P.list.forEach(function(p){ if(p.rep && S[p.w._m] && _fbInScope(p.w,o,p.F)) S[p.w._m].rep++; });
+  QUO.forEach(function(r){ if(r._s==="APP" && S[r._m] && r._d){ var m=r._d.getMonth()+1; if(m>=o.m1&&m<=o.m2) S[r._m].dep+=r._c; } });
+  NPS.forEach(function(r){ var s=S[r._m]; if(!s) return; s.nn++; if(r._cat==="P") s.np++; else if(r._cat==="D") s.nd++; });
+  var sites=Object.keys(S).map(function(k){var s=S[k]; s.nps=s.nn>=3?(s.np-s.nd)/s.nn*100:null; s.ageAvg=s.open?s.ageSum/s.open:0; return s;}).filter(function(s){return s.n>=o.minSite;});
+
+  var w=[1,2,3,4,5].map(function(i){return Math.max(0,parseFloat((document.getElementById("fb-w"+i)||{value:"0"}).value)||0);});
+  var wsum=w.reduce(function(a,b){return a+b;},0)||1;
+  var NOMS=["Fréquence des pannes","Réinterventions","Retard des WO ouverts","Dépenses","NPS faible"];
+  // rang au sein du type client
+  var byType={}; sites.forEach(function(s){ (byType[s.t||"?"]=byType[s.t||"?"]||[]).push(s); });
+  Object.keys(byType).forEach(function(t){
+    var g=byType[t];
+    var r1=_fbRank(g.map(function(s){return s.n;})), r2=_fbRank(g.map(function(s){return s.rep;})),
+        r3=_fbRank(g.map(function(s){return s.retard;})), r4=_fbRank(g.map(function(s){return s.dep;})),
+        r5=_fbRank(g.map(function(s){return s.nps===null?0:-s.nps;}));
+    g.forEach(function(s,i){
+      s.c=[r1[i],r2[i],r3[i],r4[i], s.nps===null?50:r5[i]];
+      s.contrib=s.c.map(function(c,k){return c*w[k]/wsum;});
+      s.idx=s.contrib.reduce(function(a,b){return a+b;},0);
+      var mx=0; s.contrib.forEach(function(v,k){ if(v>s.contrib[mx]) mx=k; });
+      s.driver=NOMS[mx];
+    });
+  });
+  sites.sort(function(a,b){return b.idx-a.idx;});
+  _fbFrag=sites;
+
+  var tot=sites.reduce(function(a,s){return a+s.n;},0)||1;
+  var top=sites.slice(0,Math.max(1,Math.ceil(sites.length*0.1)));
+  var topWO=top.reduce(function(a,s){return a+s.n;},0), topDep=top.reduce(function(a,s){return a+s.dep;},0);
+  kg("fb-frag-kg",[
+    {l:"Sites analysés", v:fN(sites.length), s:"≥ "+o.minSite+" WO sur la période", c:"var(--blue)"},
+    {l:"Sites critiques", v:fN(sites.filter(function(s){return s.idx>=75;}).length), s:"indice ≥ 75", c:"var(--red)"},
+    {l:"Sites à risque élevé", v:fN(sites.filter(function(s){return s.idx>=60&&s.idx<75;}).length), s:"indice 60-75", c:"var(--amber)"},
+    {l:"10 % de sites les plus fragiles", v:_fbPct(topWO/tot*100), s:"des WO ("+fN(top.length)+" sites) · "+fmt(topDep)+" de devis", c:"var(--coral)"}
+  ]);
+  hbars("fb-frag-bars", sites.slice(0,15).map(function(s){return {l:s.m,v:s.idx,s:s};}),
+        function(d){return d.v>=75?"#E24B4A":d.v>=60?"#BA7517":"#378ADD";},
+        function(d){return d.v.toFixed(0)+" · "+d.s.driver;}, 15, function(d){openStoreDetail(d.l);});
+  var tb=document.getElementById("fb-frag-tb");
+  if(tb) tb.innerHTML = sites.slice(0,150).map(function(s,i){
+    var lvl = s.idx>=75?"<span class='pill pr'>Critique</span>":s.idx>=60?"<span class='pill pa'>Élevé</span>":s.idx>=40?"<span class='pill pb'>Moyen</span>":"<span class='pill pg'>Faible</span>";
+    var ce=null; try{ ce=_matchCMM(s.m); }catch(e){}
+    var bar="<div style='display:flex;align-items:center;gap:6px;min-width:90px'><div style='flex:1;height:6px;background:rgba(128,128,128,.2);border-radius:3px'><div style='width:"+Math.round(s.idx)+"%;height:6px;border-radius:3px;background:"+(s.idx>=75?"#E24B4A":s.idx>=60?"#BA7517":"#378ADD")+"'></div></div><b>"+s.idx.toFixed(0)+"</b></div>";
+    return "<tr><td class='trank'>"+(i+1)+"</td><td style='color:var(--blue);cursor:pointer' data-mg='"+_cmpEsc(s.m)+"' onclick='openStoreDetail(this.dataset.mg)'>"+_cmpEsc(s.m)+"</td><td>"+_cmpEsc(s.t)+"</td><td>"+_cmpEsc(String(s.reg).replace(/_/g," "))+"</td><td>"+_cmpEsc(ce?ce.cmm:"")+"</td>"
+      +"<td>"+fN(s.n)+"</td><td>"+fN(s.rep)+"</td><td>"+fN(s.open)+"</td><td>"+(s.open?Math.round(s.ageAvg)+" j":"—")+"</td><td>"+fmt(s.dep)+"</td><td>"+(s.nps===null?"n/d":(s.nps>0?"+":"")+s.nps.toFixed(0))+"</td><td>"+bar+"</td><td>"+lvl+"</td><td>"+_cmpEsc(s.driver)+"</td></tr>";
+  }).join("") || "<tr><td colspan='14' style='color:var(--t3);padding:10px'>Aucun site.</td></tr>";
+}
+function exporterFragilite(){
+  if(!_fbFrag.length){ toast("Rien à exporter : ouvre d'abord l'analyse", true); return; }
+  var rows=[["Rang","Magasin","Type","Région","CMM","WO","Réinterventions","WO ouverts","Âge moyen ouverts (j)","Retard cumulé (mois)","Dépenses devis approuvés €","NPS","Indice fragilité","Facteur principal"]];
+  _fbFrag.forEach(function(s,i){ var ce=null; try{ce=_matchCMM(s.m);}catch(e){} rows.push([i+1,s.m,s.t,String(s.reg).replace(/_/g," "),ce?ce.cmm:"",s.n,s.rep,s.open,Math.round(s.ageAvg),+s.retard.toFixed(1),Math.round(s.dep),s.nps===null?"n/d":Math.round(s.nps),+s.idx.toFixed(1),s.driver]); });
+  var wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),"Fragilité sites");
+  XLSX.writeFile(wb,"Fragilite_sites_"+new Date().toISOString().slice(0,10)+".xlsx"); toast("✅ Export fragilité généré");
+}
+
+// ── C. Préventif vs curatif ──────────────────────────────────────
+function _fbPlanCode(titre){ var m=/MAG_(?:EXT|INT)_(.+?)_(\d+[AM])\b/.exec(String(titre||"")); return m?m[1].toUpperCase():""; }
+function _fbFamOfPlan(code){ for(var i=0;i<FB_FAM.length;i++){ if(FB_FAM[i].plan.test(code)) return i; } return -1; }
+function _fbTypeOfStore(name, typeMap){
+  if(typeMap[name]) return typeMap[name];
+  var u=String(name).toUpperCase(); return u.indexOf("HYPERMARCHE")>=0?"Hyper":(u.indexOf("SUPERMARCHE")>=0?"Market":"");
+}
+function _fbRenderPC(o){
+  var kgEl=document.getElementById("fb-pc-kg"), tb=document.getElementById("fb-pc-tb"), note=document.getElementById("fb-pc-note");
+  if(!PREV.length){
+    if(kgEl) kgEl.innerHTML=""; if(tb) tb.innerHTML="<tr><td colspan='9' style='color:var(--t3);padding:10px'>Les données préventives ne sont pas chargées.</td></tr>"; if(note) note.innerHTML=""; return;
+  }
+  var good=(parseFloat((document.getElementById("fb-good")||{value:"80"}).value)||80)/100, bad=(parseFloat((document.getElementById("fb-bad")||{value:"60"}).value)||60)/100;
+  var typeMap={}; WO.forEach(function(r){ if(r._m && r._t) typeMap[r._m]=r._t; });
+  var fam=FB_FAM.map(function(f){ return {fam:f.fam, stores:{}, plan:0, done:0, cur:0}; });
+  var unmapped={};
+  PREV.forEach(function(p){
+    if(!p._d || p._e==="AN") return;
+    var t=_fbTypeOfStore(p._mag,typeMap);
+    if(o.type && t!==o.type) return;
+    if(o.reg && p._reg!==o.reg) return;
+    var m=p._d.getMonth()+1; if(m<o.m1||m>o.m2) return;
+    var code=_fbPlanCode(p._titre), fi=_fbFamOfPlan(code);
+    if(fi<0){ unmapped[code||"(sans code)"]=(unmapped[code||"(sans code)"]||0)+1; return; }
+    var F=fam[fi], s=F.stores[p._mag]||(F.stores[p._mag]={m:p._mag,t:t,plan:0,done:0,cur:0,prest:{}});
+    s.plan++; F.plan++; if(p._e==="CL"){ s.done++; F.done++; }
+    s.prest[p._prest]=(s.prest[p._prest]||0)+1;
+  });
+  WO.forEach(function(r){
+    if(!r._m || !_fbInScope(r,o)) return;
+    var sf=_cmpSf(r).toUpperCase(); if(!sf) return;
+    for(var i=0;i<FB_FAM.length;i++){
+      if(FB_FAM[i].cur.test(sf)){ fam[i].cur++; if(fam[i].stores[r._m]) fam[i].stores[r._m].cur++; break; }
+    }
+  });
+  var rows=fam.map(function(F,i){
+    var st=Object.keys(F.stores).map(function(k){return F.stores[k];});
+    var g=st.filter(function(s){return s.plan>0 && s.done/s.plan>=good;}), b=st.filter(function(s){return s.plan>0 && s.done/s.plan<bad;});
+    var avg=function(a){return a.length?a.reduce(function(x,s){return x+s.cur;},0)/a.length:0;};
+    var gA=avg(g), bA=avg(b), enough=g.length>=5 && b.length>=5;
+    var verdict;
+    if(!enough) verdict={t:"Données insuffisantes",c:"pb"};
+    else if(gA>=bA*0.95) verdict={t:"Préventif sans effet visible",c:"pr"};
+    else if(gA<=bA*0.8) verdict={t:"Effet visible",c:"pg"};
+    else verdict={t:"Effet faible",c:"pa"};
+    return {i:i, fam:F.fam, plan:F.plan, done:F.done, cur:F.cur, taux:F.plan?F.done/F.plan*100:0, ratio:F.done?F.cur/F.done:null,
+            nG:g.length, nB:b.length, gA:gA, bA:bA, verdict:verdict, stores:st, nSites:st.length};
+  }).filter(function(r){return r.plan>0;});
+  _fbLast.pc=rows;
+
+  var planT=rows.reduce(function(a,r){return a+r.plan;},0), doneT=rows.reduce(function(a,r){return a+r.done;},0), curT=rows.reduce(function(a,r){return a+r.cur;},0);
+  kg("fb-pc-kg",[
+    {l:"Plans préventifs rattachés", v:fN(planT), s:"WO préventifs non annulés", c:"var(--blue)"},
+    {l:"Taux de réalisation", v:planT?_fbPct(doneT/planT*100):"—", s:fN(doneT)+" clôturés", c:"var(--green)"},
+    {l:"WO curatifs (mêmes familles)", v:fN(curT), s:"sous-familles rattachées", c:"var(--amber)"},
+    {l:"Familles sans effet visible", v:fN(rows.filter(function(r){return r.verdict.c==="pr";}).length), s:"sur "+rows.length+" familles", c:"var(--red)"}
+  ]);
+  if(tb) tb.innerHTML = rows.sort(function(a,b){ var ord={pr:0,pa:1,pg:2,pb:3}; return (ord[a.verdict.c]-ord[b.verdict.c]) || b.cur-a.cur; }).map(function(r){
+    return "<tr style='cursor:pointer' onclick='fbOpenPCDetail("+r.i+")'><td><b>"+_cmpEsc(r.fam)+"</b></td><td>"+fN(r.plan)+"</td><td>"+fN(r.done)+"</td><td>"+_fbPct(r.taux)+"</td><td>"+fN(r.cur)+"</td>"
+      +"<td>"+(r.ratio===null?"—":r.ratio.toFixed(2).replace(".",","))+"</td>"
+      +"<td>"+(r.nG?r.gA.toFixed(1).replace(".",",")+" <span style='color:var(--t3)'>("+r.nG+" sites)</span>":"—")+"</td>"
+      +"<td>"+(r.nB?r.bA.toFixed(1).replace(".",",")+" <span style='color:var(--t3)'>("+r.nB+" sites)</span>":"—")+"</td>"
+      +"<td><span class='pill "+r.verdict.c+"'>"+r.verdict.t+"</span></td></tr>";
+  }).join("") || "<tr><td colspan='9' style='color:var(--t3);padding:10px'>Aucun plan préventif rattaché à une famille.</td></tr>";
+  var um=Object.keys(unmapped).sort(function(a,b){return unmapped[b]-unmapped[a];}).slice(0,10);
+  if(note) note.innerHTML = "<b>Lecture :</b> « Curatif / site » = nombre moyen de WO curatifs de la famille sur les sites concernés. Verdict « sans effet visible » : les sites bien couverts (réalisation ≥ "+Math.round(good*100)+" %) ont autant de curatif que les mal couverts (< "+Math.round(bad*100)+" %). Un WO préventif encore ouvert compte comme non réalisé."
+    + (um.length ? "<br><b>Plans non rattachés à une famille</b> (à ajouter dans <code>FB_FAM</code> si pertinent) : "+um.map(function(k){return _cmpEsc(k)+" ("+fN(unmapped[k])+")";}).join(" · ") : "");
+}
+function fbOpenPCDetail(i){
+  var r=null; _fbLast.pc.forEach(function(x){ if(x.i===i) r=x; }); if(!r) return;
+  var good=(parseFloat((document.getElementById("fb-good")||{value:"80"}).value)||80)/100;
+  var cand=r.stores.filter(function(s){return s.plan>0 && s.done/s.plan>=good;}).sort(function(a,b){return b.cur-a.cur;}).slice(0,25);
+  var h="<div style='margin-bottom:8px;font-size:12px;color:var(--t2)'>Sites <b>bien couverts en préventif</b> (≥ "+Math.round(good*100)+" % réalisé) qui subissent pourtant le plus de curatif sur cette famille : le plan ou la qualité des visites est à challenger auprès du prestataire.</div>"
+    +"<table style='width:100%;border-collapse:collapse;font-size:11px'><thead><tr>"
+    +["Magasin","Type","Plans préventifs","Réalisés","Taux","WO curatifs","Prestataire préventif principal"].map(function(t){return "<th style='padding:6px 8px;text-align:left'>"+t+"</th>";}).join("")+"</tr></thead><tbody>"
+    +cand.map(function(s){ var pk=Object.keys(s.prest).sort(function(a,b){return s.prest[b]-s.prest[a];})[0]||""; return "<tr><td style='padding:5px 8px'>"+_cmpEsc(s.m)+"</td><td style='padding:5px 8px'>"+_cmpEsc(s.t)+"</td><td style='padding:5px 8px'>"+s.plan+"</td><td style='padding:5px 8px'>"+s.done+"</td><td style='padding:5px 8px'>"+Math.round(s.done/s.plan*100)+" %</td><td style='padding:5px 8px'><b>"+s.cur+"</b></td><td style='padding:5px 8px'>"+_cmpEsc(pk)+"</td></tr>"; }).join("")
+    +"</tbody></table>";
+  _openDetailPanel(r.fam, "Préventif vs curatif — sites à challenger", h);
 }
 
 function renderFlop10Devis(quo, type, containerId){
@@ -6292,6 +7205,18 @@ function exporterGTOpex(){
     });
   });
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(tcRows),"Taux clôture région");
+
+  // Feuille 4: classement complet des prestataires par taux de clôture (Top/Flop)
+  var minWOx=parseInt((document.getElementById("gtopex-minwo")||{value:"20"}).value,10)||1;
+  var pRows=[["Rang","Prestataire","Type client","WO","Clôturés","Taux clôture %","Seuil min WO : "+minWOx]];
+  ["Hyper","Market"].forEach(function(type){
+    var pm={};
+    wo.forEach(function(r){ if(r._t!==type||!r._f||r._f==="Inconnu") return; if(!pm[r._f]) pm[r._f]={n:0,cl:0}; pm[r._f].n++; if(r._e==="CL") pm[r._f].cl++; });
+    Object.keys(pm).filter(function(k){return pm[k].n>=minWOx;})
+      .sort(function(x,y){return (pm[y].cl/pm[y].n)-(pm[x].cl/pm[x].n)||pm[y].n-pm[x].n;})
+      .forEach(function(k,i){ pRows.push([i+1,k,type,pm[k].n,pm[k].cl,+(pm[k].cl/pm[k].n*100).toFixed(1)]); });
+  });
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(pRows),"Prestataires taux clôture");
   XLSX.writeFile(wb,"GT_Opex_"+new Date().toISOString().slice(0,10)+".xlsx");
   toast("✅ Export GT Opex généré");
 }
