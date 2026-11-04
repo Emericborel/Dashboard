@@ -509,6 +509,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
   <div class="fbar">
     <div class="fl"><label>Région</label><select class="fs" id="f-reg" onchange="applyF()"><option value="">Toutes</option></select></div>
     <div class="fl"><label>Type client</label><select class="fs" id="f-type" onchange="applyF()"><option value="">Tous</option></select></div>
+    <div class="fl"><label>Affectation</label><select class="fs" id="f-aff" onchange="applyF()" title="Externe = groupe FR_EXT (prestataires). Les onglets prestataire (Taux prest., Score, Devis, Budget, Sans BC, NPS, Fiabilité, Alertes) restent toujours sur Externe."><option value="">Tous les WO</option><option value="EXT">Externe (FR_EXT)</option><option value="INT">Interne (équipes magasin)</option></select></div>
     <div class="fl"><label>Prestataire</label>
       <div class="msel" id="msel-prest">
         <button type="button" class="fs msel-btn" onclick="_toggleMultiSelectDropdown('prest')" id="f-prest-btn">Tous</button>
@@ -1104,17 +1105,47 @@ tr:hover td{background:rgba(255,255,255,.025)}
               <button onclick="genererExcel()" style="flex:1;padding:9px;background:var(--green);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">📊 Exporter Excel</button>
             </div>
             <div style="border-top:1px solid var(--border);margin-top:12px;padding-top:12px">
-              <div style="font-size:10px;color:var(--t3);margin-bottom:8px">✉ Envoi par email (Apps Script requis)</div>
-              <div class="fl" style="margin-bottom:6px"><label>Destinataire</label>
-                <input type="email" id="rap-email" class="fs" style="width:100%" placeholder="adresse@carrefour.com" oninput="this.dataset.autofill=''">
+              <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:2px">✉ Envoi au prestataire</div>
+              <div style="font-size:10px;color:var(--t3);margin-bottom:8px">Mail personnalisé (résultats vs objectifs, points à traiter) + rapport PDF en pièce jointe. Basé sur le groupe, la région et la période choisis ci-dessus. Prestataires externes (FR_EXT) uniquement.</div>
+              <div class="fl" style="margin-bottom:6px"><label>Destinataire (séparer par « ; »)</label>
+                <input type="text" id="rap-email" class="fs" style="width:100%" placeholder="adresse@prestataire.fr" oninput="this.dataset.autofill=''">
               </div>
-              <div class="fl" style="margin-bottom:8px"><label>CC (optionnel)</label>
-                <input type="email" id="rap-email-cc" class="fs" style="width:100%" placeholder="cc@carrefour.com" oninput="this.dataset.autofill=''">
+              <div class="fl" style="margin-bottom:6px"><label>CC (optionnel)</label>
+                <input type="text" id="rap-email-cc" class="fs" style="width:100%" placeholder="cc@carrefour.com" oninput="this.dataset.autofill=''">
               </div>
               <div id="rap-email-hint" style="font-size:10px;color:var(--t3);margin-bottom:8px"></div>
-              <button onclick="envoyerDepuisRapports()" style="width:100%;padding:10px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">
-                📧 Envoyer par email
-              </button>
+              <div class="fl" style="margin-bottom:6px"><label>Objet de l'email</label>
+                <input id="send-objet" type="text" value="Rapport performance maintenance — {groupe} — {periode}" style="background:var(--bg);border:1px solid rgba(255,255,255,.1);color:var(--text);border-radius:7px;padding:6px 10px;font-size:11px;width:100%">
+              </div>
+              <div class="fl" style="margin-bottom:8px"><label>Message d'introduction (le tableau des résultats est ajouté automatiquement)</label>
+                <textarea id="send-message" rows="4" style="width:100%;background:var(--bg);border:1px solid rgba(255,255,255,.1);color:var(--text);border-radius:7px;padding:7px 10px;font-size:11px;resize:vertical;line-height:1.5">Bonjour,
+
+Veuillez trouver ci-joint votre rapport de performance maintenance pour la période {periode}. Vous trouverez ci-dessous vos résultats au regard des objectifs fixés, ainsi que les points à traiter en priorité.</textarea>
+              </div>
+              <details style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin-bottom:8px">
+                <summary style="font-size:11px;color:var(--t2);cursor:pointer">🎯 Objectifs de ce prestataire (modifiables avant l'envoi)</summary>
+                <div id="env-o-hint" style="font-size:10px;color:var(--t3);margin-top:6px"></div>
+                <div style="display:grid;grid-template-columns:1fr 70px;gap:6px 10px;align-items:center;margin-top:8px;font-size:11px;color:var(--t2)">
+                  <span>Taux de clôture curatif ≥ (%)</span><input id="env-o-taux" type="number" class="fs" onchange="_envSaveObj()">
+                  <span>Taux de clôture préventif ≥ (%) <i style="color:var(--t3)">— si le prestataire a du préventif</i></span><input id="env-o-prev" type="number" class="fs" onchange="_envSaveObj()">
+                  <span>Devis en attente &gt; 7 j — maximum</span><input id="env-o-dv" type="number" class="fs" onchange="_envSaveObj()">
+                  <span>WO en attente d'approbation / en cours ≥ 30 j — maximum</span><input id="env-o-wo30" type="number" class="fs" onchange="_envSaveObj()">
+                  <span>Réinterventions à 30 j — maximum (%)</span><input id="env-o-reint" type="number" class="fs" onchange="_envSaveObj()">
+                  <span>NPS ≥</span><input id="env-o-nps" type="number" class="fs" onchange="_envSaveObj()">
+                  <span>Délai de retour du plan d'action (jours)</span><input id="env-o-delai" type="number" class="fs" onchange="_envSaveObj()">
+                  <button type="button" onclick="_envObjReset()" style="grid-column:1/3;padding:5px;font-size:10px;background:transparent;color:var(--t2);border:1px solid var(--border);border-radius:6px;cursor:pointer">↺ Revenir aux valeurs par défaut</button>
+                  <button type="button" onclick="_envObjAsDefault()" style="grid-column:1/3;padding:5px;font-size:10px;background:transparent;color:#90c4f5;border:1px solid rgba(55,138,221,.3);border-radius:6px;cursor:pointer">Utiliser ces valeurs comme défaut pour les autres prestataires</button>
+                </div>
+              </details>
+              <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
+                <input type="checkbox" id="send-xlsx" checked><label style="font-size:11px;color:var(--t2)">Joindre la liste détaillée (Excel : WO ≥ 30 j et devis &gt; 7 j)</label>
+                <input type="checkbox" id="send-copie" checked style="margin-left:8px"><label style="font-size:11px;color:var(--t2)">M'envoyer une copie</label>
+              </div>
+              <div style="display:flex;gap:6px;margin-bottom:8px">
+                <button onclick="_envPreview()" style="flex:1;padding:9px;background:rgba(55,138,221,.12);color:#90c4f5;border:1px solid rgba(55,138,221,.3);border-radius:8px;font-size:11px;font-weight:700;cursor:pointer">👁 Aperçu mail + PDF</button>
+                <button onclick="envoyerRapportPrestataire(true)" style="flex:1;padding:9px;background:rgba(239,159,39,.12);color:#EFC96A;border:1px solid rgba(239,159,39,.3);border-radius:8px;font-size:11px;font-weight:700;cursor:pointer">🧪 M'envoyer un test</button>
+              </div>
+              <button id="send-btn" onclick="envoyerRapportPrestataire(false)" style="width:100%;padding:10px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">📨 Envoyer au prestataire</button>
               <div id="rap-send-status" style="font-size:11px;text-align:center;margin-top:6px"></div>
             </div>
           </div>
@@ -1198,45 +1229,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
             style="width:100%;background:var(--bg);border:1px solid rgba(255,255,255,.1);color:var(--text);border-radius:7px;padding:6px 10px;font-size:11px;margin-bottom:10px">
           <div id="contacts-list" style="max-height:450px;overflow-y:auto"></div>
         </div>
-        <div class="card">
-          <div class="ct" style="margin-bottom:12px">Envoi groupé</div>
-          <div style="display:flex;flex-direction:column;gap:10px">
-            <div class="fl"><label>Groupe / Prestataire</label>
-              <select class="fs" id="send-groupe" style="width:100%"><option value="">Sélectionner…</option></select>
-            </div>
-            <div class="fl"><label>Période du rapport</label>
-              <select class="fs" id="send-periode" style="width:100%"><option value="">Toute la période</option></select>
-            </div>
-            <div class="fl"><label>Objet de l'email</label>
-              <input id="send-objet" type="text" value="Rapport performance maintenance — {groupe} — {periode}"
-                style="background:var(--bg);border:1px solid rgba(255,255,255,.1);color:var(--text);border-radius:7px;padding:6px 10px;font-size:11px;width:100%">
-            </div>
-            <div class="fl"><label>Message personnalisé</label>
-              <textarea id="send-message" rows="5"
-                style="width:100%;background:var(--bg);border:1px solid rgba(255,255,255,.1);color:var(--text);border-radius:7px;padding:7px 10px;font-size:11px;resize:vertical;line-height:1.5">Bonjour,
-
-Veuillez trouver ci-joint votre rapport de performance maintenance curative et préventive pour la période {periode}.
-
-{message_performance}
-
-Cordialement,
-Direction Technique France — Carrefour</textarea>
-            </div>
-            <div style="display:flex;gap:6px;align-items:center">
-              <input type="checkbox" id="send-pdf" checked>
-              <label style="font-size:11px;color:var(--t2)">Joindre PDF</label>
-              <input type="checkbox" id="send-excel" checked style="margin-left:8px">
-              <label style="font-size:11px;color:var(--t2)">Joindre Excel</label>
-            </div>
-            <!-- Aperçu message -->
-            <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px;font-size:11px;color:var(--t2);max-height:120px;overflow-y:auto" id="send-preview"></div>
-            <button onclick="envoyerRapport()" 
-              style="padding:10px;background:var(--green);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">
-              📧 Envoyer le rapport maintenant
-            </button>
-            <div id="send-status" style="font-size:11px;text-align:center"></div>
-          </div>
-        </div>
+        
       </div>
     </div>
 
@@ -1250,7 +1243,12 @@ Direction Technique France — Carrefour</textarea>
 // ═══════════════════════════════════════════════════════════════
 var WO=[], QUO=[], NPS=[], BDD=[];
 var SCRIPT_URL = localStorage.getItem("mc_script_url") || "";
-var F={reg:"",type:"",prest:[],mag:[],mois:"",cmm:[],dateDebut:"",dateFin:""};
+var F={reg:"",type:"",aff:"",prest:[],mag:[],mois:"",cmm:[],dateDebut:"",dateFin:""};
+// Onglets « prestataire » : toujours limités aux WO FR_EXT. Les autres suivent le filtre Affectation (défaut : tous les WO).
+var PREST_TABS=["taux","score","devis","budget","bc","nps","fiabilite","alertes"];
+function _affEff(){ return PREST_TABS.indexOf(TAB)>=0 ? "EXT" : F.aff; }
+function _affOkMode(r,m){ if(!m) return true; return m==="EXT" ? _xOf(r) : !_xOf(r); }
+function _affOk(r){ return _affOkMode(r,F.aff); }
 var CHARTS={};
 var _woProc=false, _quoProc=false, _npsProc=false;
 var TAB="overview";
@@ -1518,6 +1516,9 @@ function reload(){
 // ═══════════════════════════════════════════════════════════════
 // PRÉ-TRAITEMENT DES DONNÉES
 // ═══════════════════════════════════════════════════════════════
+// Affectation : « FR_EXT_… » = prestataire externe ; tout autre groupe (FR_TECH_MAG_…, FR_RESP_TECH_MAG_…, FR_DTF_RPM_MAG_…) = équipe interne.
+function _isExt(g){ return /^FR_EXT/i.test(String(g||"").trim()); }
+function _xOf(r){ if(r._x===undefined) r._x=_isExt(r["Groupe d'affectation"]); return r._x; }
 function exFourn(s){if(!s)return"Inconnu";var p=String(s).split("_");return p.length>=4?p.slice(3).join("_"):String(s);}
 
 // Parseur de date robuste : gère les Date natives, l'ISO (yyyy-mm-dd),
@@ -2049,7 +2050,7 @@ function _showDiagPanel(){
   var versionHTML = "<div style='margin-bottom:12px;padding:8px 10px;background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.35);border-radius:6px'>"
     + "<b style='color:#F59E0B'>Version du code servi (PREV) :</b> "+(window._lastPrevBuildVersion||"jamais chargé")+"<br>"
     + "<b style='color:#F59E0B'>Version du code servi (BDD) :</b> "+(window._lastBddBuildVersion||"jamais chargé")+"<br>"
-    + "<span style='font-size:9px;color:#888'>Attendu : 2026-10-28-SCORE-v20 — si différent ou absent, le déploiement n'est pas à jour.</span>"
+    + "<span style='font-size:9px;color:#888'>Attendu : 2026-11-04-RAPPORTS-v24 — si différent ou absent, le déploiement n'est pas à jour.</span>"
     + "</div>";
   // Diagnostic ciblé : dump brut de WO[0] + test en direct de _getFuzzy,
   // pour comprendre précisément pourquoi le matching État échoue encore
@@ -2363,7 +2364,7 @@ function buildData(){
     var _etRaw=_getFuzzy(r,["État","Etat","tat"]);
     r._e=EM[normStatus(_etRaw)]||EMSK[_skelStatus(_etRaw)]||"AU";
     r._p=PM[normStatus(r["Priorité"])]||"ST";
-    r._f=exFourn(r["Groupe d'affectation"]);
+    r._x=_isExt(r["Groupe d'affectation"]); r._f=r._x?exFourn(r["Groupe d'affectation"]):"Inconnu";
     r._r=String(r["Region"]||r["Région"]||"INCONNU").trim();
     r._m=String(r["Compte"]||"").trim();
     var _rawT = String(r["Type de client"]||"").trim();
@@ -2413,7 +2414,7 @@ function buildData(){
   }
   QUO.forEach(function(r){
     r._s=SM[normStatus(r["Statut du devis"])]||"AU";
-    r._f=exFourn(r["Groupe d'affectation"]);
+    r._x=_isExt(r["Groupe d'affectation"]); r._f=r._x?exFourn(r["Groupe d'affectation"]):"Inconnu";
     // Coût total - utilise la colonne détectée automatiquement
     var _rawC = _quoCostCol ? r[_quoCostCol] : (r["Coût total"] !== undefined ? r["Coût total"] : r["Cout total"]);
     if(_rawC === undefined || _rawC === null || _rawC === "") _rawC = 0;
@@ -2434,7 +2435,7 @@ function buildData(){
   NPS.forEach(function(r){
     r._n=N(r["Valeur"]||0);
     r._cat=r._n>=9?"P":r._n>=7?"N":"D";
-    r._f=exFourn(r["Groupe d'affectation"]);
+    r._x=_isExt(r["Groupe d'affectation"]); r._f=r._x?exFourn(r["Groupe d'affectation"]):"Inconnu";
     r._r=String(r["Region"]||r["Région"]||"INCONNU").trim();
     r._m=String(r["Compte"]||"").trim();
     r._t=MAG_TYPE_MAP[r._m]||"";
@@ -2645,6 +2646,7 @@ document.addEventListener("click",function(e){
 function applyF(){
   F.reg=document.getElementById("f-reg").value||"";
   F.type=document.getElementById("f-type").value||"";
+  F.aff=(document.getElementById("f-aff")||{value:""}).value||"";
   // F.prest, F.mag et F.cmm sont maintenus directement par le composant multi-select (_onMultiSelectChange)
   F.mois=document.getElementById("f-mois").value||"";
   F.dateDebut=document.getElementById("f-date-debut").value||"";
@@ -2653,7 +2655,7 @@ function applyF(){
     toast("La date de début doit précéder la date de fin",true);
   }
   _refreshCMMOptionsForRegion();
-  var nb=[F.reg,F.type,F.mois,F.dateDebut,F.dateFin].filter(Boolean).length+(F.prest.length?1:0)+(F.mag.length?1:0)+(F.cmm.length?1:0);
+  var nb=[F.reg,F.type,F.aff,F.mois,F.dateDebut,F.dateFin].filter(Boolean).length+(F.prest.length?1:0)+(F.mag.length?1:0)+(F.cmm.length?1:0);
   var fc=document.getElementById("fcount");
   fc.style.display=nb?"":"none";
   fc.textContent=nb+" filtre(s) actif(s)";
@@ -2661,8 +2663,8 @@ function applyF(){
 }
 
 function resetF(){
-  ["f-reg","f-type","f-mois","f-date-debut","f-date-fin"].forEach(function(id){var e=document.getElementById(id);if(e)e.value="";});
-  F={reg:"",type:"",prest:[],mag:[],mois:"",cmm:[],dateDebut:"",dateFin:""};
+  ["f-reg","f-type","f-aff","f-mois","f-date-debut","f-date-fin"].forEach(function(id){var e=document.getElementById(id);if(e)e.value="";});
+  F={reg:"",type:"",aff:"",prest:[],mag:[],mois:"",cmm:[],dateDebut:"",dateFin:""};
   _resetMultiSelect("prest");
   _resetMultiSelect("mag");
   _resetMultiSelect("cmm");
@@ -2698,7 +2700,9 @@ function _inDateRange(d){
 
 // Données filtrées (accès aux données brutes = filtres 100% dynamiques)
 function fWO(){
+  var am=_affEff();
   return WO.filter(function(r){
+    if(am&&!_affOkMode(r,am))return false;
     if(F.reg&&r._r!==F.reg)return false;
     if(F.type&&r._t!==F.type)return false;
     if(F.prest.length&&F.prest.indexOf(r._f)<0)return false;
@@ -2710,7 +2714,9 @@ function fWO(){
   });
 }
 function fQUO(){
+  var am=_affEff();
   return QUO.filter(function(r){
+    if(am&&!_affOkMode(r,am))return false;
     if(F.reg&&r._r!==F.reg)return false;
     if(F.prest.length&&F.prest.indexOf(r._f)<0)return false;
     if(F.mag.length&&F.mag.indexOf(r._m)<0)return false;
@@ -2721,7 +2727,9 @@ function fQUO(){
   });
 }
 function fNPS(){
+  var am=_affEff();
   return NPS.filter(function(r){
+    if(am&&!_affOkMode(r,am))return false;
     if(F.reg&&r._r!==F.reg)return false;
     if(F.prest.length&&F.prest.indexOf(r._f)<0)return false;
     if(F.mag.length&&F.mag.indexOf(r._m)<0)return false;
@@ -2744,6 +2752,7 @@ function go(tab){
   if(tab==="rapports"){ setTimeout(initRapportMagasin,100); }
   if(tab==="gtopex") setTimeout(initGTOpex,50);
   TAB=tab;
+  var _fa=document.getElementById("f-aff"); if(_fa){ _fa.disabled=PREST_TABS.indexOf(tab)>=0; _fa.style.opacity=_fa.disabled?".5":"1"; }
   document.querySelectorAll(".tab").forEach(function(t,i){t.classList.toggle("active",TABS[i]===tab);});
   document.querySelectorAll(".page").forEach(function(p){p.classList.remove("active");});
   var pg=document.getElementById("page-"+tab);if(pg)pg.classList.add("active");
@@ -4234,65 +4243,6 @@ function getMessagePerformance(taux, objectif){
   return "🔴 Performance insuffisante : votre taux de clôture de "+taux.toFixed(1)+"% nécessite une action corrective urgente. Un plan d'amélioration est attendu.";
 }
 
-function updatePreview(){
-  var sel = document.getElementById("send-groupe");
-  var msg = document.getElementById("send-message");
-  var prev = document.getElementById("send-preview");
-  if(!sel||!msg||!prev) return;
-  var val = sel.value;
-  var periode = document.getElementById("send-periode").value||"Toute la période";
-  var periodeLabel = periode==="Toute la période"?periode:mL(periode)+" 2026";
-  // Calculer taux selon sélection
-  var taux = 0, objectif = 70, nomGroupe = "", entites=[];
-  if(val.startsWith("cnt:")){
-    var ci = parseInt(val.slice(4));
-    var c = CONTACTS[ci];
-    if(c){
-      nomGroupe = c.nom;
-      objectif = c.taux_ref||70;
-      entites=[c.nom];
-      var woC = WO.filter(function(r){return r._f===c.nom&&(!periode||r._mo===periode);});
-      var clC = woC.filter(function(r){return r._e==="CL";}).length;
-      taux = woC.length ? clC/woC.length*100 : 0;
-    }
-  } else if(val.startsWith("grp:")){
-    var gid = val.slice(4);
-    var g = GROUPES.find(function(x){return x.id===gid;});
-    if(g){
-      nomGroupe = g.nom;
-      entites=g.entites;
-      var woG = WO.filter(function(r){return g.entites.indexOf(r._f)>=0&&(!periode||r._mo===periode);});
-      var clG = woG.filter(function(r){return r._e==="CL";}).length;
-      taux = woG.length ? clG/woG.length*100 : 0;
-    }
-  }
-  var msgPerf = taux>0 ? getMessagePerformance(taux, objectif) : "[Sélectionnez un groupe pour voir le message personnalisé]";
-  var preview = msg.value
-    .replace("{groupe}", nomGroupe||"[groupe]")
-    .replace("{periode}", periodeLabel)
-    .replace("{message_performance}", msgPerf);
-
-  // KPI Préventif du prestataire/groupe sélectionné (mêmes filtres période)
-  var prevKpiHTML = "";
-  if(entites.length){
-    var prevSel = PREV.filter(function(r){
-      return entites.indexOf(r._prest)>=0 && (!periode || periode==="Toute la période" || r._mo===periode);
-    });
-    if(prevSel.length){
-      var pk = calcKPIsPrev(prevSel);
-      var pTxC = pk.taux>=85?"var(--green)":pk.taux>=60?"var(--blue)":pk.taux>=40?"var(--amber)":"var(--red)";
-      prevKpiHTML = "<div style='display:flex;gap:8px;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--border);flex-wrap:wrap'>"
-        +"<div style='font-size:9px;color:var(--t3);text-transform:uppercase;width:100%'>🔧 Préventif inclus dans ce rapport</div>"
-        +"<div><b style='color:var(--text)'>"+fN(pk.n)+"</b> <span style='color:var(--t3)'>WO total</span></div>"
-        +"<div><b style='color:"+pTxC+"'>"+pk.taux.toFixed(1)+"%</b> <span style='color:var(--t3)'>taux clôture</span></div>"
-        +"<div><b style='color:var(--green)'>"+fN(pk.cl)+"</b> <span style='color:var(--t3)'>clôturés</span></div>"
-        +"<div><b style='color:var(--red)'>"+fN(pk.appro)+"</b> <span style='color:var(--t3)'>att. approbation</span></div>"
-        +"</div>";
-    }
-  }
-  prev.innerHTML = prevKpiHTML + "<div style='white-space:pre-wrap'>"+preview.replace(/</g,"&lt;")+"</div>";
-}
-
 function testerScript(){
   if(!SCRIPT_URL){ toast("Saisissez d'abord l'URL Apps Script", true); return; }
   var st = document.getElementById("script-status");
@@ -4302,61 +4252,240 @@ function testerScript(){
     .catch(function(e){if(st) st.textContent = "❌ Erreur : "+e.message;toast("Erreur connexion", true);});
 }
 
-function envoyerRapport(){
-  var val=document.getElementById("send-groupe").value;
-  if(!val){ toast("Sélectionnez un groupe ou prestataire",true); return; }
-  if(!SCRIPT_URL){ toast("Configurez d'abord l'URL Apps Script",true); return; }
-
-  var email="",email2="",nomGroupe="",gid="",objectif=70;
-  if(val.startsWith("cnt:")){
-    var ci=parseInt(val.slice(4)); var c=CONTACTS[ci];
-    if(!c){ toast("Contact introuvable",true); return; }
-    email=c.email; email2=c.email2||""; nomGroupe=c.nom; objectif=c.taux_ref||70; gid="__"+c.nom;
-  } else if(val.startsWith("grp:")){
-    gid=val.slice(4); var g=GROUPES.find(function(x){return x.id===gid;});
-    if(g){ nomGroupe=g.nom; }
-    var cF=CONTACTS.find(function(x){return x.groupe===g.nom||x.nom===g.nom;});
-    if(cF){ email=cF.email; email2=cF.email2||""; objectif=cF.taux_ref||70; }
-    else { email=prompt("Email pour "+nomGroupe+":"); if(!email) return; }
-  }
-
-  var periode=document.getElementById("send-periode").value||"";
-  var periodeLabel=periode?mL(periode)+" 2026":"Toute la période";
-  var data=getGroupeData(gid);
-  var kpi=calcKPIs(data.wo,data.quo,data.nps);
-  var kpiPrev=calcKPIsPrev(data.prev||[]);
-  var msgPerf=getMessagePerformance(kpi.taux,objectif);
-  var msgTemplate=(document.getElementById("send-message").value||"")
-    .replace("{groupe}",nomGroupe).replace("{periode}",periodeLabel)
-    .replace("{message_performance}",msgPerf);
-  var objet=(document.getElementById("send-objet").value||"Rapport")
-    .replace("{groupe}",nomGroupe).replace("{periode}",periodeLabel);
-
-  var st=document.getElementById("send-status");
-  if(st) st.innerHTML="<span style='color:var(--amber)'>⏳ Envoi…</span>";
-
-  var params=new URLSearchParams({
-    action:"sendRapport", to:email, cc:email2,
-    nomGroupe:nomGroupe, periode:periodeLabel,
-    taux:kpi.taux.toFixed(1), objectif:objectif,
-    objet:objet, message:msgTemplate,
-    wo_total:kpi.n, wo_cl:kpi.cl, wo_at:kpi.at, wo_tu:kpi.tu,
-    ttr_moy:kpi.ttrMoy.toFixed(1),
-    cout_total:fmt(kpi.coutTot), bc_risk:fmt(kpi.bcRisk),
-    nps_score:kpi.npsN>0?kpi.npsScore.toFixed(1):"N/A",
-    prev_total:kpiPrev.n, prev_cl:kpiPrev.cl, prev_taux:kpiPrev.taux.toFixed(1),
-    prev_appro:kpiPrev.appro, prev_encours:kpiPrev.enCours,
-  });
-
-  var iframe=document.getElementById("hidden-iframe-send");
-  if(!iframe){ iframe=document.createElement("iframe"); iframe.id="hidden-iframe-send"; iframe.name="hidden-iframe-send"; iframe.style.display="none"; document.body.appendChild(iframe); }
-  iframe.src=SCRIPT_URL+"?"+params.toString();
-
-  setTimeout(function(){
-    if(st) st.innerHTML="<span style='color:var(--green)'>✅ Rapport envoyé à "+email+"</span>";
-    toast("Rapport envoyé à "+email+" ✓");
-  },3000);
+// ═══════════════════════════════════════════════════════════════
+// ENVOI FIABILISÉ DU RAPPORT PRESTATAIRE (mail personnalisé + PDF + Excel)
+// ═══════════════════════════════════════════════════════════════
+var ENV_OBJ_DEF={taux:70, prev:85, dv:0, wo30:0, reint:10, nps:0, delai:7};
+function _envE(x){ return String(x==null?"":x).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+function _envLS(k){ try{ return JSON.parse(localStorage.getItem(k)||"{}")||{}; }catch(e){ return {}; } }
+function _envDefGen(){ return Object.assign({},ENV_OBJ_DEF,_envLS("mc_env_obj")); }
+// Objectifs d'un prestataire : défaut général < objectif du contact (taux) < objectifs enregistrés pour CE prestataire
+function _envObjFor(s){
+  var o=_envDefGen(); if(s&&s.contact&&s.contact.taux_ref) o.taux=s.contact.taux_ref;
+  if(s){ var p=_envLS("mc_env_obj_p")[s.nom]; if(p) Object.assign(o,p); }
+  return o;
 }
+function _envObjInputs(){ var o={}; Object.keys(ENV_OBJ_DEF).forEach(function(k){ var e=document.getElementById("env-o-"+k); var v=e?parseFloat(e.value):NaN; if(!isNaN(v)) o[k]=v; }); return o; }
+function _envObjToInputs(){
+  var s=_envSel(), o=_envObjFor(s);
+  Object.keys(ENV_OBJ_DEF).forEach(function(k){ var e=document.getElementById("env-o-"+k); if(e) e.value=o[k]; });
+  var h=document.getElementById("env-o-hint");
+  if(h){ var spec=s&&_envLS("mc_env_obj_p")[s.nom]; h.textContent=s?(spec?"Objectifs enregistrés pour « "+s.nom+" »":"Objectifs par défaut (aucun réglage spécifique pour « "+s.nom+" »)"):"Sélectionnez un prestataire"; h.style.color=spec?"#5DCAA5":"var(--t3)"; }
+}
+// Toute modification est enregistrée pour le prestataire sélectionné
+function _envSaveObj(){
+  var s=_envSel(); if(!s) return;
+  var all=_envLS("mc_env_obj_p"); all[s.nom]=_envObjInputs();
+  try{ localStorage.setItem("mc_env_obj_p",JSON.stringify(all)); }catch(e){}
+  _envObjToInputs();
+}
+function _envObjReset(){ var s=_envSel(); if(!s) return; var all=_envLS("mc_env_obj_p"); delete all[s.nom]; try{ localStorage.setItem("mc_env_obj_p",JSON.stringify(all)); }catch(e){} _envObjToInputs(); }
+function _envObjAsDefault(){ try{ localStorage.setItem("mc_env_obj",JSON.stringify(_envObjInputs())); }catch(e){} toast("Objectifs enregistrés comme valeurs par défaut pour les prestataires sans réglage propre"); _envObjToInputs(); }
+// Sélection = celle de l'onglet Rapports (groupe + région + période Du/Au)
+function _envSel(){
+  var el=document.getElementById("rap-groupe"); var gid=el?el.value:""; if(!gid) return null;
+  var D=getGroupeData(gid); if(!D||!D.entites||!D.entites.length) return null;
+  var nom=D.nomBase;
+  var c=CONTACTS.find(function(x){ return x.nom===nom||x.groupe===nom||(gid.indexOf("__")===0&&x.nom===gid.slice(2)); });
+  return {nom:nom,nomAffiche:D.nom,entites:D.entites,contact:c||null,D:D,gid:gid,territoire:D.territoire||""};
+}
+function _envFill(){ _envObjToInputs(); var st=document.getElementById("rap-send-status"); if(st) st.innerHTML=""; }
+function _envRefresh(){ var st=document.getElementById("rap-send-status"); if(st) st.innerHTML=""; }
+function updatePreview(){}
+
+// Calcule tous les indicateurs du prestataire / groupe (FR_EXT uniquement : _f vaut « Inconnu » pour les équipes internes)
+function _envCompute(s, periode){
+  var ent=s.entites, obj=Object.assign(_envObjFor(s),_envObjInputs());
+  var terr=s.territoire, range=_getRapportPeriodeRange();
+  var mine=function(r){ return ent.indexOf(r._f)>=0 && (!terr||r._r===terr); };
+  var inP=function(r){ return _inRapportPeriode(r._mo,range); };
+  var wo=s.D.wo, quo=s.D.quo, nps=s.D.nps;
+  var k=calcKPIs(wo,quo,nps);
+  var dvL=QUO.filter(function(r){return mine(r)&&_dvAtt(r);});
+  var woL=WO.filter(function(r){return mine(r)&&(_woAtt(r)||_woEc(r));});
+  var P=_fbPairs(30,"strict",true), elig=0, rep=0;
+  P.list.forEach(function(p){ if(!mine(p.w)||!p.eligible||!inP(p.w)) return; elig++; if(p.rep) rep++; });
+  var reint=elig>=10?rep/elig*100:null;
+  var prev=s.D.prev;
+  var kp=prev.length?calcKPIsPrev(prev):null;
+  var top=function(list,agef){ var m={}; list.forEach(function(r){ var a=m[r._m]||(m[r._m]={m:r._m,n:0,age:0}); a.n++; var g=agef(r); if(g>a.age) a.age=g; }); return Object.keys(m).map(function(x){return m[x];}).sort(function(a,b){return b.n-a.n||b.age-a.age;}); };
+  var topDv=top(dvL,function(r){return r._age||0;}), topWo=top(woL,function(r){return r._age||0;});
+  var mois={}; WO.forEach(function(r){ if(!mine(r)||!r._mo) return; var a=mois[r._mo]||(mois[r._mo]={n:0,cl:0}); a.n++; if(r._e==="CL") a.cl++; });
+  // statuts : ok / warn / ko / na
+  var stHaut=function(v,o,marge){ return v>=o?"ok":v>=o-marge?"warn":"ko"; };
+  var stBas=function(v,o,tol){ return v<=o?"ok":v<=tol?"warn":"ko"; };
+  var rows=[
+    {lib:"Taux de clôture des WO curatifs", val:k.taux.toFixed(1).replace(".",",")+" %", obj:"≥ "+obj.taux+" %", st:wo.length?stHaut(k.taux,obj.taux,10):"na", note:fN(k.cl)+" clôturés sur "+fN(wo.length)+" WO"},
+    {lib:"Devis en attente de validation depuis plus de 7 jours", val:String(dvL.length), obj:"≤ "+obj.dv, st:stBas(dvL.length,obj.dv,Math.max(5,obj.dv*2)), note:"Hors statut « Ouvert »"},
+    {lib:"WO en attente d'approbation ou en cours depuis 30 jours ou plus", val:String(woL.length), obj:"≤ "+obj.wo30, st:stBas(woL.length,obj.wo30,Math.max(5,obj.wo30*2)), note:""},
+    {lib:"Réinterventions à 30 jours (même magasin, même équipement)", val:reint===null?"—":reint.toFixed(1).replace(".",",")+" %", obj:"≤ "+obj.reint+" %", st:reint===null?"na":stBas(reint,obj.reint,obj.reint*1.5), note:reint===null?"Volume insuffisant":rep+" sur "+elig+" WO clôturés"},
+    {lib:"Taux de clôture de la maintenance préventive", val:kp?kp.taux.toFixed(1).replace(".",",")+" %":"—", obj:"≥ "+obj.prev+" %", st:kp?stHaut(kp.taux,obj.prev,10):"na", note:kp?fN(kp.cl)+" clôturés sur "+fN(kp.n)+" WO préventifs · "+fN(kp.appro)+" en attente d'approbation":"", prev:true},
+    {lib:"NPS", val:k.npsN>=3?(k.npsScore>0?"+":"")+k.npsScore.toFixed(0):"—", obj:"≥ "+obj.nps, st:k.npsN>=3?stHaut(k.npsScore,obj.nps,15):"na", note:k.npsN>=3?k.npsN+" réponses":"Moins de 3 réponses"},
+    {lib:"Délai moyen de résolution", val:k.ttrN?k.ttrMoy.toFixed(1).replace(".",",")+" j":"—", obj:"—", st:"na", note:"Indicateur de suivi"}
+  ];
+  if(!kp) rows=rows.filter(function(r){return !r.prev;});
+  return {nom:s.nom,entites:ent,obj:obj,k:k,kp:kp,rows:rows,dvL:dvL,woL:woL,topDv:topDv,topWo:topWo,mois:mois,nWO:wo.length,reint:reint};
+}
+var _ENV_ST={ok:{c:"#1D9E75",t:"✔ Objectif atteint"},warn:{c:"#BA7517",t:"▲ À améliorer"},ko:{c:"#E24B4A",t:"✖ Non atteint"},na:{c:"#888888",t:"—"}};
+function _envPeriodeLabel(D){ return _rapportPeriodeLabel(D.wo); }
+function _envMoisNom(m){ var p=String(m).split("-"); return ["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"][parseInt(p[1],10)-1]+" "+p[0]; }
+function _envDateLimite(j){ var d=new Date(); d.setDate(d.getDate()+(j||7)); return d.toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long"}); }
+
+function _envTableMag(list,titre,unite){
+  if(!list.length) return "";
+  var t=list.slice(0,5), h="<div style='font-size:12px;font-weight:700;color:#1a1a2e;margin:14px 0 4px'>"+_envE(titre)+"</div><table role='presentation' cellpadding='0' cellspacing='0' width='100%' style='border-collapse:collapse;font-size:12px'>";
+  t.forEach(function(x){ h+="<tr><td style='padding:4px 8px;border-bottom:1px solid #eceef3'>"+_envE(x.m)+"</td><td style='padding:4px 8px;border-bottom:1px solid #eceef3;text-align:right;white-space:nowrap'>"+x.n+" "+unite+(x.age?" · le plus ancien : "+x.age+" j":"")+"</td></tr>"; });
+  if(list.length>5) h+="<tr><td colspan='2' style='padding:4px 8px;color:#888;font-size:11px'>… et "+(list.length-5)+" autre(s) magasin(s) — voir le détail en pièce jointe et dans le rapport PDF.</td></tr>";
+  return h+"</table>";
+}
+function _envEmailHtml(C, periodeLabel, intro){
+  var rows=C.rows.map(function(r){ var s=_ENV_ST[r.st];
+    return "<tr><td style='padding:8px 10px;border-bottom:1px solid #eceef3;font-size:12px;color:#1a1a2e'>"+_envE(r.lib)+(r.note?"<div style='font-size:10px;color:#888'>"+_envE(r.note)+"</div>":"")+"</td>"
+      +"<td style='padding:8px 10px;border-bottom:1px solid #eceef3;text-align:center;font-weight:700;font-size:14px;color:"+s.c+";white-space:nowrap'>"+_envE(r.val)+"</td>"
+      +"<td style='padding:8px 10px;border-bottom:1px solid #eceef3;text-align:center;font-size:12px;color:#444;white-space:nowrap'>"+_envE(r.obj)+"</td>"
+      +"<td style='padding:8px 10px;border-bottom:1px solid #eceef3;text-align:center;font-size:11px;font-weight:700;color:"+s.c+";white-space:nowrap'>"+s.t+"</td></tr>"; }).join("");
+  var aTraiter=C.rows.filter(function(r){return r.st==="warn"||r.st==="ko";});
+  var blocPlan = aTraiter.length
+    ? "<div style='background:#FFF7E8;border-left:4px solid #BA7517;border-radius:4px;padding:10px 12px;margin:16px 0;font-size:12px;color:#5a3d0a'><b>Plan d'action attendu.</b> Merci de nous transmettre, <b>avant le "+_envE(_envDateLimite(C.obj.delai))+"</b>, votre plan d'action pour : "+aTraiter.map(function(r){return "<i>"+_envE(r.lib.toLowerCase())+"</i>";}).join(" ; ")+".</div>"
+    : "<div style='background:#E9F7F1;border-left:4px solid #1D9E75;border-radius:4px;padding:10px 12px;margin:16px 0;font-size:12px;color:#0b4a37'><b>Tous les objectifs mesurés sont atteints.</b> Merci pour la qualité de votre travail ; nous comptons sur vous pour maintenir ce niveau.</div>";
+  var prevBloc = C.kp ? "<div style='font-size:12px;font-weight:700;color:#1a1a2e;margin:14px 0 4px'>Maintenance préventive</div><div style='font-size:12px;color:#444'>"+fN(C.kp.n)+" WO préventifs · <b>"+fN(C.kp.cl)+"</b> clôturés · "+fN(C.kp.enCours)+" en cours · "+fN(C.kp.appro)+" en attente d'approbation. Détail dans le rapport PDF.</div>" : "";
+  return "<!DOCTYPE html><html><head><meta charset='UTF-8'></head><body style='margin:0;padding:0;background:#f3f4f8;font-family:Arial,Helvetica,sans-serif'>"
+   +"<table role='presentation' width='100%' cellpadding='0' cellspacing='0' style='background:#f3f4f8;padding:18px 0'><tr><td align='center'>"
+   +"<table role='presentation' width='640' cellpadding='0' cellspacing='0' style='max-width:640px;width:100%;background:#ffffff;border-radius:10px;overflow:hidden'>"
+   +"<tr><td style='background:#004B9B;padding:16px 22px'><div style='color:#ffffff;font-size:17px;font-weight:700'>Point de performance maintenance</div><div style='color:#bcd4f2;font-size:12px;margin-top:3px'>"+_envE(C.nom)+" · "+_envE(periodeLabel)+"</div></td></tr>"
+   +"<tr><td style='padding:20px 22px;color:#1a1a2e;font-size:13px;line-height:1.55'>"
+   +"<div style='white-space:pre-line'>"+_envE(intro)+"</div>"
+   +"<div style='font-size:12px;font-weight:700;color:#1a1a2e;margin:18px 0 6px;text-transform:uppercase;letter-spacing:.4px'>Vos résultats au regard des objectifs</div>"
+   +"<table role='presentation' width='100%' cellpadding='0' cellspacing='0' style='border-collapse:collapse;border:1px solid #eceef3'><tr style='background:#f3f4f8'><th align='left' style='padding:7px 10px;font-size:10px;color:#666;text-transform:uppercase'>Indicateur</th><th style='padding:7px 10px;font-size:10px;color:#666;text-transform:uppercase'>Résultat</th><th style='padding:7px 10px;font-size:10px;color:#666;text-transform:uppercase'>Objectif</th><th style='padding:7px 10px;font-size:10px;color:#666;text-transform:uppercase'>Situation</th></tr>"+rows+"</table>"
+   +blocPlan
+   +(C.topDv.length||C.topWo.length?"<div style='font-size:12px;font-weight:700;color:#1a1a2e;margin:18px 0 0;text-transform:uppercase;letter-spacing:.4px'>Points à traiter en priorité</div>":"")
+   +_envTableMag(C.topDv,"Devis en attente depuis plus de 7 jours — "+C.dvL.length+" au total, par magasin","devis")
+   +_envTableMag(C.topWo,"WO ≥ 30 jours (en attente d'approbation ou en cours) — "+C.woL.length+" au total, par magasin","WO")
+   +prevBloc
+   +"<div style='font-size:12px;font-weight:700;color:#1a1a2e;margin:18px 0 4px;text-transform:uppercase;letter-spacing:.4px'>Rappel des objectifs</div>"
+   +"<ul style='margin:0 0 0 18px;padding:0;font-size:12px;color:#444;line-height:1.6'>"
+   +"<li>Taux de clôture des WO curatifs : au moins <b>"+C.obj.taux+" %</b>.</li>"
+   +(C.kp?"<li>Maintenance préventive : taux de clôture d'au moins <b>"+C.obj.prev+" %</b>.</li>":"")
+   +"<li>Devis : répondre sous <b>7 jours</b> (maximum "+C.obj.dv+" devis en attente au-delà).</li>"
+   +"<li>WO : ne pas laisser d'intervention ouverte au-delà de <b>30 jours</b> (maximum "+C.obj.wo30+").</li>"
+   +"<li>Qualité : réinterventions à 30 jours inférieures à <b>"+C.obj.reint+" %</b>.</li>"
+   +"<li>Satisfaction : NPS supérieur ou égal à <b>"+C.obj.nps+"</b>.</li></ul>"
+   +"<div style='font-size:12px;color:#444;margin-top:16px'>Le rapport détaillé est joint à ce mail"+(C.xlsx?" ainsi que la liste des WO et devis à traiter (Excel)":"")+". Nous restons disponibles pour échanger sur ces résultats.</div>"
+   +"<div style='font-size:13px;color:#1a1a2e;margin-top:18px'>Cordialement,<br><b>Direction Technique France — Carrefour</b></div>"
+   +"</td></tr><tr><td style='background:#f3f4f8;padding:10px 22px;font-size:10px;color:#888'>Données ServiceNow · édité le "+new Date().toLocaleDateString("fr-FR")+" · prestataire externe (groupe FR_EXT)</td></tr></table></td></tr></table></body></html>";
+}
+function _envEmailText(C, periodeLabel, intro){
+  var t=intro+"\n\nVOS RÉSULTATS — "+C.nom+" — "+periodeLabel+"\n";
+  C.rows.forEach(function(r){ t+="• "+r.lib+" : "+r.val+" (objectif "+r.obj+") — "+_ENV_ST[r.st].t+"\n"; });
+  t+="\nLe rapport détaillé est joint à ce mail.\n\nCordialement,\nDirection Technique France — Carrefour";
+  return t;
+}
+// Rapport PDF : mise en page à base de tableaux (le convertisseur HTML→PDF d'Apps Script ne gère pas flex/grid)
+function _envPdfHtml(C, periodeLabel){
+  var th="padding:6px 8px;background:#eef1f7;font-size:10px;text-transform:uppercase;color:#555;text-align:left", td="padding:6px 8px;border-bottom:1px solid #e3e6ee;font-size:11px";
+  var rows=C.rows.map(function(r){ var s=_ENV_ST[r.st]; return "<tr><td style='"+td+"'>"+_envE(r.lib)+"<br><span style='color:#888;font-size:9px'>"+_envE(r.note)+"</span></td><td style='"+td+";text-align:center;font-weight:bold;color:"+s.c+"'>"+_envE(r.val)+"</td><td style='"+td+";text-align:center'>"+_envE(r.obj)+"</td><td style='"+td+";text-align:center;color:"+s.c+";font-weight:bold'>"+s.t+"</td></tr>"; }).join("");
+  var tabMag=function(list,titre){ if(!list.length) return ""; var h="<h3 style='font-size:13px;color:#004B9B;margin:16px 0 4px'>"+_envE(titre)+"</h3><table width='100%' cellspacing='0' style='border-collapse:collapse'><tr><th style='"+th+"'>Magasin</th><th style='"+th+";text-align:right'>Nombre</th><th style='"+th+";text-align:right'>Plus ancien (j)</th></tr>";
+    list.slice(0,25).forEach(function(x){ h+="<tr><td style='"+td+"'>"+_envE(x.m)+"</td><td style='"+td+";text-align:right'>"+x.n+"</td><td style='"+td+";text-align:right'>"+x.age+"</td></tr>"; });
+    if(list.length>25) h+="<tr><td colspan='3' style='"+td+";color:#888'>… et "+(list.length-25)+" autre(s) magasin(s) (liste complète dans le fichier Excel)</td></tr>"; return h+"</table>"; };
+  var ms=Object.keys(C.mois).sort(), tabMois="";
+  if(ms.length){ tabMois="<h3 style='font-size:13px;color:#004B9B;margin:16px 0 4px'>Évolution mensuelle (WO curatifs)</h3><table width='100%' cellspacing='0' style='border-collapse:collapse'><tr><th style='"+th+"'>Mois</th><th style='"+th+";text-align:right'>WO créés</th><th style='"+th+";text-align:right'>Clôturés</th><th style='"+th+";text-align:right'>Taux</th></tr>";
+    ms.forEach(function(m){ var a=C.mois[m]; tabMois+="<tr><td style='"+td+"'>"+_envE(_envMoisNom(m))+"</td><td style='"+td+";text-align:right'>"+fN(a.n)+"</td><td style='"+td+";text-align:right'>"+fN(a.cl)+"</td><td style='"+td+";text-align:right'>"+(a.n?(a.cl/a.n*100).toFixed(1).replace(".",","):"—")+" %</td></tr>"; }); tabMois+="</table>"; }
+  var prevB=C.kp?"<h3 style='font-size:13px;color:#004B9B;margin:16px 0 4px'>Maintenance préventive</h3><div style='font-size:11px'>"+fN(C.kp.n)+" WO préventifs · taux de clôture "+C.kp.taux.toFixed(1).replace(".",",")+" % · "+fN(C.kp.cl)+" clôturés · "+fN(C.kp.appro)+" en attente d'approbation · "+fN(C.kp.enCours)+" en cours.</div>":"";
+  return "<!DOCTYPE html><html><head><meta charset='UTF-8'></head><body style='font-family:Arial,Helvetica,sans-serif;color:#1a1a2e;margin:24px'>"
+    +"<table width='100%' cellspacing='0' style='border-bottom:3px solid #004B9B;margin-bottom:14px'><tr><td><div style='font-size:20px;font-weight:bold;color:#004B9B'>"+_envE(C.nom)+"</div><div style='font-size:11px;color:#666'>Rapport de performance maintenance curative · prestataire externe</div></td><td style='text-align:right;font-size:11px;color:#666'>Carrefour — Direction Technique France<br><b>"+_envE(periodeLabel)+"</b><br>Édité le "+new Date().toLocaleDateString("fr-FR")+"</td></tr></table>"
+    +"<h3 style='font-size:13px;color:#004B9B;margin:6px 0 4px'>Résultats au regard des objectifs</h3><table width='100%' cellspacing='0' style='border-collapse:collapse'><tr><th style='"+th+"'>Indicateur</th><th style='"+th+";text-align:center'>Résultat</th><th style='"+th+";text-align:center'>Objectif</th><th style='"+th+";text-align:center'>Situation</th></tr>"+rows+"</table>"
+    +"<h3 style='font-size:13px;color:#004B9B;margin:16px 0 4px'>Volumes de la période</h3><div style='font-size:11px'>"+fN(C.nWO)+" WO · "+fN(C.k.cl)+" clôturés · "+fN(C.k.at)+" en attente d'approbation · "+fN(C.k.tu)+" très urgents ouverts · coût des devis "+_envE(fmt(C.k.coutTot))+"</div>"
+    +tabMag(C.topDv,"Devis en attente depuis plus de 7 jours ("+C.dvL.length+")")+tabMag(C.topWo,"WO en attente d'approbation ou en cours depuis 30 jours ou plus ("+C.woL.length+")")+tabMois+prevB
+    +"<div style='margin-top:22px;border-top:1px solid #e3e6ee;padding-top:6px;font-size:9px;color:#888'>Carrefour — Direction Technique France · Source ServiceNow · Groupe d'affectation FR_EXT</div></body></html>";
+}
+function _envXlsx(C){
+  if(typeof XLSX==="undefined") return null;
+  var wb=XLSX.utils.book_new();
+  var woRows=[["N° WO","Statut","Magasin","Région","Créé le","Âge (jours)","Priorité","Équipement","Demande"]];
+  C.woL.slice().sort(function(a,b){return (b._age||0)-(a._age||0);}).slice(0,3000).forEach(function(r){ woRows.push([r["Numéro"]||"",_envStatut(r._e),r._m,r._r,r._d?r._d.toLocaleDateString("fr-FR"):"",r._age>=0?r._age:"",r._p==="TU"?"Très urgent":r._p==="UR"?"Urgent":"Standard",r["Équipement"]||"",r["Titre de la demande"]||""]); });
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(woRows),"WO ≥ 30 jours");
+  var dvRows=[["N° devis","Statut","Magasin","Région","Créé le","Âge (jours)","Montant (€)","Équipement"]];
+  C.dvL.slice().sort(function(a,b){return (b._age||0)-(a._age||0);}).slice(0,3000).forEach(function(r){ dvRows.push([r["Numéro"]||"",r._s==="ATDA"?"En attente d'approbation DA":"En attente d'approbation",r._m,r._r,r._d?r._d.toLocaleDateString("fr-FR"):"",r._age>=0?r._age:"",Math.round(r._c||0),r["Équipement"]||""]); });
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(dvRows),"Devis > 7 jours");
+  return XLSX.write(wb,{bookType:"xlsx",type:"base64"});
+}
+function _envStatut(e){ return e==="AT"?"En attente d'approbation":e==="EC"?"En cours":e==="AS"?"Assigné":e; }
+
+// Construit tout le contenu (utilisé par l'aperçu et par l'envoi)
+function _envBuild(){
+  var s=_envSel(); if(!s) return {err:"Sélectionnez un groupe ou un prestataire dans « Générer un rapport »"};
+  var rg=_getRapportPeriodeRange(), periode=(rg.du||"")+"_"+(rg.au||"")+"_"+(s.territoire||"");
+  var C=_envCompute(s,periode), pl=_envPeriodeLabel(s.D)+(s.territoire?" — "+s.territoire.replace(/_/g," "):"");
+  C.xlsx=!!document.getElementById("send-xlsx").checked && (C.woL.length||C.dvL.length);
+  var intro=(document.getElementById("send-message").value||"").replace(/\{groupe\}/g,s.nom).replace(/\{periode\}/g,pl);
+  var objet=(document.getElementById("send-objet").value||"Rapport performance maintenance").replace(/\{groupe\}/g,s.nom).replace(/\{periode\}/g,pl);
+  return {s:s,C:C,periode:periode,pl:pl,intro:intro,objet:objet,html:_envEmailHtml(C,pl,intro),text:_envEmailText(C,pl,intro),pdfHtml:_envPdfHtml(C,pl)};
+}
+function _envPreview(){
+  var B=_envBuild(); if(B.err){ toast(B.err,true); return; }
+  var old=document.getElementById("env-modal"); if(old) old.remove();
+  var m=document.createElement("div"); m.id="env-modal"; m.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px";
+  m.innerHTML="<div style='background:#fff;border-radius:10px;width:min(900px,100%);height:90vh;display:flex;flex-direction:column'><div style='display:flex;gap:8px;padding:10px;background:#1a1a2e;border-radius:10px 10px 0 0;align-items:center'><button id='env-tab-mail' style='padding:6px 12px;border-radius:6px;border:none;cursor:pointer;font-weight:700'>✉ Mail</button><button id='env-tab-pdf' style='padding:6px 12px;border-radius:6px;border:none;cursor:pointer;font-weight:700'>📄 Rapport PDF</button><span style='flex:1;color:#aaa;font-size:11px'>Objet : "+_envE(B.objet)+"</span><button onclick=\"document.getElementById('env-modal').remove()\" style='padding:6px 12px;border-radius:6px;border:none;cursor:pointer'>✕ Fermer</button></div><iframe id='env-frame' style='flex:1;border:none;background:#fff'></iframe></div>";
+  document.body.appendChild(m);
+  var fr=document.getElementById("env-frame");
+  var show=function(w){ fr.srcdoc=w==="pdf"?B.pdfHtml:B.html; document.getElementById("env-tab-mail").style.background=w==="pdf"?"#ddd":"#90c4f5"; document.getElementById("env-tab-pdf").style.background=w==="pdf"?"#90c4f5":"#ddd"; };
+  document.getElementById("env-tab-mail").onclick=function(){show("mail");}; document.getElementById("env-tab-pdf").onclick=function(){show("pdf");}; show("mail");
+}
+var _envEnCours=false;
+function envoyerRapportPrestataire(test){
+  if(_envEnCours) return;
+  if(!SCRIPT_URL){ toast("Configurez d'abord l'URL Apps Script",true); return; }
+  var token=_adminToken(); if(!token){ toast("Envoi réservé à l'admin : ouvrez le dashboard avec ?admin=1 pour saisir le jeton",true); return; }
+  var B=_envBuild(); if(B.err){ toast(B.err,true); return; }
+  var to=(document.getElementById("rap-email").value||"").trim(), cc=(document.getElementById("rap-email-cc").value||"").trim();
+  var okMail=function(a){ return /^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]{2,}$/.test(a); };
+  var lst=function(x){ return x.split(/[;,\s]+/).filter(Boolean); };
+  if(!test){
+    if(!lst(to).length){ toast("Saisissez l'adresse du prestataire (champ À)",true); return; }
+    var bad=lst(to).concat(lst(cc)).filter(function(a){return !okMail(a);});
+    if(bad.length){ toast("Adresse invalide : "+bad.join(", "),true); return; }
+  }
+  if(!B.C.nWO && !B.C.woL.length && !B.C.dvL.length){ toast("Aucune donnée pour « "+B.s.nom+" » sur cette période — vérifiez le nom du prestataire",true); return; }
+  var cle=B.s.nom+"|"+B.periode, hist={}; try{ hist=JSON.parse(localStorage.getItem("mc_envois")||"{}"); }catch(e){}
+  if(!test){
+    var dejaTxt=hist[cle]?"\n\n⚠ Un rapport a déjà été envoyé pour cette période le "+hist[cle]+".":"";
+    if(!confirm("Envoyer le rapport « "+B.s.nom+" — "+B.pl+" » à :\n"+to+(cc?"\nCC : "+cc:"")+"\n\nPièce jointe : rapport PDF"+(B.C.xlsx?" + liste Excel":"")+dejaTxt+"\n\nConfirmer l'envoi ?")) return;
+  }
+  var id=(window.crypto&&crypto.randomUUID)?crypto.randomUUID():("e"+Date.now()+Math.random().toString(36).slice(2));
+  var fields={action:"sendRapportPrestataire",token:token,envoiId:id,test:test?"1":"0",copie:document.getElementById("send-copie").checked?"1":"0",
+    to:to,cc:cc,nomGroupe:B.s.nom,periode:B.pl,objet:B.objet,htmlBody:B.html,textBody:B.text,pdfHtml:B.pdfHtml,
+    pdfNom:"Rapport_"+B.s.nom.replace(/[^A-Za-z0-9]+/g,"_")+"_"+(B.pl.replace(/[^A-Za-z0-9]+/g,"_"))+".pdf"};
+  if(B.C.xlsx){ var x=_envXlsx(B.C); if(x){ fields.xlsxB64=x; fields.xlsxNom="A_traiter_"+B.s.nom.replace(/[^A-Za-z0-9]+/g,"_")+".xlsx"; } }
+  _envEnCours=true;
+  var btn=document.getElementById("send-btn"); if(btn) btn.disabled=true;
+  var st=document.getElementById("rap-send-status");
+  var fin=function(html,ok){ _envEnCours=false; if(btn) btn.disabled=false; if(st) st.innerHTML=html; if(ok&&!test){ hist[cle]=new Date().toLocaleString("fr-FR"); try{localStorage.setItem("mc_envois",JSON.stringify(hist));}catch(e){} } };
+  if(st) st.innerHTML="<span style='color:var(--amber)'>⏳ Envoi en cours (génération du PDF…)</span>";
+  // POST formulaire vers un iframe caché (le contenu est trop gros pour une URL)
+  var ifr=document.getElementById("env-iframe"); if(!ifr){ ifr=document.createElement("iframe"); ifr.id="env-iframe"; ifr.name="env-iframe"; ifr.style.display="none"; document.body.appendChild(ifr); }
+  var f=document.createElement("form"); f.method="POST"; f.action=SCRIPT_URL; f.target="env-iframe"; f.style.display="none"; f.acceptCharset="UTF-8";
+  Object.keys(fields).forEach(function(k){ var t=document.createElement("textarea"); t.name=k; t.value=fields[k]; f.appendChild(t); });
+  document.body.appendChild(f); f.submit(); setTimeout(function(){ f.remove(); },2000);
+  // Confirmation RÉELLE : on interroge le journal d'envoi du script (statutEnvoi) jusqu'au résultat
+  var essais=0, destTxt=test?"votre adresse (test)":to;
+  (function poll(){
+    essais++;
+    var cb="_ENV_"+Date.now()+"_"+essais, sc=document.createElement("script");
+    var clean=function(){ try{document.head.removeChild(sc);}catch(e){} try{delete window[cb];}catch(e){} };
+    window[cb]=function(r){
+      clean();
+      var e=r&&r.envoi;
+      if(e&&e.statut==="OK"){ fin("<span style='color:var(--green)'>✅ "+(test?"Test envoyé à votre adresse":"Rapport envoyé à "+_envE(destTxt))+" — PDF joint ("+_envE(e.date)+")</span>",true); toast(test?"Test envoyé ✓":"Rapport envoyé à "+destTxt+" ✓"); return; }
+      if(e&&e.statut==="ECHEC"){ fin("<span style='color:var(--red)'>❌ Échec : "+_envE(e.detail)+"</span>"); toast("Envoi échoué : "+e.detail,true); return; }
+      if(essais>=45){ fin("<span style='color:var(--amber)'>⚠ Pas de confirmation après 2 min. Vérifiez la feuille « Log_Envois » ou le dossier Envoyés de Gmail avant de renvoyer.</span>"); return; }
+      setTimeout(poll,3000);
+    };
+    sc.onerror=function(){ clean(); if(essais>=45){ fin("<span style='color:var(--red)'>❌ Apps Script injoignable — rien n'est confirmé.</span>"); return; } setTimeout(poll,3000); };
+    sc.src=SCRIPT_URL+"?action=statutEnvoi&id="+encodeURIComponent(id)+"&callback="+cb+"&t="+Date.now();
+    document.head.appendChild(sc);
+  })();
+}
+function envoyerRapport(){ envoyerRapportPrestataire(false); }
 
 
 function buildExcelWB(data, kpi){
@@ -4513,82 +4642,14 @@ function updateRapEmailInfo(gid){
   if(c){
     if(!elTo.value || elTo.dataset.autofill==="1"){ elTo.value=c.email||""; elTo.dataset.autofill="1"; }
     if(elCc && (!elCc.value || elCc.dataset.autofill==="1")){ elCc.value=c.email2||""; elCc.dataset.autofill="1"; }
-    if(elHint) elHint.innerHTML="Contact enregistré pour <b>"+nomGroupe+"</b> — objectif "+c.taux_ref+"%. Modifiable librement ci-dessus.";
+    if(elHint) elHint.innerHTML="Contact enregistré pour <b>"+nomGroupe+"</b>. Modifiable librement ci-dessus.";
   } else if(elHint){
     elHint.innerHTML = SCRIPT_URL ? "Aucun contact enregistré pour ce groupe — saisis l'adresse à utiliser." : "⚠ Configurez d'abord l'URL Apps Script dans Contacts.";
   }
+  try{ _envObjToInputs(); }catch(e){}
 }
 
-function envoyerDepuisRapports(){
-  var gid=document.getElementById("rap-groupe").value;
-  if(!gid){toast("Sélectionnez un groupe d'abord",true);return;}
-  if(!SCRIPT_URL){toast("Configurez l'URL Apps Script dans Contacts",true);return;}
-
-  var nomGroupe="",objectif=85;
-  if(gid.startsWith("__")) nomGroupe=gid.slice(2);
-  else{var g=GROUPES.find(function(x){return x.id===gid;});if(g)nomGroupe=g.nom;}
-
-  var c=CONTACTS.find(function(x){
-    return x.nom===nomGroupe||x.groupe===nomGroupe||(gid.startsWith("__")&&x.nom===gid.slice(2));
-  });
-  if(c) objectif=c.taux_ref||85;
-
-  var email=(document.getElementById("rap-email")||{value:""}).value.trim();
-  var email2=(document.getElementById("rap-email-cc")||{value:""}).value.trim();
-  if(!email){toast("Saisis une adresse email destinataire",true);return;}
-
-  var territoire=document.getElementById("rap-territoire")?document.getElementById("rap-territoire").value||"":"";
-  var data=getGroupeData(gid);
-  var periodeLabel=_rapportPeriodeLabel(data.wo);
-
-  var kpi=calcKPIs(data.wo,data.quo,data.nps);
-  var msgPerf=getMessagePerformance(kpi.taux,objectif);
-  var message="Bonjour,\n\nVeuillez trouver ci-joint votre rapport de performance maintenance curative et préventive pour la période "+periodeLabel+(territoire?" — Région : "+territoire.replace(/_/g," "):"")+".\n\n"+msgPerf+"\n\nCordialement,\nDirection Technique France — Carrefour";
-  var objet="Rapport performance maintenance — "+nomGroupe+(territoire?" — "+territoire.replace(/_/g," "):"")+(" — "+periodeLabel);
-
-  var st=document.getElementById("rap-send-status");
-  if(st)st.innerHTML="<span style='color:var(--amber)'>⏳ Envoi en cours…</span>";
-
-  // Construire les données à envoyer via URL params (GET)
-  // Le PDF est généré côté Apps Script depuis les KPIs
-  var params=new URLSearchParams({
-    action    :"sendRapport",
-    to        :email,
-    cc        :email2,
-    objet     :objet,
-    message   :message,
-    nomGroupe :nomGroupe,
-    territoire:territoire,
-    periode   :periodeLabel,
-    taux      :kpi.taux.toFixed(1),
-    objectif  :String(objectif),
-    wo_total  :String(kpi.n),
-    wo_cl     :String(kpi.cl),
-    wo_at     :String(kpi.at),
-    wo_tu     :String(kpi.tu),
-    ttr_moy   :kpi.ttrMoy.toFixed(1),
-    cout_total:fmt(kpi.coutTot),
-    bc_risk   :fmt(kpi.bcRisk),
-    nps_score :kpi.npsN>0?kpi.npsScore.toFixed(1):"N/A",
-    // Données mensuelles encodées (pour que Apps Script génère le PDF)
-    mois_data :encodeMoisData(data,kpi),
-    entites_data:encodeEntitesData(data,kpi),
-  });
-
-  var iframe=document.getElementById("iframe-get-send");
-  if(!iframe){
-    iframe=document.createElement("iframe");
-    iframe.id="iframe-get-send";
-    iframe.style.display="none";
-    document.body.appendChild(iframe);
-  }
-  iframe.src=SCRIPT_URL+"?"+params.toString();
-
-  setTimeout(function(){
-    if(st)st.innerHTML="<span style='color:var(--green)'>✅ Rapport envoyé à "+email+"</span>";
-    toast("✅ Rapport envoyé à "+email);
-  },4000);
-}
+function envoyerDepuisRapports(){ envoyerRapportPrestataire(false); }
 
 function encodeMoisData(data,kpi){
   var mMap={};
@@ -5034,6 +5095,7 @@ function renderAlertes(){
 
   // Filtrer WO
   var woF = WO.filter(function(r){
+    if(!_xOf(r)) return false;
     if(reg   && r._r !== reg)   return false;
     if(prest && r._f !== prest) return false;
     if(mag   && r._m !== mag)   return false;
@@ -5042,6 +5104,7 @@ function renderAlertes(){
 
   // Filtrer QUO
   var quoF = QUO.filter(function(r){
+    if(!_xOf(r)) return false;
     if(reg   && r._r !== reg)   return false;
     if(prest && r._f !== prest) return false;
     if(mag   && r._m !== mag)   return false;
@@ -6449,8 +6512,8 @@ function renderGTOpex(){
   var regF  = (document.getElementById("gtopex-reg")||{value:""}).value;
   var typeF = (document.getElementById("gtopex-type")||{value:""}).value;
   _gtApplyTypeView(typeF);
-  var wo  = moisF ? WO.filter(function(r){return r._mo===moisF;}) : WO;
-  var quo = moisF ? QUO.filter(function(r){return r._mo===moisF;}) : QUO;
+  var wo  = (moisF ? WO.filter(function(r){return r._mo===moisF;}) : WO).filter(_affOk);
+  var quo = (moisF ? QUO.filter(function(r){return r._mo===moisF;}) : QUO).filter(_affOk);
   if(regF){ wo=wo.filter(function(r){return r._r===regF;}); quo=quo.filter(function(r){return r._r===regF;}); }
 
   // ── KPIs globaux ──
@@ -6749,11 +6812,11 @@ function renderComparatif(){
     if(fSf && _cmpKey(_cmpSf(r))!==_cmpKey(fSf)) return false;
     return true;
   }
-  var woN  = WO.filter(function(r){return keep(r,yN,false);});
-  var woP  = N1.WO.filter(function(r){return keep(r,yN1,true);});
+  var woN  = WO.filter(function(r){return _affOk(r)&&keep(r,yN,false);});
+  var woP  = N1.WO.filter(function(r){return _affOk(r)&&keep(r,yN1,true);});
   var dvOk = function(r){ return dvMode==="ALL" || r._s==="APP"; };
-  var quoN = QUO.filter(function(r){return keep(r,yN,false) && dvOk(r);});
-  var quoP = N1.QUO.filter(function(r){return keep(r,yN1,true) && dvOk(r);});
+  var quoN = QUO.filter(function(r){return _affOk(r)&&keep(r,yN,false) && dvOk(r);});
+  var quoP = N1.QUO.filter(function(r){return _affOk(r)&&keep(r,yN1,true) && dvOk(r);});
   var noQuoN1 = !N1.QUO.length;
 
   // ── Agrégats ──
@@ -7027,7 +7090,7 @@ function _fbPairs(win, mode, excl){
   Object.keys(groups).forEach(function(k){
     var g=groups[k]; g.sort(function(a,b){return a._d-b._d;});
     for(var i=0;i<g.length;i++){
-      var w=g[i]; if(w._e!=="CL") continue;
+      var w=g[i]; if(w._e!=="CL"||!_xOf(w)) continue;
       var F=_fbFin(w); if(!F||F<w._d) continue;
       var rep=null;
       for(var j=i+1;j<g.length;j++){
