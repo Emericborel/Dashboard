@@ -491,19 +491,23 @@ tr:hover td{background:rgba(255,255,255,.025)}
     <div class="tab active" onclick="go('overview')">📊 Vue générale</div>
     <div class="tab" onclick="go('taux')">📈 Taux clôture prestataire</div>
     <div class="tab" onclick="go('score')">🏅 Score prestataire</div>
+    <div class="tab" onclick="go('scoremag')">🏪 Score magasin</div>
     <div class="tab" onclick="go('magasins')">🏪 Taux clôture magasin</div>
     <div class="tab" onclick="go('devis')">📄 Devis</div>
 
     <div class="tab" onclick="go('budget')">💰 Budget</div>
     <div class="tab" onclick="go('recurrence')">🔁 Récurrence</div>
     <div class="tab" onclick="go('comparatif')">📆 Comparatif N-1</div>
+    <div class="tab" onclick="go('evol')">📉 Évolution</div>
     <div class="tab" onclick="go('fiabilite')">🧪 Fiabilité</div>
     <div class="tab" onclick="go('bc')">⚠ Sans BC</div>
     <div class="tab" onclick="go('nps')">⭐ NPS</div>
     <div class="tab" onclick="go('prev')">🔧 Préventif</div>
     <div class="tab" onclick="go('alertes')">⚠️ Alertes</div>
+    <div class="tab" onclick="go('relances')">🔔 Relances</div>
     <div class="tab" onclick="go('gtopex')">📊 GT Opex</div>
     <div class="tab" onclick="go('rapports')">📋 Rapports</div>
+    <div class="tab" onclick="go('qualite')">🧹 Qualité données</div>
     <div class="tab" onclick="go('contacts')" style="border-left:1px solid var(--border);margin-left:auto">📧 Contacts</div>
   </div>
   <div class="fbar">
@@ -702,6 +706,46 @@ tr:hover td{background:rgba(255,255,255,.025)}
     </div>
 
     <!-- COMPARATIF N-1 -->
+    <!-- ÉVOLUTION -->
+    <div class="page" id="page-evol">
+      <div style="margin-bottom:12px">
+        <div style="font-size:14px;font-weight:800;color:var(--text)">📉 Évolution dans le temps</div>
+        <div style="font-size:11px;color:var(--t3);margin-top:2px">Courbes hebdomadaires reconstituées à partir des dates de création et de fin de tâche des WO, puis historique des scores figés chaque semaine. Cet onglet a ses propres filtres (indépendants du bandeau du haut).</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px;align-items:flex-end">
+        <div class="fl"><label>Affectation</label><select class="fs" id="ev-aff" onchange="renderEvol()"><option value="all">Tous les WO</option><option value="ext">Externe (FR_EXT)</option><option value="int">Interne</option></select></div>
+        <div class="fl"><label>Région</label><select class="fs" id="ev-reg" onchange="renderEvol()"><option value="">Toutes</option></select></div>
+        <div class="fl"><label>Type client</label><select class="fs" id="ev-type" onchange="renderEvol()"><option value="">Tous</option></select></div>
+        <div class="fl"><label>Prestataire</label><select class="fs" id="ev-prest" onchange="renderEvol()" style="max-width:240px"><option value="">Tous</option></select></div>
+        <div class="fl"><label>Horizon</label><select class="fs" id="ev-n" onchange="renderEvol()"><option value="12">12 semaines</option><option value="26" selected>26 semaines</option><option value="52">52 semaines</option></select></div>
+        <button onclick="evExport()" style="padding:6px 12px;background:transparent;color:var(--t2);border:1px solid var(--border);border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">⬇ Excel</button>
+      </div>
+      <div id="ev-scope-txt" style="font-size:10px;color:var(--t3);margin-bottom:8px"></div>
+      <div class="kg" id="ev-kg"></div>
+      <div class="g2">
+        <div class="card"><div class="ct">WO créés, clôturés et stock ouvert (par semaine)</div><div class="cw" style="height:230px"><canvas id="ev-c1"></canvas></div></div>
+        <div class="card"><div class="ct">Taux de clôture cumulé</div><div class="cw" style="height:230px"><canvas id="ev-c2"></canvas></div></div>
+      </div>
+      <div class="g2">
+        <div class="card"><div class="ct">WO ouverts depuis 30 jours ou plus (tous statuts, reconstitué)</div><div class="cw" style="height:230px"><canvas id="ev-c3"></canvas></div></div>
+        <div class="card"><div class="ct">Réactivité : délai moyen et part clôturée en 7 jours (4 semaines glissantes)</div><div class="cw" style="height:230px"><canvas id="ev-c4"></canvas></div></div>
+      </div>
+      <div class="g2">
+        <div class="card"><div class="ct">NPS (4 semaines glissantes)</div><div class="cw" style="height:230px"><canvas id="ev-c5"></canvas></div></div>
+        <div class="card"><div class="ct">À savoir</div><ul style="margin:6px 0 0 16px;padding:0;font-size:11px;line-height:1.8;color:var(--t2)"><li>Courbes reconstituées : le statut passé exact (en attente, en cours) n'est pas conservé par ServiceNow, d'où un stock « ouvert » tous statuts confondus.</li><li>Les WO annulés sont exclus ; une clôture est datée par la « Fin de tâche ».</li><li>Les scores, rangs, WO en cours ≥ 30 j et devis en attente ne peuvent pas être reconstitués : ils sont figés chaque semaine dans le tableau ci-dessous.</li></ul></div>
+      </div>
+      <div class="g1 card">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px"><div class="ct" style="margin:0">📸 Historique des snapshots hebdomadaires</div>
+          <div style="display:flex;gap:8px"><div class="fl"><label>Niveau</label><select class="fs" id="ev-hn" onchange="_evRenderHist()"><option value="PREST">Prestataires</option><option value="REGION">Régions</option><option value="NATIONAL">National</option></select></div>
+          <div class="fl"><label>Indicateur</label><select class="fs" id="ev-hm" onchange="_evRenderHist()"><option value="score">Score /100</option><option value="rang">Rang</option><option value="taux">Taux de clôture %</option><option value="w30ec">WO en cours ≥ 30 j</option><option value="ttr">Délai moyen (j)</option><option value="fast">Clôturés ≤ 7 j %</option><option value="reint">Réinterventions %</option><option value="nps">NPS</option><option value="dv">Devis att. &gt; 7 j (info)</option></select></div></div></div>
+        <div id="ev-hist"></div>
+      </div>
+      <div class="g1 card">
+        <div class="ct">Détail hebdomadaire</div>
+        <div class="tscroll" style="max-height:360px"><table><thead><tr><th>Semaine au</th><th>Créés</th><th>Clôturés</th><th>Stock</th><th>Ouverts ≥30 j</th><th>Taux cumulé</th><th>Délai moy. (j)</th><th>≤ 7 j</th><th>NPS</th></tr></thead><tbody id="ev-tb"></tbody></table></div>
+      </div>
+    </div>
+
     <div class="page" id="page-comparatif">
       <div class="card" style="margin-bottom:12px">
         <div style="display:flex;flex-wrap:wrap;gap:10px 14px;align-items:flex-end">
@@ -899,11 +943,13 @@ tr:hover td{background:rgba(255,255,255,.025)}
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
         <div>
           <div style="font-size:14px;font-weight:800;color:var(--text)">🏅 Score prestataire — aide à la décision</div>
-          <div style="font-size:11px;color:var(--t3);margin-top:2px">Un score /100 par prestataire (6 critères, noté par rapport aux autres) pour les revues, les achats et les équipes.</div>
+          <div style="font-size:11px;color:var(--t3);margin-top:2px">Un score /100 par prestataire (clôture, réinterventions, réactivité, WO en cours ≥ 30 j, délai, NPS — noté par rapport aux autres) pour les revues, les achats et les équipes.</div>
         </div>
         <div style="display:flex;gap:8px">
           <button onclick="exporterScore()" style="padding:6px 14px;background:var(--blue);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">📥 Excel</button>
           <button onclick="scFichePDF()" style="padding:6px 14px;background:var(--red);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">📄 PDF de la fiche</button>
+          <button onclick="scFichesLot(false)" title="Cochez des prestataires dans le classement" style="padding:6px 14px;background:var(--red);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">📄 Fiches cochées</button>
+          <button onclick="scFichesLot(true)" title="Toutes les fiches du classement affiché (max 60)" style="padding:6px 14px;background:var(--red);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">📄 Toutes (en un PDF)</button>
         </div>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;align-items:flex-end">
@@ -912,14 +958,15 @@ tr:hover td{background:rgba(255,255,255,.025)}
         <div class="fl"><label>De</label><select class="fs" id="sc-m1" onchange="renderScore()"></select></div>
         <div class="fl"><label>À</label><select class="fs" id="sc-m2" onchange="renderScore()"></select></div>
         <div class="fl"><label>Min. WO</label><input class="fs" type="number" id="sc-min" value="20" min="1" style="width:70px" onchange="renderScore()"></div>
+        <div class="fl"><label title="Nombre d'interventions d'un même prestataire sur un même équipement d'un même magasin à partir duquel on signale un équipement à étudier (réparer vs remplacer)">Équip. répétés ≥</label><input class="fs" type="number" id="sc-eqmin" value="3" min="2" style="width:60px" onchange="renderScore()"></div>
         <div class="fl"><label>Tri</label><select class="fs" id="sc-sort" onchange="renderScore()"><option value="desc">Meilleur score d'abord</option><option value="asc">Plus faible score d'abord</option><option value="vol">Plus gros volume d'abord</option></select></div>
       </div>
       <details style="margin-bottom:12px"><summary style="font-size:11px;color:var(--t2);cursor:pointer">⚙️ Pondérations des 6 critères <span id="sc-wtot" style="color:var(--t3)"></span></summary>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
-          <div class="fl"><label>Clôture</label><input class="fs" type="number" id="sc-w1" value="25" min="0" style="width:64px" onchange="renderScore()"></div>
-          <div class="fl"><label>Réinterventions</label><input class="fs" type="number" id="sc-w2" value="20" min="0" style="width:64px" onchange="renderScore()"></div>
-          <div class="fl"><label>Devis en attente</label><input class="fs" type="number" id="sc-w3" value="15" min="0" style="width:64px" onchange="renderScore()"></div>
-          <div class="fl"><label>WO ≥ 30 j</label><input class="fs" type="number" id="sc-w4" value="15" min="0" style="width:64px" onchange="renderScore()"></div>
+          <div class="fl"><label>Clôture</label><input class="fs" type="number" id="sc-w1" value="30" min="0" style="width:64px" onchange="renderScore()"></div>
+          <div class="fl"><label>Réinterventions</label><input class="fs" type="number" id="sc-w2" value="15" min="0" style="width:64px" onchange="renderScore()"></div>
+          <div class="fl"><label>Réactivité ≤ 7 j</label><input class="fs" type="number" id="sc-w3" value="10" min="0" style="width:64px" onchange="renderScore()"></div>
+          <div class="fl"><label>WO en cours ≥ 30 j</label><input class="fs" type="number" id="sc-w4" value="20" min="0" style="width:64px" onchange="renderScore()"></div>
           <div class="fl"><label>Délai résolution</label><input class="fs" type="number" id="sc-w5" value="15" min="0" style="width:64px" onchange="renderScore()"></div>
           <div class="fl"><label>NPS</label><input class="fs" type="number" id="sc-w6" value="10" min="0" style="width:64px" onchange="renderScore()"></div>
         </div>
@@ -927,8 +974,8 @@ tr:hover td{background:rgba(255,255,255,.025)}
       <div class="kg" id="sc-kg"></div>
       <div class="g1 card">
         <div class="ct">Classement des prestataires — cliquer sur une ligne pour la fiche</div>
-        <div class="tscroll" style="max-height:520px"><table><thead><tr><th>#</th><th>Prestataire</th><th>Format</th><th>WO</th><th>Score /100</th><th>Niveau</th><th title="Tendance sur clôture, réinterventions, délai et NPS : 3 derniers mois vs 3 mois précédents">Tendance</th><th>Taux clôture</th><th>Réinterv. 30 j</th><th>Devis att. &gt;7j /100 WO</th><th>WO ≥30 j /100 WO</th><th>Délai (j)</th><th>NPS</th></tr></thead><tbody id="sc-tb"></tbody></table></div>
-        <div style="font-size:10px;color:var(--t3);margin-top:6px;line-height:1.6">Notes par rang parmi les prestataires affichés (0 = le moins bon, 100 = le meilleur). Devis en attente et WO ≥ 30 j = stock actuel rapporté au volume (pour 100 WO), donc non influencés par le filtre de mois. Un critère sans donnée suffisante (NPS &lt; 5 avis, moins de 5 WO clôturés pour les réinterventions) est ignoré dans la moyenne pondérée.</div>
+        <div class="tscroll" style="max-height:520px"><table><thead><tr><th>#</th><th>Prestataire</th><th>Format</th><th>WO</th><th>Score /100</th><th>Niveau</th><th title="Tendance sur clôture, réinterventions, réactivité, délai et NPS : 3 derniers mois vs 3 mois précédents">Tendance</th><th>Taux clôture</th><th>Réinterv. 30 j</th><th title="Part des WO clôturés en 7 jours ou moins">Clôturés ≤ 7 j</th><th title="WO en cours / assignés depuis 30 jours ou plus, pour 100 WO">WO en cours ≥30 j /100 WO</th><th title="Délai moyen création → fin de tâche">Délai moyen (j)</th><th>NPS</th></tr></thead><tbody id="sc-tb"></tbody></table></div>
+        <div style="font-size:10px;color:var(--t3);margin-top:6px;line-height:1.6">Notes par rang parmi les prestataires affichés (0 = le moins bon, 100 = le meilleur). Les devis ne sont pas utilisés pour évaluer un prestataire (ils dépendent de la validation du magasin et de la DA). WO en cours / assignés ≥ 30 j = stock actuel rapporté au volume (pour 100 WO), donc non influencé par le filtre de mois. Réactivité = part des WO clôturés en 7 jours ou moins, complétée par le délai moyen de résolution. Les équipements à interventions répétées sont signalés dans la fiche mais ne modifient pas la note. Un critère sans donnée suffisante (NPS &lt; 5 avis, moins de 5 WO clôturés pour les réinterventions) est ignoré dans la moyenne pondérée.</div>
       </div>
       <div class="card g1" id="sc-fiche-card">
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
@@ -939,7 +986,156 @@ tr:hover td{background:rgba(255,255,255,.025)}
       </div>
     </div>
 
+    <div class="page" id="page-scoremag">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+        <div>
+          <div style="font-size:14px;font-weight:800;color:var(--text)">🏪 Score magasin — fiches et suivi</div>
+          <div style="font-size:11px;color:var(--t3);margin-top:2px">Un score /100 par magasin (tous les WO : équipes internes et prestataires) pour cibler les relances et les revues avec les CMM.</div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button onclick="smExcel()" style="padding:6px 14px;background:var(--blue);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">📥 Excel</button>
+          <button onclick="smFichePDF()" style="padding:6px 14px;background:var(--red);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">📄 PDF de la fiche</button>
+          <button onclick="smFichesLot(false)" style="padding:6px 14px;background:var(--red);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">📄 Fiches cochées</button>
+          <button onclick="smFichesLot(true)" title="Max 60 fiches : filtrez par région, CMM ou type" style="padding:6px 14px;background:var(--red);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">📄 Toutes (en un PDF)</button>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;align-items:flex-end">
+        <div class="fl"><label>Type client</label><select class="fs" id="sm-type" onchange="renderScoreMag()"><option value="">Tous</option><option value="Hyper">Hyper</option><option value="Market">Market</option><option value="Match">Match</option></select></div>
+        <div class="fl"><label>Région</label><select class="fs" id="sm-reg" onchange="renderScoreMag()"><option value="">Toutes</option></select></div>
+        <div class="fl"><label>CMM</label><select class="fs" id="sm-cmm" onchange="renderScoreMag()"><option value="">Tous</option></select></div>
+        <div class="fl"><label>De</label><select class="fs" id="sm-m1" onchange="renderScoreMag()"></select></div>
+        <div class="fl"><label>À</label><select class="fs" id="sm-m2" onchange="renderScoreMag()"></select></div>
+        <div class="fl"><label>Min. WO</label><input class="fs" type="number" id="sm-min" value="10" min="1" style="width:70px" onchange="renderScoreMag()"></div>
+        <div class="fl"><label>Tri</label><select class="fs" id="sm-sort" onchange="renderScoreMag()"><option value="asc">Plus faible score d'abord</option><option value="desc">Meilleur score d'abord</option><option value="vol">Plus de WO d'abord</option></select></div>
+      </div>
+      <details style="margin-bottom:12px"><summary style="font-size:11px;color:var(--t2);cursor:pointer">⚙️ Pondérations des 6 critères <span id="sm-wtot" style="color:var(--t3)"></span></summary>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+          <div class="fl"><label>Clôture</label><input class="fs" type="number" id="sm-w1" value="20" min="0" style="width:64px" onchange="renderScoreMag()"></div>
+          <div class="fl"><label>WO ≥ 30 j</label><input class="fs" type="number" id="sm-w2" value="25" min="0" style="width:64px" onchange="renderScoreMag()"></div>
+          <div class="fl"><label>Devis en attente</label><input class="fs" type="number" id="sm-w3" value="15" min="0" style="width:64px" onchange="renderScoreMag()"></div>
+          <div class="fl"><label>Réinterventions</label><input class="fs" type="number" id="sm-w4" value="15" min="0" style="width:64px" onchange="renderScoreMag()"></div>
+          <div class="fl"><label>Délai résolution</label><input class="fs" type="number" id="sm-w5" value="10" min="0" style="width:64px" onchange="renderScoreMag()"></div>
+          <div class="fl"><label>NPS</label><input class="fs" type="number" id="sm-w6" value="15" min="0" style="width:64px" onchange="renderScoreMag()"></div>
+        </div>
+      </details>
+      <div class="kg" id="sm-kg"></div>
+      <div class="g1 card">
+        <div class="ct">Classement des magasins — cliquer sur une ligne pour la fiche · cocher pour un PDF en lot</div>
+        <div class="tscroll" style="max-height:520px"><table><thead><tr><th>#</th><th>Magasin</th><th>Type · région</th><th>CMM</th><th>WO</th><th>Score /100</th><th>Niveau</th><th>Clôture</th><th>WO ≥ 30 j /100</th><th>Devis &gt; 7 j /100</th><th>Réint. 30 j</th><th>Délai</th><th>NPS</th></tr></thead><tbody id="sm-tb"></tbody></table></div>
+        <div style="font-size:10px;color:var(--t3);margin-top:6px;line-height:1.6">Notes par rang parmi les magasins affichés (0 = le moins bon, 100 = le meilleur). WO ≥ 30 j et devis en attente = situation actuelle rapportée au volume de WO de la période. Les réinterventions ne portent que sur les WO clôturés par un prestataire externe. Les 400 premiers magasins sont affichés.</div>
+      </div>
+      <div class="card g1" id="sm-fiche-card">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+          <div class="ct" style="margin:0">Fiche magasin</div>
+          <select class="fs" id="sm-mag" style="min-width:300px" onchange="smSelect(this.value)"></select>
+        </div>
+        <div id="sm-fiche"></div>
+      </div>
+    </div>
+
+    <div class="page" id="page-relances">
+      <div style="margin-bottom:12px">
+        <div style="font-size:14px;font-weight:800;color:var(--text)">🔔 Relances CMM — magasins en alerte</div>
+        <div style="font-size:11px;color:var(--t3);margin-top:2px">Le dashboard prépare les mails (CMM / RPM ou prestataires) avec une synthèse PDF et un Excel. Rien ne part sans ta validation : aperçu, test, puis confirmation.</div>
+        <div style="display:flex;gap:6px;margin-top:10px">
+          <button id="rl-vb-cmm" onclick="rlVolet('cmm')" style="padding:7px 16px;border-radius:8px;border:1px solid var(--border);background:var(--blue);color:#fff;font-size:11px;font-weight:700;cursor:pointer">🏪 Magasins / CMM</button>
+          <button id="rl-vb-prest" onclick="rlVolet('prest')" style="padding:7px 16px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--t2);font-size:11px;font-weight:700;cursor:pointer">🔧 Prestataires</button>
+          <button id="rl-vb-eff" onclick="rlVolet('eff')" style="padding:7px 16px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--t2);font-size:11px;font-weight:700;cursor:pointer">📈 Efficacité</button>
+        </div>
+      </div>
+      <div id="rl-vol-cmm">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;align-items:flex-end">
+        <div class="fl"><label>Type client</label><select class="fs" id="rl-type" onchange="renderRelances()"><option value="">Tous</option><option value="Hyper">Hyper</option><option value="Market">Market</option><option value="Match">Match</option></select></div>
+        <div class="fl"><label>Région</label><select class="fs" id="rl-reg" onchange="renderRelances()"><option value="">Toutes</option></select></div>
+        <div class="fl"><label>CMM</label><select class="fs" id="rl-cmm" onchange="renderRelances()"><option value="">Tous</option></select></div>
+        <div class="fl"><label>Min. alertes / magasin</label><input class="fs" type="number" id="rl-min" value="1" min="1" style="width:70px" onchange="renderRelances()"></div>
+        <div class="fl"><label>Délai de retour (jours)</label><input class="fs" type="number" id="rl-delai" value="7" min="1" style="width:70px" onchange="renderRelances()"></div>
+      </div>
+      <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:12px;font-size:11px;color:var(--t2);align-items:center">
+        <b>Déclencheurs :</b>
+        <label><input type="checkbox" id="rl-t-woatt" checked onchange="renderRelances()"> WO en attente d'approbation ≥ 30 j</label>
+        <label><input type="checkbox" id="rl-t-dv" checked onchange="renderRelances()"> Devis en attente &gt; 7 j (hors Ouvert)</label>
+        <label><input type="checkbox" id="rl-t-nps" checked onchange="renderRelances()"> NPS détracteurs des <input class="fs" type="number" id="rl-npsj" value="30" min="1" style="width:56px;display:inline-block" onchange="renderRelances()"> derniers jours</label>
+        <label><input type="checkbox" id="rl-t-woec" checked onchange="renderRelances()"> WO en cours ≥ 30 j / très urgents ouverts</label>
+      </div>
+      <div class="kg" id="rl-kg"></div>
+      <div class="g1 card">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:6px"><div class="ct" style="margin:0">CMM à relancer</div><div style="font-size:10px"><a href="#" onclick="rlCheckAll(true);return false" style="color:#90c4f5">Tout cocher</a> · <a href="#" onclick="rlCheckAll(false);return false" style="color:#90c4f5">Tout décocher</a></div></div>
+        <div class="tscroll" style="max-height:480px"><table><thead><tr><th></th><th>CMM</th><th>Mail CMM</th><th>RPM</th><th>Mail RPM (cc)</th><th>Magasins</th><th>WO att.</th><th>Devis att.</th><th>NPS</th><th>WO en cours</th><th></th></tr></thead><tbody id="rl-tb"></tbody></table></div>
+        <div style="font-size:10px;color:var(--t3);margin-top:6px;line-height:1.6">Les adresses viennent de la feuille BDD (Mail CMM) ; une adresse manquante (cadre rouge) peut être saisie ici et reste mémorisée dans ce navigateur. Les CMM relancés depuis moins de 7 jours sont décochés par défaut.</div>
+      </div>
+      <div class="card g1">
+        <div class="ct" style="margin-bottom:8px">Message</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div class="fl"><label>Objet ({cmm}, {nb} = nombre de magasins)</label><input id="rl-objet" type="text" value="Points à traiter sur vos magasins — {cmm}" style="background:var(--bg);border:1px solid rgba(255,255,255,.1);color:var(--text);border-radius:7px;padding:6px 10px;font-size:11px;width:100%"></div>
+          <div class="fl"><label>Introduction ({cmm}, {nb}, {delai})</label><textarea id="rl-intro" rows="4" style="width:100%;background:var(--bg);border:1px solid rgba(255,255,255,.1);color:var(--text);border-radius:7px;padding:7px 10px;font-size:11px;resize:vertical;line-height:1.5">Bonjour,
+
+Nous avons identifié {nb} magasin(s) de votre périmètre avec des points en attente (WO, devis, avis clients). Vous trouverez ci-dessous le récapitulatif, et en pièce jointe la synthèse détaillée à traiter avant le {delai}.</textarea></div>
+          <div style="display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--t2)">
+            <label><input type="checkbox" id="rl-recap"> Envoyer aussi un récapitulatif à chaque RPM</label>
+            <label><input type="checkbox" id="rl-copie" checked> M'envoyer une copie</label>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="rl-send" onclick="rlEnvoyer(true)" style="padding:9px 14px;background:rgba(239,159,39,.12);color:#EFC96A;border:1px solid rgba(239,159,39,.3);border-radius:8px;font-size:11px;font-weight:700;cursor:pointer">🧪 M'envoyer un test (1er CMM coché)</button>
+            <button class="rl-send" onclick="rlEnvoyer(false)" style="padding:9px 16px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">📨 Envoyer aux CMM cochés</button>
+          </div>
+          <div id="rl-status" style="font-size:11px;line-height:1.7"></div>
+        </div>
+      </div>
+      </div>
+      <div id="rl-vol-prest" style="display:none">
+        <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:10px;font-size:11px;color:var(--t2);align-items:center">
+          <b>Déclencheurs :</b>
+          <label><input type="checkbox" id="rp-t-eq" onchange="renderRelancesPrest()"> Équipement à interventions répétées : au moins <input class="fs" type="number" id="rp-eqmin" value="3" min="2" style="width:56px;display:inline-block" onchange="renderRelancesPrest()"> interventions</label>
+          <label><input type="checkbox" id="rp-t-woec" checked onchange="renderRelancesPrest()"> WO en cours / assignés ≥ 30 j : au moins <input class="fs" type="number" id="rp-womin" value="1" min="1" style="width:56px;display:inline-block" onchange="renderRelancesPrest()"></label>
+          <label><input type="checkbox" id="rp-t-score" checked onchange="renderRelancesPrest()"> Score &lt; <input class="fs" type="number" id="rp-sseuil" value="50" style="width:56px;display:inline-block" onchange="renderRelancesPrest()"> ou en baisse de <input class="fs" type="number" id="rp-baisse" value="5" style="width:56px;display:inline-block" onchange="renderRelancesPrest()"> pts</label>
+          <label><input type="checkbox" id="rp-t-obj" checked onchange="renderRelancesPrest()"> Clôture, réinterventions ou délai moyen hors objectif (objectifs réglés par prestataire dans Rapports)</label>
+          <label>Min. WO <input class="fs" type="number" id="rp-min" value="20" min="1" style="width:60px;display:inline-block" onchange="renderRelancesPrest()"></label>
+          <label>Délai de retour (j) <input class="fs" type="number" id="rp-delai" value="7" min="1" style="width:56px;display:inline-block"></label>
+        </div>
+        <div class="kg" id="rp-kg"></div>
+        <div class="g1 card">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:6px"><div class="ct" style="margin:0">Prestataires à relancer (externes FR_EXT)</div><div style="font-size:10px"><a href="#" onclick="rlpCheckAll(true);return false" style="color:#90c4f5">Tout cocher</a> · <a href="#" onclick="rlpCheckAll(false);return false" style="color:#90c4f5">Tout décocher</a></div></div>
+          <div class="tscroll" style="max-height:480px"><table><thead><tr><th></th><th>Prestataire</th><th>Mail (Contacts)</th><th>Score</th><th>Clôture</th><th>Équip. répétés</th><th>WO en cours ≥ 30 j</th><th>Motifs</th><th></th></tr></thead><tbody id="rp-tb"></tbody></table></div>
+          <div style="font-size:10px;color:var(--t3);margin-top:6px;line-height:1.6">Les adresses viennent de l'onglet Contacts (adresse manquante = cadre rouge, saisie mémorisée). Les prestataires relancés depuis moins de 7 jours sont décochés. Le mail reprend le rapport prestataire (résultats vs objectifs) ; le PDF joint contient le rapport et la fiche score.</div>
+        </div>
+        <div class="card g1">
+          <div class="ct" style="margin-bottom:8px">Message</div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div class="fl"><label>Objet ({groupe})</label><input id="rp-objet" type="text" value="Relance suivi maintenance — {groupe}" style="background:var(--bg);border:1px solid rgba(255,255,255,.1);color:var(--text);border-radius:7px;padding:6px 10px;font-size:11px;width:100%"></div>
+            <div class="fl"><label>Introduction ({groupe}, {delai} ; les motifs sont ajoutés automatiquement)</label><textarea id="rp-intro" rows="4" style="width:100%;background:var(--bg);border:1px solid rgba(255,255,255,.1);color:var(--text);border-radius:7px;padding:7px 10px;font-size:11px;resize:vertical;line-height:1.5">Bonjour,
+
+Dans le cadre du suivi de la performance maintenance, nous attirons votre attention sur les points ci-dessous. Vous trouverez en pièce jointe votre rapport, votre fiche score, la liste des WO à traiter et les équipements à interventions répétées par magasin. Merci de nous transmettre votre plan d'action avant le {delai}.</textarea></div>
+            <div style="display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--t2)">
+              <label><input type="checkbox" id="rp-cccmm" checked> Mettre en copie les CMM et RPM des magasins concernés</label>
+              <label><input type="checkbox" id="rp-copie" checked> M'envoyer une copie</label>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button class="rp-send" onclick="rlpEnvoyer(true)" style="padding:9px 14px;background:rgba(239,159,39,.12);color:#EFC96A;border:1px solid rgba(239,159,39,.3);border-radius:8px;font-size:11px;font-weight:700;cursor:pointer">🧪 M'envoyer un test (1er prestataire coché)</button>
+              <button class="rp-send" onclick="rlpEnvoyer(false)" style="padding:9px 16px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">📨 Envoyer aux prestataires cochés</button>
+            </div>
+            <div id="rp-status" style="font-size:11px;line-height:1.7"></div>
+          </div>
+        </div>
+      </div>
+      <div id="rl-vol-eff" style="display:none">
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;align-items:flex-end">
+          <div class="fl"><label>Type</label><select class="fs" id="ef-type" onchange="renderEfficacite()"><option value="">Tous</option><option value="CMM">CMM</option><option value="PREST">Prestataires</option></select></div>
+          <div class="fl"><label>Période</label><select class="fs" id="ef-per" onchange="renderEfficacite()"><option value="30">30 jours</option><option value="90" selected>90 jours</option><option value="365">12 mois</option></select></div>
+          <button onclick="efLoad(true)" style="padding:6px 12px;background:transparent;color:var(--t2);border:1px solid var(--border);border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">🔄 Recharger le journal</button>
+          <button onclick="efExport()" style="padding:6px 12px;background:transparent;color:var(--t2);border:1px solid var(--border);border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">⬇ Excel</button>
+          <span id="ef-status" style="font-size:10px;color:var(--t3)"></span>
+        </div>
+        <div class="kg" id="ef-kg"></div>
+        <div class="g1 card"><div class="ct" style="margin-bottom:6px">Relance → résultat</div>
+          <div class="tscroll" style="max-height:440px"><table><thead><tr><th>Date</th><th>Type</th><th>Cible</th><th>Éléments visés</th><th>Traités</th><th>Taux</th><th>≤ 7 j (WO)</th><th>≤ 14 j (WO)</th><th>Délai médian</th><th>Verdict</th></tr></thead><tbody id="ef-tb"></tbody></table></div>
+          <div style="font-size:10px;color:var(--t3);margin-top:6px;line-height:1.6">Un élément est « traité » quand le WO est clôturé ou annulé, ou quand le devis a été approuvé ou refusé depuis la relance. Verdict : efficace ≥ 60 % ; partiel 30-60 % ; sans effet &lt; 30 % au bout de 14 jours. Les NPS détracteurs ne sont pas mesurés. Le journal est tenu automatiquement à chaque relance envoyée (hors tests).</div></div>
+        <div class="g1 card"><div class="ct" style="margin-bottom:6px">À escalader — relancés plusieurs fois sans effet</div><div id="ef-rep"></div></div>
+      </div>
+    </div>
+
     <!-- SANS BC -->
+
     <div class="page" id="page-bc">
       <div class="alert ae">⚠ Risque financier : devis approuvés ERP sans bon de commande — non tracés comptablement.</div>
       <div class="kg" id="kg-bc"></div>
@@ -1128,8 +1324,8 @@ Veuillez trouver ci-joint votre rapport de performance maintenance pour la péri
                 <div style="display:grid;grid-template-columns:1fr 70px;gap:6px 10px;align-items:center;margin-top:8px;font-size:11px;color:var(--t2)">
                   <span>Taux de clôture curatif ≥ (%)</span><input id="env-o-taux" type="number" class="fs" onchange="_envSaveObj()">
                   <span>Taux de clôture préventif ≥ (%) <i style="color:var(--t3)">— si le prestataire a du préventif</i></span><input id="env-o-prev" type="number" class="fs" onchange="_envSaveObj()">
-                  <span>Devis en attente &gt; 7 j — maximum</span><input id="env-o-dv" type="number" class="fs" onchange="_envSaveObj()">
-                  <span>WO en attente d'approbation / en cours ≥ 30 j — maximum</span><input id="env-o-wo30" type="number" class="fs" onchange="_envSaveObj()">
+                  <span>Réactivité : délai moyen de résolution — maximum (jours)</span><input id="env-o-ttr" type="number" class="fs" onchange="_envSaveObj()">
+                  <span>WO en cours / assignés depuis ≥ 30 j — maximum</span><input id="env-o-wo30" type="number" class="fs" onchange="_envSaveObj()">
                   <span>Réinterventions à 30 j — maximum (%)</span><input id="env-o-reint" type="number" class="fs" onchange="_envSaveObj()">
                   <span>NPS ≥</span><input id="env-o-nps" type="number" class="fs" onchange="_envSaveObj()">
                   <span>Délai de retour du plan d'action (jours)</span><input id="env-o-delai" type="number" class="fs" onchange="_envSaveObj()">
@@ -1197,9 +1393,21 @@ Veuillez trouver ci-joint votre rapport de performance maintenance pour la péri
     </div>
 
     <!-- CONTACTS -->
+    <!-- QUALITÉ DES DONNÉES -->
+    <div class="page" id="page-qualite">
+      <div style="margin-bottom:12px;display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">
+        <div><div style="font-size:14px;font-weight:800;color:var(--text)">🧹 Qualité des données</div>
+        <div style="font-size:11px;color:var(--t3);margin-top:2px">Contrôles automatiques sur les WO, devis, rattachement CMM/RPM et contacts : ce qui peut fausser un score, bloquer une relance ou un envoi.</div></div>
+        <button onclick="qdExportAll()" style="padding:6px 12px;background:var(--blue);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">⬇ Tout exporter (Excel)</button>
+      </div>
+      <div class="kg" id="qd-kg"></div>
+      <div class="g1 card"><div class="tscroll" style="max-height:560px"><table><thead><tr><th>État</th><th>Domaine</th><th>Contrôle</th><th>Concernés</th><th>Impact</th><th></th></tr></thead><tbody id="qd-tb"></tbody></table></div></div>
+      <div class="g1 card" id="qd-detail" style="display:none"></div>
+    </div>
+
     <div class="page" id="page-contacts">
       <div class="ai alert">
-        💡 Saisissez les emails de vos interlocuteurs prestataires. Ces données sont sauvegardées localement dans votre navigateur.
+        💡 Saisissez les emails de vos interlocuteurs prestataires. Ces données sont enregistrées dans votre navigateur et, pour l'admin, synchronisées avec le Google Sheet (partagées entre postes). <b class="cfg-badge"></b> <a href="#" onclick="_cfgPull(true);return false" style="color:#90c4f5">☁️ Synchroniser maintenant</a>.
         L'envoi se fait via votre Apps Script Carrefour.
       </div>
       <!-- Config Apps Script URL -->
@@ -1254,7 +1462,7 @@ var _woProc=false, _quoProc=false, _npsProc=false;
 var TAB="overview";
 var FILES={wo:null,quo:null,nps:null,prev:null};
 var BUDGETS={};
-var TABS=["overview","taux","score","magasins","devis","budget","recurrence","comparatif","fiabilite","bc","nps","prev","alertes","gtopex","rapports","contacts"];
+var TABS=["overview","taux","score","scoremag","magasins","devis","budget","recurrence","comparatif","evol","fiabilite","bc","nps","prev","alertes","relances","gtopex","rapports","qualite","contacts"];
 
 // ═══════════════════════════════════════════════════════════════
 // UTILITAIRES
@@ -2050,7 +2258,7 @@ function _showDiagPanel(){
   var versionHTML = "<div style='margin-bottom:12px;padding:8px 10px;background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.35);border-radius:6px'>"
     + "<b style='color:#F59E0B'>Version du code servi (PREV) :</b> "+(window._lastPrevBuildVersion||"jamais chargé")+"<br>"
     + "<b style='color:#F59E0B'>Version du code servi (BDD) :</b> "+(window._lastBddBuildVersion||"jamais chargé")+"<br>"
-    + "<span style='font-size:9px;color:#888'>Attendu : 2026-11-04-RAPPORTS-v24 — si différent ou absent, le déploiement n'est pas à jour.</span>"
+    + "<span style='font-size:9px;color:#888'>Attendu : 2026-11-04-PARTAGE-v29 — si différent ou absent, le déploiement n'est pas à jour.</span>"
     + "</div>";
   // Diagnostic ciblé : dump brut de WO[0] + test en direct de _getFuzzy,
   // pour comprendre précisément pourquoi le matching État échoue encore
@@ -2746,9 +2954,13 @@ function fNPS(){
 function go(tab){
   if(tab==="prev") setTimeout(renderPrev,50);
   if(tab==="comparatif") setTimeout(initComparatif,50);
+  if(tab==="evol") setTimeout(initEvol,50);
+  if(tab==="qualite") setTimeout(renderQualite,50);
   if(tab==="fiabilite") setTimeout(initFiabilite,50);
   if(tab==="score") setTimeout(initScore,50);
+  if(tab==="scoremag") setTimeout(initScoreMag,50);
   if(tab==="alertes") setTimeout(renderAlertes,50);
+  if(tab==="relances") setTimeout(initRelances,50);
   if(tab==="rapports"){ setTimeout(initRapportMagasin,100); }
   if(tab==="gtopex") setTimeout(initGTOpex,50);
   TAB=tab;
@@ -4255,7 +4467,7 @@ function testerScript(){
 // ═══════════════════════════════════════════════════════════════
 // ENVOI FIABILISÉ DU RAPPORT PRESTATAIRE (mail personnalisé + PDF + Excel)
 // ═══════════════════════════════════════════════════════════════
-var ENV_OBJ_DEF={taux:70, prev:85, dv:0, wo30:0, reint:10, nps:0, delai:7};
+var ENV_OBJ_DEF={taux:70, prev:85, ttr:10, wo30:0, reint:10, nps:0, delai:7};
 function _envE(x){ return String(x==null?"":x).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
 function _envLS(k){ try{ return JSON.parse(localStorage.getItem(k)||"{}")||{}; }catch(e){ return {}; } }
 function _envDefGen(){ return Object.assign({},ENV_OBJ_DEF,_envLS("mc_env_obj")); }
@@ -4301,30 +4513,30 @@ function _envCompute(s, periode){
   var inP=function(r){ return _inRapportPeriode(r._mo,range); };
   var wo=s.D.wo, quo=s.D.quo, nps=s.D.nps;
   var k=calcKPIs(wo,quo,nps);
-  var dvL=QUO.filter(function(r){return mine(r)&&_dvAtt(r);});
-  var woL=WO.filter(function(r){return mine(r)&&(_woAtt(r)||_woEc(r));});
+  var woL=WO.filter(function(r){return mine(r)&&_woEc(r);});
+  var eqL=_eqRepeats(mine,_eqMin(),false);
+  var fast=0, fastN=0; wo.forEach(function(r){ if(r._e==="CL"&&r._ttr!=null){ fastN++; if(r._ttr<=7) fast++; } });
   var P=_fbPairs(30,"strict",true), elig=0, rep=0;
   P.list.forEach(function(p){ if(!mine(p.w)||!p.eligible||!inP(p.w)) return; elig++; if(p.rep) rep++; });
   var reint=elig>=10?rep/elig*100:null;
   var prev=s.D.prev;
   var kp=prev.length?calcKPIsPrev(prev):null;
   var top=function(list,agef){ var m={}; list.forEach(function(r){ var a=m[r._m]||(m[r._m]={m:r._m,n:0,age:0}); a.n++; var g=agef(r); if(g>a.age) a.age=g; }); return Object.keys(m).map(function(x){return m[x];}).sort(function(a,b){return b.n-a.n||b.age-a.age;}); };
-  var topDv=top(dvL,function(r){return r._age||0;}), topWo=top(woL,function(r){return r._age||0;});
+  var topWo=top(woL,function(r){return r._age||0;});
   var mois={}; WO.forEach(function(r){ if(!mine(r)||!r._mo) return; var a=mois[r._mo]||(mois[r._mo]={n:0,cl:0}); a.n++; if(r._e==="CL") a.cl++; });
   // statuts : ok / warn / ko / na
   var stHaut=function(v,o,marge){ return v>=o?"ok":v>=o-marge?"warn":"ko"; };
   var stBas=function(v,o,tol){ return v<=o?"ok":v<=tol?"warn":"ko"; };
   var rows=[
     {lib:"Taux de clôture des WO curatifs", val:k.taux.toFixed(1).replace(".",",")+" %", obj:"≥ "+obj.taux+" %", st:wo.length?stHaut(k.taux,obj.taux,10):"na", note:fN(k.cl)+" clôturés sur "+fN(wo.length)+" WO"},
-    {lib:"Devis en attente de validation depuis plus de 7 jours", val:String(dvL.length), obj:"≤ "+obj.dv, st:stBas(dvL.length,obj.dv,Math.max(5,obj.dv*2)), note:"Hors statut « Ouvert »"},
-    {lib:"WO en attente d'approbation ou en cours depuis 30 jours ou plus", val:String(woL.length), obj:"≤ "+obj.wo30, st:stBas(woL.length,obj.wo30,Math.max(5,obj.wo30*2)), note:""},
+    {lib:"WO en cours / assignés depuis 30 jours ou plus", val:String(woL.length), obj:"≤ "+obj.wo30, st:stBas(woL.length,obj.wo30,Math.max(5,obj.wo30*2)), note:"Les WO en attente d'approbation ne sont pas comptés"},
+    {lib:"Réactivité : délai moyen de résolution", val:k.ttrN?k.ttrMoy.toFixed(1).replace(".",",")+" j":"—", obj:"≤ "+obj.ttr+" j", st:k.ttrN>=3?stBas(k.ttrMoy,obj.ttr,obj.ttr*1.5):"na", note:fastN?Math.round(fast/fastN*100)+" % des WO clôturés en 7 jours ou moins":"Moins de 3 WO clôturés"},
     {lib:"Réinterventions à 30 jours (même magasin, même équipement)", val:reint===null?"—":reint.toFixed(1).replace(".",",")+" %", obj:"≤ "+obj.reint+" %", st:reint===null?"na":stBas(reint,obj.reint,obj.reint*1.5), note:reint===null?"Volume insuffisant":rep+" sur "+elig+" WO clôturés"},
     {lib:"Taux de clôture de la maintenance préventive", val:kp?kp.taux.toFixed(1).replace(".",",")+" %":"—", obj:"≥ "+obj.prev+" %", st:kp?stHaut(kp.taux,obj.prev,10):"na", note:kp?fN(kp.cl)+" clôturés sur "+fN(kp.n)+" WO préventifs · "+fN(kp.appro)+" en attente d'approbation":"", prev:true},
     {lib:"NPS", val:k.npsN>=3?(k.npsScore>0?"+":"")+k.npsScore.toFixed(0):"—", obj:"≥ "+obj.nps, st:k.npsN>=3?stHaut(k.npsScore,obj.nps,15):"na", note:k.npsN>=3?k.npsN+" réponses":"Moins de 3 réponses"},
-    {lib:"Délai moyen de résolution", val:k.ttrN?k.ttrMoy.toFixed(1).replace(".",",")+" j":"—", obj:"—", st:"na", note:"Indicateur de suivi"}
   ];
   if(!kp) rows=rows.filter(function(r){return !r.prev;});
-  return {nom:s.nom,entites:ent,obj:obj,k:k,kp:kp,rows:rows,dvL:dvL,woL:woL,topDv:topDv,topWo:topWo,mois:mois,nWO:wo.length,reint:reint};
+  return {nom:s.nom,entites:ent,obj:obj,k:k,kp:kp,rows:rows,woL:woL,eqL:eqL,topWo:topWo,mois:mois,nWO:wo.length,reint:reint};
 }
 var _ENV_ST={ok:{c:"#1D9E75",t:"✔ Objectif atteint"},warn:{c:"#BA7517",t:"▲ À améliorer"},ko:{c:"#E24B4A",t:"✖ Non atteint"},na:{c:"#888888",t:"—"}};
 function _envPeriodeLabel(D){ return _rapportPeriodeLabel(D.wo); }
@@ -4337,6 +4549,13 @@ function _envTableMag(list,titre,unite){
   t.forEach(function(x){ h+="<tr><td style='padding:4px 8px;border-bottom:1px solid #eceef3'>"+_envE(x.m)+"</td><td style='padding:4px 8px;border-bottom:1px solid #eceef3;text-align:right;white-space:nowrap'>"+x.n+" "+unite+(x.age?" · le plus ancien : "+x.age+" j":"")+"</td></tr>"; });
   if(list.length>5) h+="<tr><td colspan='2' style='padding:4px 8px;color:#888;font-size:11px'>… et "+(list.length-5)+" autre(s) magasin(s) — voir le détail en pièce jointe et dans le rapport PDF.</td></tr>";
   return h+"</table>";
+}
+function _envEqBloc(C){
+  if(!C.eqL||!C.eqL.length) return "";
+  var t=C.eqL.slice(0,5), h="<div style='font-size:12px;font-weight:700;color:#1a1a2e;margin:14px 0 4px'>Équipements à interventions répétées ("+C.eqL.length+" au total, "+_eqMin()+" interventions ou plus sur un même magasin)</div><table role='presentation' cellpadding='0' cellspacing='0' width='100%' style='border-collapse:collapse;font-size:12px'>";
+  t.forEach(function(a){ h+="<tr><td style='padding:4px 8px;border-bottom:1px solid #eceef3'>"+_envE(a.m)+" — "+_envE(a.eq)+"</td><td style='padding:4px 8px;border-bottom:1px solid #eceef3;text-align:right;white-space:nowrap'>"+a.n+" interventions"+(a.last?" · dernière le "+a.last.toLocaleDateString("fr-FR"):"")+"</td></tr>"; });
+  if(C.eqL.length>5) h+="<tr><td colspan='2' style='padding:4px 8px;color:#888;font-size:11px'>… et "+(C.eqL.length-5)+" autre(s) — voir le rapport PDF et le fichier Excel.</td></tr>";
+  return h+"</table><div style='font-size:11px;color:#666;margin-top:4px'>Merci de nous indiquer, pour ces équipements, la cause racine identifiée et votre avis : poursuivre la réparation ou envisager un remplacement.</div>";
 }
 function _envEmailHtml(C, periodeLabel, intro){
   var rows=C.rows.map(function(r){ var s=_ENV_ST[r.st];
@@ -4358,19 +4577,19 @@ function _envEmailHtml(C, periodeLabel, intro){
    +"<div style='font-size:12px;font-weight:700;color:#1a1a2e;margin:18px 0 6px;text-transform:uppercase;letter-spacing:.4px'>Vos résultats au regard des objectifs</div>"
    +"<table role='presentation' width='100%' cellpadding='0' cellspacing='0' style='border-collapse:collapse;border:1px solid #eceef3'><tr style='background:#f3f4f8'><th align='left' style='padding:7px 10px;font-size:10px;color:#666;text-transform:uppercase'>Indicateur</th><th style='padding:7px 10px;font-size:10px;color:#666;text-transform:uppercase'>Résultat</th><th style='padding:7px 10px;font-size:10px;color:#666;text-transform:uppercase'>Objectif</th><th style='padding:7px 10px;font-size:10px;color:#666;text-transform:uppercase'>Situation</th></tr>"+rows+"</table>"
    +blocPlan
-   +(C.topDv.length||C.topWo.length?"<div style='font-size:12px;font-weight:700;color:#1a1a2e;margin:18px 0 0;text-transform:uppercase;letter-spacing:.4px'>Points à traiter en priorité</div>":"")
-   +_envTableMag(C.topDv,"Devis en attente depuis plus de 7 jours — "+C.dvL.length+" au total, par magasin","devis")
-   +_envTableMag(C.topWo,"WO ≥ 30 jours (en attente d'approbation ou en cours) — "+C.woL.length+" au total, par magasin","WO")
+   +(C.topWo.length||C.eqL.length?"<div style='font-size:12px;font-weight:700;color:#1a1a2e;margin:18px 0 0;text-transform:uppercase;letter-spacing:.4px'>Points à traiter en priorité</div>":"")
+   +_envTableMag(C.topWo,"WO en cours / assignés depuis 30 jours ou plus — "+C.woL.length+" au total, par magasin","WO")
+   +_envEqBloc(C)
    +prevBloc
    +"<div style='font-size:12px;font-weight:700;color:#1a1a2e;margin:18px 0 4px;text-transform:uppercase;letter-spacing:.4px'>Rappel des objectifs</div>"
    +"<ul style='margin:0 0 0 18px;padding:0;font-size:12px;color:#444;line-height:1.6'>"
    +"<li>Taux de clôture des WO curatifs : au moins <b>"+C.obj.taux+" %</b>.</li>"
    +(C.kp?"<li>Maintenance préventive : taux de clôture d'au moins <b>"+C.obj.prev+" %</b>.</li>":"")
-   +"<li>Devis : répondre sous <b>7 jours</b> (maximum "+C.obj.dv+" devis en attente au-delà).</li>"
-   +"<li>WO : ne pas laisser d'intervention ouverte au-delà de <b>30 jours</b> (maximum "+C.obj.wo30+").</li>"
+   +"<li>Réactivité : délai moyen de résolution inférieur à <b>"+C.obj.ttr+" jours</b>.</li>"
+   +"<li>WO : ne pas laisser d'intervention en cours ou assignée au-delà de <b>30 jours</b> (maximum "+C.obj.wo30+").</li>"
    +"<li>Qualité : réinterventions à 30 jours inférieures à <b>"+C.obj.reint+" %</b>.</li>"
    +"<li>Satisfaction : NPS supérieur ou égal à <b>"+C.obj.nps+"</b>.</li></ul>"
-   +"<div style='font-size:12px;color:#444;margin-top:16px'>Le rapport détaillé est joint à ce mail"+(C.xlsx?" ainsi que la liste des WO et devis à traiter (Excel)":"")+". Nous restons disponibles pour échanger sur ces résultats.</div>"
+   +"<div style='font-size:12px;color:#444;margin-top:16px'>Le rapport détaillé est joint à ce mail"+(C.xlsx?" ainsi que la liste des WO à traiter et des équipements à interventions répétées (Excel)":"")+". Nous restons disponibles pour échanger sur ces résultats.</div>"
    +"<div style='font-size:13px;color:#1a1a2e;margin-top:18px'>Cordialement,<br><b>Direction Technique France — Carrefour</b></div>"
    +"</td></tr><tr><td style='background:#f3f4f8;padding:10px 22px;font-size:10px;color:#888'>Données ServiceNow · édité le "+new Date().toLocaleDateString("fr-FR")+" · prestataire externe (groupe FR_EXT)</td></tr></table></td></tr></table></body></html>";
 }
@@ -4394,8 +4613,10 @@ function _envPdfHtml(C, periodeLabel){
   return "<!DOCTYPE html><html><head><meta charset='UTF-8'></head><body style='font-family:Arial,Helvetica,sans-serif;color:#1a1a2e;margin:24px'>"
     +"<table width='100%' cellspacing='0' style='border-bottom:3px solid #004B9B;margin-bottom:14px'><tr><td><div style='font-size:20px;font-weight:bold;color:#004B9B'>"+_envE(C.nom)+"</div><div style='font-size:11px;color:#666'>Rapport de performance maintenance curative · prestataire externe</div></td><td style='text-align:right;font-size:11px;color:#666'>Carrefour — Direction Technique France<br><b>"+_envE(periodeLabel)+"</b><br>Édité le "+new Date().toLocaleDateString("fr-FR")+"</td></tr></table>"
     +"<h3 style='font-size:13px;color:#004B9B;margin:6px 0 4px'>Résultats au regard des objectifs</h3><table width='100%' cellspacing='0' style='border-collapse:collapse'><tr><th style='"+th+"'>Indicateur</th><th style='"+th+";text-align:center'>Résultat</th><th style='"+th+";text-align:center'>Objectif</th><th style='"+th+";text-align:center'>Situation</th></tr>"+rows+"</table>"
-    +"<h3 style='font-size:13px;color:#004B9B;margin:16px 0 4px'>Volumes de la période</h3><div style='font-size:11px'>"+fN(C.nWO)+" WO · "+fN(C.k.cl)+" clôturés · "+fN(C.k.at)+" en attente d'approbation · "+fN(C.k.tu)+" très urgents ouverts · coût des devis "+_envE(fmt(C.k.coutTot))+"</div>"
-    +tabMag(C.topDv,"Devis en attente depuis plus de 7 jours ("+C.dvL.length+")")+tabMag(C.topWo,"WO en attente d'approbation ou en cours depuis 30 jours ou plus ("+C.woL.length+")")+tabMois+prevB
+    +"<h3 style='font-size:13px;color:#004B9B;margin:16px 0 4px'>Volumes de la période</h3><div style='font-size:11px'>"+fN(C.nWO)+" WO · "+fN(C.k.cl)+" clôturés · "+fN(C.k.tu)+" très urgents ouverts · coût des devis "+_envE(fmt(C.k.coutTot))+"</div>"
+    +tabMag(C.topWo,"WO en cours / assignés depuis 30 jours ou plus ("+C.woL.length+")")
+    +(C.eqL.length?"<h3 style='font-size:13px;color:#004B9B;margin:16px 0 4px'>Équipements à interventions répétées (≥ "+_eqMin()+") — réparer ou remplacer ?</h3>"+_eqTableHtml(C.eqL,25,{th:th,td:td}):"")
+    +tabMois+prevB
     +"<div style='margin-top:22px;border-top:1px solid #e3e6ee;padding-top:6px;font-size:9px;color:#888'>Carrefour — Direction Technique France · Source ServiceNow · Groupe d'affectation FR_EXT</div></body></html>";
 }
 function _envXlsx(C){
@@ -4403,10 +4624,10 @@ function _envXlsx(C){
   var wb=XLSX.utils.book_new();
   var woRows=[["N° WO","Statut","Magasin","Région","Créé le","Âge (jours)","Priorité","Équipement","Demande"]];
   C.woL.slice().sort(function(a,b){return (b._age||0)-(a._age||0);}).slice(0,3000).forEach(function(r){ woRows.push([r["Numéro"]||"",_envStatut(r._e),r._m,r._r,r._d?r._d.toLocaleDateString("fr-FR"):"",r._age>=0?r._age:"",r._p==="TU"?"Très urgent":r._p==="UR"?"Urgent":"Standard",r["Équipement"]||"",r["Titre de la demande"]||""]); });
-  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(woRows),"WO ≥ 30 jours");
-  var dvRows=[["N° devis","Statut","Magasin","Région","Créé le","Âge (jours)","Montant (€)","Équipement"]];
-  C.dvL.slice().sort(function(a,b){return (b._age||0)-(a._age||0);}).slice(0,3000).forEach(function(r){ dvRows.push([r["Numéro"]||"",r._s==="ATDA"?"En attente d'approbation DA":"En attente d'approbation",r._m,r._r,r._d?r._d.toLocaleDateString("fr-FR"):"",r._age>=0?r._age:"",Math.round(r._c||0),r["Équipement"]||""]); });
-  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(dvRows),"Devis > 7 jours");
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(woRows),"WO en cours ≥ 30 jours");
+  var eqRows=[["Magasin","Équipement","Interventions","Dont clôturées","Dont ouvertes","Première","Dernière","Devis approuvés (€)"]];
+  C.eqL.slice(0,3000).forEach(function(a){ eqRows.push([a.m,a.eq,a.n,a.cl,a.ouverts,a.first?a.first.toLocaleDateString("fr-FR"):"",a.last?a.last.toLocaleDateString("fr-FR"):"",Math.round(a.cout)]); });
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(eqRows),"Équipements répétés");
   return XLSX.write(wb,{bookType:"xlsx",type:"base64"});
 }
 function _envStatut(e){ return e==="AT"?"En attente d'approbation":e==="EC"?"En cours":e==="AS"?"Assigné":e; }
@@ -4416,7 +4637,7 @@ function _envBuild(){
   var s=_envSel(); if(!s) return {err:"Sélectionnez un groupe ou un prestataire dans « Générer un rapport »"};
   var rg=_getRapportPeriodeRange(), periode=(rg.du||"")+"_"+(rg.au||"")+"_"+(s.territoire||"");
   var C=_envCompute(s,periode), pl=_envPeriodeLabel(s.D)+(s.territoire?" — "+s.territoire.replace(/_/g," "):"");
-  C.xlsx=!!document.getElementById("send-xlsx").checked && (C.woL.length||C.dvL.length);
+  C.xlsx=!!document.getElementById("send-xlsx").checked && (C.woL.length||C.eqL.length);
   var intro=(document.getElementById("send-message").value||"").replace(/\{groupe\}/g,s.nom).replace(/\{periode\}/g,pl);
   var objet=(document.getElementById("send-objet").value||"Rapport performance maintenance").replace(/\{groupe\}/g,s.nom).replace(/\{periode\}/g,pl);
   return {s:s,C:C,periode:periode,pl:pl,intro:intro,objet:objet,html:_envEmailHtml(C,pl,intro),text:_envEmailText(C,pl,intro),pdfHtml:_envPdfHtml(C,pl)};
@@ -4445,7 +4666,7 @@ function envoyerRapportPrestataire(test){
     var bad=lst(to).concat(lst(cc)).filter(function(a){return !okMail(a);});
     if(bad.length){ toast("Adresse invalide : "+bad.join(", "),true); return; }
   }
-  if(!B.C.nWO && !B.C.woL.length && !B.C.dvL.length){ toast("Aucune donnée pour « "+B.s.nom+" » sur cette période — vérifiez le nom du prestataire",true); return; }
+  if(!B.C.nWO && !B.C.woL.length && !B.C.eqL.length){ toast("Aucune donnée pour « "+B.s.nom+" » sur cette période — vérifiez le nom du prestataire",true); return; }
   var cle=B.s.nom+"|"+B.periode, hist={}; try{ hist=JSON.parse(localStorage.getItem("mc_envois")||"{}"); }catch(e){}
   if(!test){
     var dejaTxt=hist[cle]?"\n\n⚠ Un rapport a déjà été envoyé pour cette période le "+hist[cle]+".":"";
@@ -4487,6 +4708,840 @@ function envoyerRapportPrestataire(test){
 }
 function envoyerRapport(){ envoyerRapportPrestataire(false); }
 
+
+// ═══════════════════════════════════════════════════════════════
+// SCORE MAGASIN + FICHE MAGASIN (PDF unitaire / en lot / pied du rapport magasin)
+// ═══════════════════════════════════════════════════════════════
+var SM_NOMS=["Taux de clôture","WO ≥ 30 j (pour 100 WO)","Devis en attente > 7 j (pour 100 WO)","Réinterventions à 30 j","Délai moyen de résolution","NPS"];
+var SM_W_DEF=[20,25,15,15,10,15];
+var _smRows=[], _smSel="", _smCtx={};
+function _smLevel(s){ return s>=75?{t:"Bon",c:"pg",col:"#1D9E75"}:s>=50?{t:"À surveiller",c:"pa",col:"#BA7517"}:{t:"Critique",c:"pr",col:"#E24B4A"}; }
+function _smFmt(k,v){ if(v===null||v===undefined) return "n/d"; return k===0||k===3?_fbPct(v*100):k===4?v.toFixed(1).replace(".",",")+" j":k===5?(v>0?"+":"")+Math.round(v):v.toFixed(1).replace(".",","); }
+
+function initScoreMag(){
+  var m1=document.getElementById("sm-m1"), m2=document.getElementById("sm-m2");
+  if(m1 && !m1.options.length){
+    ["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"].forEach(function(n,i){ [m1,m2].forEach(function(s){ var o=document.createElement("option"); o.value=i+1; o.textContent=n; s.appendChild(o); }); });
+    var maxD=null; WO.forEach(function(r){ if(r._d&&(!maxD||r._d>maxD)) maxD=r._d; });
+    m1.value=1; m2.value=maxD?(maxD.getMonth()+1):12;
+  }
+  var reg=document.getElementById("sm-reg");
+  if(reg && reg.options.length<=1){ var rs={}; WO.forEach(function(r){ if(r._r&&r._r!=="INCONNU") rs[r._r]=1; }); Object.keys(rs).sort().forEach(function(v){ var o=document.createElement("option"); o.value=v; o.textContent=v.replace(/_/g," "); reg.appendChild(o); }); }
+  var cm=document.getElementById("sm-cmm");
+  if(cm && cm.options.length<=1){ var cs={}; WO.forEach(function(r){ if(r._cmm) cs[r._cmm]=1; }); Object.keys(cs).sort().forEach(function(v){ var o=document.createElement("option"); o.value=v; o.textContent=v; cm.appendChild(o); }); }
+  renderScoreMag();
+}
+function _smParams(){
+  var g=function(id,d){ var e=document.getElementById(id); return e&&e.value!==""?e.value:d; };
+  var m1=parseInt(g("sm-m1","1"),10)||1, m2=parseInt(g("sm-m2","12"),10)||12; if(m2<m1){var t=m1;m1=m2;m2=t;}
+  var w=SM_W_DEF.map(function(d,i){ var v=parseFloat(g("sm-w"+(i+1),String(d))); return isNaN(v)||v<0?0:v; });
+  return {type:g("sm-type",""),reg:g("sm-reg",""),cmm:g("sm-cmm",""),m1:m1,m2:m2,min:parseInt(g("sm-min","10"),10)||1,w:w,sort:g("sm-sort","asc")};
+}
+// Tous les WO (vision magasin : internes + externes). Flux = période ; stock (WO ≥ 30 j, devis > 7 j) = situation actuelle.
+function _smCompute(o){
+  var S={}, G=function(m,r){ return S[m]||(S[m]={m:m,t:r._t,reg:r._r,cmm:r._cmm||"",rpm:r._rpm||"",n:0,cl:0,ts:0,tn:0,el:0,rep:0,dv:0,w30:0,tu:0,np:0,nd:0,nn:0}); };
+  var ok=function(r){ return (!o.type||r._t===o.type)&&(!o.reg||r._r===o.reg)&&(!o.cmm||r._cmm===o.cmm); };
+  WO.forEach(function(r){
+    var m=r._m; if(!m||!ok(r)) return;
+    var s=G(m,r);
+    if(_woAtt(r)||_woEc(r)) s.w30++;
+    if(r._p==="TU"&&r._e!=="CL"&&r._e!=="AN") s.tu++;
+    if(!r._d) return; var mo=r._d.getMonth()+1; if(mo<o.m1||mo>o.m2) return;
+    s.n++; if(r._e==="CL"){ s.cl++; if(r._ttr!=null){ s.ts+=r._ttr; s.tn++; } }
+  });
+  var P=_fbPairs(30,"strict",true);
+  P.list.forEach(function(p){ var w=p.w; if(!w._m||!p.eligible||!ok(w)) return; var mo=p.F.getMonth()+1; if(mo<o.m1||mo>o.m2) return; var s=G(w._m,w); s.el++; if(p.rep) s.rep++; });
+  QUO.forEach(function(r){ if(!_dvAtt(r)||!r._m||!ok(r)) return; G(r._m,r).dv++; });
+  NPS.forEach(function(r){ var m=r._m; if(!m||!r._d) return; var st=S[m]; if(!st) return; var mo=r._d.getMonth()+1; if(mo<o.m1||mo>o.m2) return; st.nn++; if(r._cat==="P") st.np++; else if(r._cat==="D") st.nd++; });
+  var L=Object.keys(S).map(function(k){return S[k];}).filter(function(s){return s.n>=o.min;});
+  L.forEach(function(s){ s.v=[ s.n?s.cl/s.n:null, s.w30/s.n*100, s.dv/s.n*100, s.el>=3?s.rep/s.el:null, s.tn>=3?s.ts/s.tn:null, s.nn>=3?(s.np-s.nd)/s.nn*100:null ]; });
+  var higher=[true,false,false,false,false,true], notes=L.map(function(){return [];});
+  for(var k=0;k<6;k++){ var idx=[],vals=[]; L.forEach(function(s,i){ if(s.v[k]!==null){ idx.push(i); vals.push(s.v[k]); } }); var rk=_fbRank(vals); idx.forEach(function(i,j){ notes[i][k]=higher[k]?rk[j]:100-rk[j]; }); }
+  L.forEach(function(s,i){ s.notes=[0,1,2,3,4,5].map(function(k){ return notes[i][k]===undefined?null:notes[i][k]; });
+    var num=0,den=0; s.notes.forEach(function(nv,k){ if(nv!==null&&o.w[k]>0){ num+=nv*o.w[k]; den+=o.w[k]; } }); s.score=den?num/den:null; });
+  L=L.filter(function(s){return s.score!==null;});
+  L.slice().sort(function(a,b){return b.score-a.score;}).forEach(function(s,i){ s.rank=i+1; });
+  return L;
+}
+function renderScoreMag(){
+  if(!WO.length) return;
+  var o=_smParams(); var L=_smCompute(o);
+  var disp=L.slice().sort(function(a,b){ return o.sort==="asc"?a.score-b.score:o.sort==="vol"?b.n-a.n:b.score-a.score; });
+  _smRows=disp; _smCtx={o:o,total:L.length,all:L};
+  var wt=o.w.reduce(function(a,b){return a+b;},0), wte=document.getElementById("sm-wtot"); if(wte) wte.textContent="— total "+wt+(wt===100?" %":" (ramené à 100 %)");
+  var avg=L.length?L.reduce(function(a,s){return a+s.score;},0)/L.length:0;
+  kg("sm-kg",[
+    {l:"Magasins scorés",v:fN(L.length),s:"≥ "+o.min+" WO sur la période",c:"var(--blue)"},
+    {l:"Score moyen",v:avg.toFixed(0)+" / 100",s:"",c:"var(--purple)"},
+    {l:"Bon (≥ 75)",v:fN(L.filter(function(s){return s.score>=75;}).length),s:"",c:"var(--green)"},
+    {l:"À surveiller (50-75)",v:fN(L.filter(function(s){return s.score>=50&&s.score<75;}).length),s:"",c:"var(--amber)"},
+    {l:"Critique (< 50)",v:fN(L.filter(function(s){return s.score<50;}).length),s:"à relancer en priorité",c:"var(--red)"}]);
+  var cn=function(n){ return n===null?"var(--t3)":n>=75?"#5DCAA5":n>=50?"#F0B94F":"#F09595"; };
+  var tb=document.getElementById("sm-tb");
+  if(tb) tb.innerHTML=disp.slice(0,400).map(function(s,i){ var lv=_smLevel(s.score);
+    var cell=function(k){ return "<td style='color:"+cn(s.notes[k])+"'>"+_smFmt(k,s.v[k])+(k===1?" <span style='color:var(--t3)'>("+s.w30+")</span>":k===2?" <span style='color:var(--t3)'>("+s.dv+")</span>":"")+"</td>"; };
+    return "<tr style='cursor:pointer' onclick='smSelect(\""+_cmpEsc(s.m).replace(/\\/g,"\\\\")+"\",true)'><td class='trank'><input type='checkbox' class='sm-chk' data-m=\""+_cmpEsc(s.m)+"\" onclick='event.stopPropagation()' style='margin-right:4px'>"+s.rank+"</td><td style='color:var(--blue)'>"+_cmpEsc(s.m)+"</td><td style='font-size:10px;color:var(--t3)'>"+_cmpEsc(s.t||"")+" · "+_cmpEsc((s.reg||"").replace(/_/g," "))+"</td><td style='font-size:10px'>"+_cmpEsc(s.cmm||"—")+"</td><td>"+fN(s.n)+"</td>"
+      +"<td><div style='display:flex;align-items:center;gap:6px;min-width:100px'><b style='width:22px;text-align:right'>"+Math.round(s.score)+"</b><div style='flex:1;height:6px;background:rgba(128,128,128,.25);border-radius:3px'><div style='width:"+Math.round(s.score)+"%;height:6px;border-radius:3px;background:"+lv.col+"'></div></div></div></td><td><span class='pill "+lv.c+"'>"+lv.t+"</span></td>"
+      +cell(0)+cell(1)+cell(2)+cell(3)+cell(4)+cell(5)+"</tr>"; }).join("") || "<tr><td colspan='13' style='color:var(--t3);padding:10px'>Aucun magasin avec au moins "+o.min+" WO sur cette période.</td></tr>";
+  var sel=document.getElementById("sm-mag");
+  if(sel){ sel.innerHTML=disp.map(function(s){ return "<option value=\""+_cmpEsc(s.m)+"\">"+s.rank+". "+_cmpEsc(s.m)+"</option>"; }).join(""); if(!_smSel||!disp.some(function(s){return s.m===_smSel;})) _smSel=disp.length?disp[0].m:""; sel.value=_smSel; }
+  _smRenderFiche();
+}
+function smSelect(m,scroll){ _smSel=m; var sel=document.getElementById("sm-mag"); if(sel) sel.value=m; _smRenderFiche(); if(scroll){ var c=document.getElementById("sm-fiche-card"); if(c) c.scrollIntoView({behavior:"smooth",block:"start"}); } }
+
+// Données d'une fiche magasin (périmètre = filtres du score)
+function _smFicheData(m){
+  m=m||_smSel; var s=null; (_smCtx.all||[]).forEach(function(x){ if(x.m===m) s=x; }); if(!s) return null;
+  var all=_smCtx.all, mean=[0,1,2,3,4,5].map(function(k){ var a=all.filter(function(x){return x.v[k]!==null;}).map(function(x){return x.v[k];}); return a.length?a.reduce(function(p,q){return p+q;},0)/a.length:null; });
+  var woL=WO.filter(function(r){return r._m===m&&(_woAtt(r)||_woEc(r));}).sort(function(a,b){return (b._age||0)-(a._age||0);});
+  var dvL=QUO.filter(function(r){return r._m===m&&_dvAtt(r);}).sort(function(a,b){return (b._age||0)-(a._age||0);});
+  var det=NPS.filter(function(r){return r._m===m&&r._cat==="D";}).sort(function(a,b){return (b._d||0)-(a._d||0);});
+  var pm={}; woL.forEach(function(r){ if(r._f&&r._f!=="Inconnu") pm[r._f]=(pm[r._f]||0)+1; });
+  var topP=Object.keys(pm).sort(function(a,b){return pm[b]-pm[a];}).slice(0,3).map(function(k){return k+" ("+pm[k]+")";});
+  var woAtt=woL.filter(_woAtt).length, woEc=woL.length-woAtt;
+  var worst=[0,1,2,3,4,5].filter(function(k){return s.notes[k]!==null;}).sort(function(a,b){return s.notes[a]-s.notes[b];}).slice(0,2);
+  var pts=[];
+  if(woAtt) pts.push(fN(woAtt)+" WO en attente d'approbation depuis 30 jours ou plus.");
+  if(woEc) pts.push(fN(woEc)+" WO en cours / assignés depuis 30 jours ou plus"+(topP.length?" — prestataires concernés : "+topP.join(", "):"")+".");
+  if(dvL.length) pts.push(fN(dvL.length)+" devis en attente de validation depuis plus de 7 jours (hors « Ouvert »).");
+  if(s.tu) pts.push(fN(s.tu)+" WO très urgent(s) encore ouvert(s).");
+  if(det.length) pts.push(fN(det.length)+" avis détracteur(s) NPS.");
+  worst.forEach(function(k){ if(s.notes[k]<50) pts.push("Critère le plus faible : "+SM_NOMS[k]+" (note "+Math.round(s.notes[k])+"/100)."); });
+  if(!pts.length) pts.push("Aucun point bloquant relevé sur le périmètre filtré.");
+  return {s:s,mean:mean,woL:woL,dvL:dvL,det:det,pts:pts,lv:_smLevel(s.score),total:_smCtx.total};
+}
+function _smRenderFiche(){
+  var box=document.getElementById("sm-fiche"); if(!box) return;
+  var d=_smFicheData(); if(!d){ box.innerHTML="<p style='color:var(--t3);font-size:12px'>Aucun magasin à afficher.</p>"; return; }
+  var s=d.s, o=_smCtx.o;
+  var rows=SM_NOMS.map(function(n,k){ var nt=s.notes[k], col=nt===null?"#888":nt>=75?"#1D9E75":nt>=50?"#BA7517":"#E24B4A";
+    return "<tr><td>"+n+"</td><td><b>"+_smFmt(k,s.v[k])+"</b></td><td style='color:var(--t3)'>"+(d.mean[k]===null?"—":_smFmt(k,d.mean[k]))+"</td><td>"+(nt===null?"n/d":Math.round(nt))+"</td><td><div style='width:110px;height:7px;background:rgba(128,128,128,.25);border-radius:4px'><div style='width:"+(nt===null?0:Math.round(nt))+"%;height:7px;border-radius:4px;background:"+col+"'></div></div></td><td style='color:var(--t3)'>"+o.w[k]+"</td></tr>"; }).join("");
+  var lst=function(a,f,n){ return a.slice(0,n).map(f).join("")||"<tr><td style='color:var(--t3)'>Aucun</td></tr>"; };
+  box.innerHTML="<div style='display:flex;gap:14px;flex-wrap:wrap;margin-bottom:12px'>"
+   +"<div style='flex:0 0 200px;border:1px solid var(--border);border-top:4px solid "+d.lv.col+";border-radius:8px;padding:14px;text-align:center'><div style='font-size:10px;color:var(--t3)'>SCORE GLOBAL</div><div style='font-size:38px;font-weight:800;color:"+d.lv.col+"'>"+Math.round(s.score)+"<span style='font-size:13px;color:var(--t3)'> /100</span></div><b style='color:"+d.lv.col+"'>"+d.lv.t+"</b><div style='font-size:10px;color:var(--t3);margin-top:6px'>Rang "+s.rank+" sur "+d.total+"</div></div>"
+   +"<div style='flex:1;min-width:300px'><div style='font-size:12px;font-weight:700;margin-bottom:2px'>"+_cmpEsc(s.m)+"</div><div style='font-size:11px;color:var(--t3);margin-bottom:8px'>"+_cmpEsc(s.t||"")+" · "+_cmpEsc((s.reg||"").replace(/_/g," "))+" · CMM : "+_cmpEsc(s.cmm||"—")+(s.rpm?" · RPM : "+_cmpEsc(s.rpm):"")+" · "+fN(s.n)+" WO sur la période</div>"
+   +"<table><thead><tr><th>Critère</th><th>Valeur</th><th>Moyenne</th><th>Note</th><th></th><th>Poids</th></tr></thead><tbody>"+rows+"</tbody></table></div></div>"
+   +"<div class='g2'><div class='card'><div class='ct'>Points d'attention</div><ul style='margin:6px 0 0 16px;padding:0;font-size:12px;line-height:1.8;color:var(--t2)'>"+d.pts.map(function(p){return "<li>"+_cmpEsc(p)+"</li>";}).join("")+"</ul></div>"
+   +"<div class='card'><div class='ct'>À traiter (les plus anciens)</div><table><tbody>"
+   +lst(d.woL,function(r){return "<tr><td>WO "+_cmpEsc(r["Numéro"]||"")+"</td><td style='color:var(--t3)'>"+_cmpEsc(_envStatut(r._e))+" · "+_cmpEsc(r._f==="Inconnu"?"équipe interne":r._f)+"</td><td style='text-align:right'>"+r._age+" j</td></tr>";},5)
+   +lst(d.dvL,function(r){return "<tr><td>Devis "+_cmpEsc(r["Numéro"]||"")+"</td><td style='color:var(--t3)'>"+_cmpEsc(r._f)+"</td><td style='text-align:right'>"+r._age+" j</td></tr>";},5)
+   +"</tbody></table></div></div>";
+}
+// ── PDF fiche magasin (unitaire / lot) ──
+function _smFicheBody(m){
+  var d=_smFicheData(m); if(!d) return ""; var s=d.s, o=_smCtx.o, now=new Date().toLocaleDateString("fr-FR");
+  var rows=SM_NOMS.map(function(n,k){ var nt=s.notes[k], col=nt===null?"#888":nt>=75?"#1D9E75":nt>=50?"#E8A317":"#E24B4A";
+    return "<tr><td>"+n+"</td><td><b>"+_smFmt(k,s.v[k])+"</b></td><td>"+(d.mean[k]===null?"—":_smFmt(k,d.mean[k]))+"</td><td>"+(nt===null?"n/d":Math.round(nt))+"</td><td><span class='bar'><i style='width:"+(nt===null?0:Math.round(nt))+"%;background:"+col+"'></i></span></td><td>"+o.w[k]+"</td></tr>"; }).join("");
+  var tab=function(titre,a,f,head){ return a.length?"<h3>"+titre+" ("+a.length+")</h3><table><thead><tr>"+head+"</tr></thead><tbody>"+a.slice(0,10).map(f).join("")+"</tbody></table>"+(a.length>10?"<div class='m'>… et "+(a.length-10)+" autre(s)</div>":""):""; };
+  return "<div class='fiche' style='--col:"+d.lv.col+"'><div class='hdr'><div><div class='t'>Fiche magasin — "+_cmpEsc(s.m)+"</div><div class='m'>"+_cmpEsc(s.t||"")+" · "+_cmpEsc((s.reg||"").replace(/_/g," "))+" · CMM : "+_cmpEsc(s.cmm||"—")+(s.rpm?" · RPM : "+_cmpEsc(s.rpm):"")+" · Période : mois "+o.m1+" à "+o.m2+" · "+fN(s.n)+" WO</div></div><div class='m' style='text-align:right'>Carrefour — DTF<br><b>"+now+"</b></div></div>"
+   +"<div style='display:flex;gap:16px'><div class='big'><div class='m'>SCORE GLOBAL</div><div class='n'>"+Math.round(s.score)+"<span style='font-size:14px;color:#888'> /100</span></div><b style='color:"+d.lv.col+"'>"+d.lv.t+"</b><div class='m' style='margin-top:6px'>Rang "+s.rank+" sur "+d.total+"</div></div>"
+   +"<div style='flex:1'><table><thead><tr><th>Critère</th><th>Valeur</th><th>Moyenne</th><th>Note /100</th><th></th><th>Poids</th></tr></thead><tbody>"+rows+"</tbody></table></div></div>"
+   +"<h3>Points d'attention</h3><ul>"+d.pts.map(function(p){return "<li>"+_cmpEsc(p)+"</li>";}).join("")+"</ul>"
+   +tab("WO ≥ 30 jours",d.woL,function(r){return "<tr><td>"+_cmpEsc(r["Numéro"]||"")+"</td><td>"+_cmpEsc(_envStatut(r._e))+"</td><td>"+_cmpEsc(r._f==="Inconnu"?"Équipe interne":r._f)+"</td><td>"+_cmpEsc(r["Équipement"]||"")+"</td><td>"+r._age+" j</td></tr>";},"<th>N° WO</th><th>Statut</th><th>Prestataire</th><th>Équipement</th><th>Âge</th>")
+   +tab("Devis en attente > 7 jours",d.dvL,function(r){return "<tr><td>"+_cmpEsc(r["Numéro"]||"")+"</td><td>"+_cmpEsc(r._f)+"</td><td>"+_cmpEsc(r["Équipement"]||"")+"</td><td>"+Math.round(r._c||0)+" €</td><td>"+r._age+" j</td></tr>";},"<th>N° devis</th><th>Prestataire</th><th>Équipement</th><th>Montant</th><th>Âge</th>")
+   +"<h3>Décisions et plan d'action</h3><div style='height:60px;border:1px dashed #bbb;border-radius:6px'></div>"
+   +"<div class='f'>Carrefour — Direction Technique France · Score magasin · note par rang parmi les magasins de la sélection</div></div>";
+}
+function smFichePDF(){ if(!_smSel){ toast("Aucun magasin sélectionné",true); return; } ouvrirRapport(_fichesDoc([_smFicheBody(_smSel)],"Fiche magasin"),"fiche_magasin"); }
+function smFichesLot(tous){
+  var noms=[]; if(tous) noms=_smRows.map(function(x){return x.m;}); else document.querySelectorAll(".sm-chk:checked").forEach(function(c){ noms.push(c.getAttribute("data-m")); });
+  if(!noms.length){ toast(tous?"Aucun magasin affiché":"Cochez au moins un magasin dans le classement",true); return; }
+  if(noms.length>60){ toast("Maximum 60 fiches par PDF — filtrez (région, CMM, niveau…) : "+noms.length+" sélectionnées",true); return; }
+  ouvrirRapport(_fichesDoc(noms.map(_smFicheBody).filter(Boolean),"Fiches magasins ("+noms.length+")"),"fiches_magasins"); toast("📄 "+noms.length+" fiche(s) magasin dans un seul PDF");
+}
+function smExcel(){
+  if(!_smRows.length){ toast("Rien à exporter",true); return; }
+  var rows=[["Rang","Magasin","Type","Région","CMM","RPM","WO","Score /100","Niveau","Taux clôture %","WO ≥30 j (nb)","WO ≥30 j /100 WO","Devis >7 j (nb)","Devis >7 j /100 WO","Réinterventions %","Délai moyen (j)","NPS"]];
+  _smRows.forEach(function(s){ rows.push([s.rank,s.m,s.t,(s.reg||"").replace(/_/g," "),s.cmm,s.rpm,s.n,+s.score.toFixed(1),_smLevel(s.score).t,s.v[0]===null?"":+(s.v[0]*100).toFixed(1),s.w30,+s.v[1].toFixed(1),s.dv,+s.v[2].toFixed(1),s.v[3]===null?"":+(s.v[3]*100).toFixed(1),s.v[4]===null?"":+s.v[4].toFixed(1),s.v[5]===null?"":Math.round(s.v[5])]); });
+  var wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),"Score magasins"); XLSX.writeFile(wb,"Score_magasins_"+new Date().toISOString().slice(0,10)+".xlsx"); toast("✅ Export score magasins généré");
+}
+// Bloc « Score & synthèse » ajouté en bas du rapport magasin existant
+function _smBlockHtml(mag){
+  try{
+    var o={type:"",reg:"",cmm:"",m1:1,m2:12,min:1,w:SM_W_DEF.slice()};
+    var maxD=null; WO.forEach(function(r){ if(r._d&&(!maxD||r._d>maxD)) maxD=r._d; }); if(maxD) o.m2=maxD.getMonth()+1;
+    var save=[_smCtx,_smSel]; var L=_smCompute(Object.assign({},o,{min:5})); _smCtx={o:o,total:L.length,all:L}; var d=_smFicheData(mag); _smCtx=save[0]; _smSel=save[1];
+    if(!d) return "";
+    var s=d.s, rows=SM_NOMS.map(function(n,k){ var nt=s.notes[k], col=nt===null?"#888":nt>=75?"#1D9E75":nt>=50?"#E8A317":"#E24B4A"; return "<tr><td>"+n+"</td><td><b>"+_smFmt(k,s.v[k])+"</b></td><td>"+(d.mean[k]===null?"—":_smFmt(k,d.mean[k]))+"</td><td style='color:"+col+";font-weight:700'>"+(nt===null?"n/d":Math.round(nt))+"</td></tr>"; }).join("");
+    return "<h2>Score magasin et synthèse</h2><div style='display:flex;gap:14px;align-items:flex-start;margin-bottom:8px'><div style='border:1px solid #e2e4eb;border-top:4px solid "+d.lv.col+";border-radius:8px;padding:10px 16px;text-align:center'><div style='font-size:9px;color:#888'>SCORE</div><div style='font-size:30px;font-weight:800;color:"+d.lv.col+"'>"+Math.round(s.score)+"<span style='font-size:11px;color:#888'> /100</span></div><b style='color:"+d.lv.col+";font-size:11px'>"+d.lv.t+"</b><div style='font-size:9px;color:#888'>Rang "+s.rank+" / "+d.total+"</div></div>"
+      +"<table style='flex:1'><thead><tr><th>Critère</th><th>Valeur</th><th>Moyenne</th><th>Note</th></tr></thead><tbody>"+rows+"</tbody></table></div><ul style='font-size:10px;line-height:1.7;margin:4px 0 0 16px'>"+d.pts.map(function(p){return "<li>"+_cmpEsc(p)+"</li>";}).join("")+"</ul>";
+  }catch(e){ return ""; }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RELANCES CMM / RPM — alertes magasin (WO en attente, devis en attente, NPS détracteurs, WO en cours)
+// Semi-automatique : le dashboard prépare, tu vérifies et tu envoies (mail personnalisé + PDF de synthèse + Excel)
+// ═══════════════════════════════════════════════════════════════
+var _rlGroups=[], _rlEnCours=false;
+function _rlLS(k){ try{ return JSON.parse(localStorage.getItem(k)||"{}")||{}; }catch(e){ return {}; } }
+function _rlLSset(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
+function _rlMailCmm(cmm){ var ov=_rlLS("mc_mail_ov")["cmm:"+cmm]; if(ov) return ov; var m=""; (CMM_MAP_ENTRIES||[]).forEach(function(e){ if(!m&&e.cmm===cmm&&e.mail) m=e.mail; }); return m; }
+function _rlMailRpm(rpm){
+  if(!rpm) return ""; var ov=_rlLS("mc_mail_ov")["rpm:"+rpm]; if(ov) return ov; var m="";
+  (BDD||[]).forEach(function(r){ if(m) return; if(String(r["Responsable pôle maintenance"]||"").trim()!==rpm) return; var k=Object.keys(r).find(function(x){ return /mail/i.test(x)&&/(rpm|responsable|p.le)/i.test(x); }); if(k&&r[k]) m=String(r[k]).trim(); });
+  return m;
+}
+function _rlSetMail(kind,name,v){ var ov=_rlLS("mc_mail_ov"); v=(v||"").trim(); if(v) ov[kind+":"+name]=v; else delete ov[kind+":"+name]; _rlLSset("mc_mail_ov",ov); }
+function initRelances(){
+  var reg=document.getElementById("rl-reg");
+  if(reg&&reg.options.length<=1){ var rs={}; WO.forEach(function(r){ if(r._r&&r._r!=="INCONNU") rs[r._r]=1; }); Object.keys(rs).sort().forEach(function(v){ var o=document.createElement("option"); o.value=v; o.textContent=v.replace(/_/g," "); reg.appendChild(o); }); }
+  var cm=document.getElementById("rl-cmm");
+  if(cm&&cm.options.length<=1){ var cs={}; WO.forEach(function(r){ if(r._cmm) cs[r._cmm]=1; }); Object.keys(cs).sort().forEach(function(v){ var o=document.createElement("option"); o.value=v; o.textContent=v; cm.appendChild(o); }); }
+  renderRelances();
+}
+function _rlParams(){
+  var c=function(id){ var e=document.getElementById(id); return !!(e&&e.checked); }, v=function(id,d){ var e=document.getElementById(id); var x=e?parseFloat(e.value):NaN; return isNaN(x)?d:x; }, t=function(id){ var e=document.getElementById(id); return e?e.value:""; };
+  return {type:t("rl-type"),reg:t("rl-reg"),cmm:t("rl-cmm"),woAtt:c("rl-t-woatt"),dv:c("rl-t-dv"),nps:c("rl-t-nps"),woEc:c("rl-t-woec"),npsJ:v("rl-npsj",30),min:v("rl-min",1),delai:v("rl-delai",7)};
+}
+function _rlCompute(o){
+  var M={}, G=function(r){ var m=r._m; if(!m) return null; return M[m]||(M[m]={m:m,t:r._t,reg:r._r,cmm:r._cmm||"",rpm:r._rpm||"",woAtt:[],dv:[],nps:[],woEc:[]}); };
+  var ok=function(r){ return (!o.type||r._t===o.type)&&(!o.reg||r._r===o.reg)&&(!o.cmm||r._cmm===o.cmm); };
+  var today=new Date();
+  WO.forEach(function(r){ if(!r._m||!ok(r)) return;
+    if(o.woAtt&&_woAtt(r)){ var g=G(r); g.woAtt.push(r); }
+    else if(o.woEc&&(_woEc(r)||(r._p==="TU"&&r._e!=="CL"&&r._e!=="AN"))){ var g2=G(r); g2.woEc.push(r); } });
+  if(o.dv) QUO.forEach(function(r){ if(!r._m||!ok(r)||!_dvAtt(r)) return; G(r).dv.push(r); });
+  if(o.nps) NPS.forEach(function(r){ if(!r._m||r._cat!=="D"||!r._d||!ok(r)) return; if((today-r._d)/86400000>o.npsJ) return; var g=G(r); if(g) g.nps.push(r); });
+  var stores=Object.keys(M).map(function(k){ var s=M[k]; s.n=s.woAtt.length+s.dv.length+s.nps.length+s.woEc.length; s.age=Math.max.apply(null,[0].concat(s.woAtt.concat(s.woEc,s.dv).map(function(r){return r._age||0;}))); return s; }).filter(function(s){return s.n>=o.min;});
+  var C={}; stores.forEach(function(s){ var k=s.cmm||"(CMM non renseigné)"; var g=C[k]||(C[k]={cmm:s.cmm,nom:k,rpm:s.rpm,stores:[],woAtt:0,dv:0,nps:0,woEc:0}); g.stores.push(s); g.woAtt+=s.woAtt.length; g.dv+=s.dv.length; g.nps+=s.nps.length; g.woEc+=s.woEc.length; if(!g.rpm&&s.rpm) g.rpm=s.rpm; });
+  var L=Object.keys(C).map(function(k){ var g=C[k]; g.stores.sort(function(a,b){return b.n-a.n||b.age-a.age;}); g.n=g.woAtt+g.dv+g.nps+g.woEc; g.mail=g.cmm?_rlMailCmm(g.cmm):""; g.mailRpm=_rlMailRpm(g.rpm); return g; }).sort(function(a,b){return b.n-a.n;});
+  return L;
+}
+function renderRelances(){
+  if(!WO.length) return;
+  var o=_rlParams(); _rlGroups=_rlCompute(o);
+  var tot={s:0,w:0,d:0,n:0,e:0}; _rlGroups.forEach(function(g){ tot.s+=g.stores.length; tot.w+=g.woAtt; tot.d+=g.dv; tot.n+=g.nps; tot.e+=g.woEc; });
+  kg("rl-kg",[{l:"CMM concernés",v:fN(_rlGroups.length),s:"",c:"var(--blue)"},{l:"Magasins en alerte",v:fN(tot.s),s:"",c:"var(--red)"},{l:"WO en attente ≥ 30 j",v:fN(tot.w),s:"",c:"var(--amber)"},{l:"Devis en attente > 7 j",v:fN(tot.d),s:"",c:"var(--amber)"},{l:"NPS détracteurs",v:fN(tot.n),s:"≤ "+o.npsJ+" j",c:"var(--purple)"},{l:"WO en cours ≥ 30 j / TU",v:fN(tot.e),s:"",c:"var(--blue)"}]);
+  var last=_rlLS("mc_relances");
+  var tb=document.getElementById("rl-tb");
+  if(tb) tb.innerHTML=_rlGroups.map(function(g,i){
+    var lr=last[g.nom]; var recent=lr&&((Date.now()-lr)/86400000<7);
+    var inp=function(kind,name,val,ph){ return name?"<input type='text' value=\""+_cmpEsc(val)+"\" placeholder='"+ph+"' onchange=\"_rlSetMail('"+kind+"',this.dataset.n,this.value);renderRelances()\" data-n=\""+_cmpEsc(name)+"\" style='width:200px;background:var(--bg);border:1px solid "+(val?"rgba(255,255,255,.1)":"#E24B4A")+";color:var(--text);border-radius:5px;padding:3px 6px;font-size:10px'>":"<span style='color:var(--t3)'>—</span>"; };
+    return "<tr><td><input type='checkbox' class='rl-chk' data-i='"+i+"'"+(g.mail&&!recent?" checked":"")+(g.cmm?"":" disabled")+"></td><td><b>"+_cmpEsc(g.nom)+"</b>"+(recent?"<div style='font-size:9px;color:#EFC96A'>relancé le "+new Date(lr).toLocaleDateString("fr-FR")+"</div>":lr?"<div style='font-size:9px;color:var(--t3)'>dernière relance "+new Date(lr).toLocaleDateString("fr-FR")+"</div>":"")+"</td>"
+      +"<td>"+inp("cmm",g.cmm,g.mail,"mail du CMM")+"</td><td style='font-size:10px'>"+_cmpEsc(g.rpm||"—")+"</td><td>"+inp("rpm",g.rpm,g.mailRpm,"mail du RPM (cc)")+"</td>"
+      +"<td>"+g.stores.length+"</td><td>"+g.woAtt+"</td><td>"+g.dv+"</td><td>"+g.nps+"</td><td>"+g.woEc+"</td><td><button onclick='rlPreview("+i+")' style='padding:3px 8px;font-size:10px;background:transparent;color:#90c4f5;border:1px solid rgba(55,138,221,.3);border-radius:5px;cursor:pointer'>👁</button></td></tr>"; }).join("")
+    || "<tr><td colspan='11' style='color:var(--t3);padding:10px'>Aucun magasin en alerte avec ces critères.</td></tr>";
+}
+function _rlSel(){ var a=[]; document.querySelectorAll(".rl-chk:checked").forEach(function(c){ a.push(_rlGroups[parseInt(c.getAttribute("data-i"),10)]); }); return a.filter(Boolean); }
+function rlCheckAll(v){ document.querySelectorAll(".rl-chk:not(:disabled)").forEach(function(c){ c.checked=v; }); }
+
+// ── Contenus ──
+function _rlLigneStore(s){ return "<tr><td style='padding:5px 8px;border-bottom:1px solid #eceef3;font-size:12px'>"+_envE(s.m)+"</td><td style='padding:5px 8px;border-bottom:1px solid #eceef3;text-align:center;font-size:12px'>"+(s.woAtt.length||"")+"</td><td style='padding:5px 8px;border-bottom:1px solid #eceef3;text-align:center;font-size:12px'>"+(s.dv.length||"")+"</td><td style='padding:5px 8px;border-bottom:1px solid #eceef3;text-align:center;font-size:12px'>"+(s.nps.length||"")+"</td><td style='padding:5px 8px;border-bottom:1px solid #eceef3;text-align:center;font-size:12px'>"+(s.woEc.length||"")+"</td><td style='padding:5px 8px;border-bottom:1px solid #eceef3;text-align:right;font-size:11px;color:#888'>"+(s.age?s.age+" j":"")+"</td></tr>"; }
+function _rlTableHead(){ var h="padding:6px 8px;background:#f3f4f8;font-size:10px;color:#666;text-transform:uppercase;"; return "<tr><th align='left' style='"+h+"'>Magasin</th><th style='"+h+"'>WO att. ≥ 30 j</th><th style='"+h+"'>Devis att. &gt; 7 j</th><th style='"+h+"'>NPS détract.</th><th style='"+h+"'>WO en cours</th><th style='"+h+"text-align:right'>Plus ancien</th></tr>"; }
+function _rlIntro(txt,g,o){ return (txt||"").replace(/\{cmm\}/g,g.nom).replace(/\{nb\}/g,String(g.stores.length)).replace(/\{delai\}/g,_envDateLimite(o.delai)); }
+function _rlMailHtml(g,o,intro,recapRpm){
+  var rows=g.stores.slice(0,25).map(_rlLigneStore).join(""), reste=g.stores.length>25?"<tr><td colspan='6' style='padding:5px 8px;color:#888;font-size:11px'>… et "+(g.stores.length-25)+" autre(s) magasin(s) — voir le détail en pièce jointe.</td></tr>":"";
+  var kb=function(l,v,c){ return "<td align='center' style='padding:8px;border:1px solid #eceef3'><div style='font-size:9px;color:#888;text-transform:uppercase'>"+l+"</div><div style='font-size:18px;font-weight:700;color:"+c+"'>"+v+"</div></td>"; };
+  return "<!DOCTYPE html><html><head><meta charset='UTF-8'></head><body style='margin:0;padding:0;background:#f3f4f8;font-family:Arial,Helvetica,sans-serif'><table role='presentation' width='100%' cellpadding='0' cellspacing='0' style='background:#f3f4f8;padding:18px 0'><tr><td align='center'><table role='presentation' width='640' cellpadding='0' cellspacing='0' style='max-width:640px;width:100%;background:#fff;border-radius:10px;overflow:hidden'>"
+   +"<tr><td style='background:#004B9B;padding:16px 22px'><div style='color:#fff;font-size:17px;font-weight:700'>"+(recapRpm?"Récapitulatif des relances — pôle "+_envE(g.nom):"Points à traiter sur vos magasins")+"</div><div style='color:#bcd4f2;font-size:12px;margin-top:3px'>"+_envE(g.nom)+" · "+g.stores.length+" magasin(s) en alerte · "+new Date().toLocaleDateString("fr-FR")+"</div></td></tr>"
+   +"<tr><td style='padding:20px 22px;color:#1a1a2e;font-size:13px;line-height:1.55'><div style='white-space:pre-line'>"+_envE(intro)+"</div>"
+   +"<table role='presentation' width='100%' cellpadding='0' cellspacing='0' style='border-collapse:collapse;margin:16px 0'><tr>"+kb("WO en attente ≥ 30 j",g.woAtt,"#BA7517")+kb("Devis en attente > 7 j",g.dv,"#BA7517")+kb("NPS détracteurs",g.nps,"#E24B4A")+kb("WO en cours",g.woEc,"#378ADD")+"</tr></table>"
+   +"<table role='presentation' width='100%' cellpadding='0' cellspacing='0' style='border-collapse:collapse;border:1px solid #eceef3'>"+_rlTableHead()+rows+reste+"</table>"
+   +"<div style='background:#FFF7E8;border-left:4px solid #BA7517;border-radius:4px;padding:10px 12px;margin:16px 0;font-size:12px;color:#5a3d0a'><b>Action attendue avant le "+_envE(_envDateLimite(o.delai))+" :</b> valider ou refuser les devis en attente, lever les blocages sur les WO en attente d'approbation, et prendre contact avec les magasins ayant un avis détracteur.</div>"
+   +"<div style='font-size:12px;color:#444'>La synthèse détaillée (liste des WO, devis et avis concernés) est jointe à ce mail"+(recapRpm?"":" avec un fichier Excel")+".</div>"
+   +"<div style='font-size:13px;margin-top:18px'>Cordialement,<br><b>Direction Technique France — Carrefour</b></div></td></tr><tr><td style='background:#f3f4f8;padding:10px 22px;font-size:10px;color:#888'>Données ServiceNow · édité le "+new Date().toLocaleDateString("fr-FR")+"</td></tr></table></td></tr></table></body></html>";
+}
+function _rlPdfHtml(g,o){
+  var th="padding:5px 7px;background:#eef1f7;font-size:9px;text-transform:uppercase;color:#555;text-align:left", td="padding:5px 7px;border-bottom:1px solid #e3e6ee;font-size:10px";
+  var sec=function(s){
+    var t=function(titre,a,f,head){ return a.length?"<div style='font-size:11px;font-weight:bold;margin:8px 0 3px'>"+titre+" ("+a.length+")</div><table width='100%' cellspacing='0' style='border-collapse:collapse'><tr>"+head.map(function(h){return "<th style='"+th+"'>"+h+"</th>";}).join("")+"</tr>"+a.slice().sort(function(x,y){return (y._age||0)-(x._age||0);}).slice(0,12).map(f).join("")+(a.length>12?"<tr><td colspan='5' style='"+td+";color:#888'>… et "+(a.length-12)+" autre(s) (liste complète dans l'Excel)</td></tr>":"")+"</table>":""; };
+    return "<div style='margin-top:14px;border-top:2px solid #004B9B;padding-top:6px'><div style='font-size:13px;font-weight:bold;color:#004B9B'>"+_envE(s.m)+"</div><div style='font-size:9px;color:#888'>"+_envE(s.t||"")+" · "+_envE((s.reg||"").replace(/_/g," "))+"</div>"
+     +t("WO en attente d'approbation ≥ 30 jours",s.woAtt,function(r){return "<tr><td style='"+td+"'>"+_envE(r["Numéro"]||"")+"</td><td style='"+td+"'>"+_envE(r._f==="Inconnu"?"Équipe interne":r._f)+"</td><td style='"+td+"'>"+_envE(r["Équipement"]||"")+"</td><td style='"+td+"'>"+_envE(r["Titre de la demande"]||"")+"</td><td style='"+td+";text-align:right'>"+r._age+" j</td></tr>";},["N° WO","Prestataire","Équipement","Demande","Âge"])
+     +t("Devis en attente de validation > 7 jours",s.dv,function(r){return "<tr><td style='"+td+"'>"+_envE(r["Numéro"]||"")+"</td><td style='"+td+"'>"+_envE(r._f)+"</td><td style='"+td+"'>"+_envE(r["Équipement"]||"")+"</td><td style='"+td+"'>"+Math.round(r._c||0)+" €</td><td style='"+td+";text-align:right'>"+r._age+" j</td></tr>";},["N° devis","Prestataire","Équipement","Montant","Âge"])
+     +t("WO en cours / très urgents",s.woEc,function(r){return "<tr><td style='"+td+"'>"+_envE(r["Numéro"]||"")+"</td><td style='"+td+"'>"+_envE(r._f==="Inconnu"?"Équipe interne":r._f)+"</td><td style='"+td+"'>"+_envE(r["Équipement"]||"")+"</td><td style='"+td+"'>"+_envE(_envStatut(r._e))+(r._p==="TU"?" · TU":"")+"</td><td style='"+td+";text-align:right'>"+(r._age>=0?r._age+" j":"")+"</td></tr>";},["N° WO","Prestataire","Équipement","Statut","Âge"])
+     +t("Avis NPS détracteurs",s.nps,function(r){return "<tr><td style='"+td+"'>"+(r._d?r._d.toLocaleDateString("fr-FR"):"")+"</td><td style='"+td+"'>"+_envE(r._f==="Inconnu"?"":r._f)+"</td><td style='"+td+"'>Note "+r._n+"</td><td colspan='2' style='"+td+"'>"+_envE(r["Commentaire"]||r["Commentaires"]||"")+"</td></tr>";},["Date","Prestataire","Note","Commentaire",""])+"</div>"; };
+  return "<!DOCTYPE html><html><head><meta charset='UTF-8'></head><body style='font-family:Arial,Helvetica,sans-serif;color:#1a1a2e;margin:24px'><table width='100%' cellspacing='0' style='border-bottom:3px solid #004B9B'><tr><td><div style='font-size:19px;font-weight:bold;color:#004B9B'>Synthèse des points à traiter — "+_envE(g.nom)+"</div><div style='font-size:10px;color:#666'>"+g.stores.length+" magasin(s) · WO en attente ≥ 30 j, devis en attente &gt; 7 j, NPS détracteurs ("+o.npsJ+" derniers jours), WO en cours</div></td><td style='text-align:right;font-size:10px;color:#666'>Carrefour — DTF<br><b>"+new Date().toLocaleDateString("fr-FR")+"</b></td></tr></table>"
+   +"<table width='100%' cellspacing='0' style='border-collapse:collapse;margin-top:10px'><tr><th style='"+th+"'>Magasin</th><th style='"+th+"'>WO att.</th><th style='"+th+"'>Devis att.</th><th style='"+th+"'>NPS</th><th style='"+th+"'>WO en cours</th></tr>"+g.stores.map(function(s){return "<tr><td style='"+td+"'>"+_envE(s.m)+"</td><td style='"+td+"'>"+s.woAtt.length+"</td><td style='"+td+"'>"+s.dv.length+"</td><td style='"+td+"'>"+s.nps.length+"</td><td style='"+td+"'>"+s.woEc.length+"</td></tr>";}).join("")+"</table>"
+   +g.stores.slice(0,40).map(sec).join("")+(g.stores.length>40?"<div style='margin-top:12px;color:#888;font-size:10px'>… "+(g.stores.length-40)+" autre(s) magasin(s) : voir le fichier Excel.</div>":"")
+   +"<div style='margin-top:20px;border-top:1px solid #e3e6ee;padding-top:5px;font-size:9px;color:#888'>Carrefour — Direction Technique France · Source ServiceNow</div></body></html>";
+}
+function _rlXlsx(g){
+  if(typeof XLSX==="undefined") return null; var wb=XLSX.utils.book_new(), W=[["Magasin","N° WO","Statut","Prestataire","Équipement","Demande","Âge (j)"]], D=[["Magasin","N° devis","Prestataire","Équipement","Montant (€)","Âge (j)"]], N=[["Magasin","Date","Note","Prestataire","Commentaire"]];
+  g.stores.forEach(function(s){ s.woAtt.concat(s.woEc).forEach(function(r){ W.push([s.m,r["Numéro"]||"",_envStatut(r._e)+(r._p==="TU"?" (TU)":""),r._f==="Inconnu"?"Équipe interne":r._f,r["Équipement"]||"",r["Titre de la demande"]||"",r._age>=0?r._age:""]); });
+    s.dv.forEach(function(r){ D.push([s.m,r["Numéro"]||"",r._f,r["Équipement"]||"",Math.round(r._c||0),r._age]); }); s.nps.forEach(function(r){ N.push([s.m,r._d?r._d.toLocaleDateString("fr-FR"):"",r._n,r._f==="Inconnu"?"":r._f,r["Commentaire"]||r["Commentaires"]||""]); }); });
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(W),"WO"); XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(D),"Devis"); XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(N),"NPS");
+  return XLSX.write(wb,{bookType:"xlsx",type:"base64"});
+}
+function _rlObj(){ return {objet:(document.getElementById("rl-objet")||{}).value||"Points à traiter sur vos magasins — {cmm}",intro:(document.getElementById("rl-intro")||{}).value||""}; }
+function _rlBuild(g,o,recap){
+  var t=_rlObj(), intro=_rlIntro(t.intro,g,o);
+  return {html:_rlMailHtml(g,o,intro,recap),text:intro+"\n\n"+g.stores.length+" magasin(s) en alerte : "+g.woAtt+" WO en attente ≥ 30 j, "+g.dv+" devis en attente > 7 j, "+g.nps+" avis NPS détracteurs, "+g.woEc+" WO en cours.\nLa synthèse détaillée est jointe.\n\nDirection Technique France — Carrefour",pdfHtml:_rlPdfHtml(g,o),objet:(recap?"Récapitulatif relances — pôle {cmm}":t.objet).replace(/\{cmm\}/g,g.nom).replace(/\{nb\}/g,String(g.stores.length))};
+}
+function rlPreview(i){
+  var g=_rlGroups[i]; if(!g) return; var B=_rlBuild(g,_rlParams(),false);
+  var old=document.getElementById("env-modal"); if(old) old.remove();
+  var m=document.createElement("div"); m.id="env-modal"; m.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px";
+  m.innerHTML="<div style='background:#fff;border-radius:10px;width:min(900px,100%);height:90vh;display:flex;flex-direction:column'><div style='display:flex;gap:8px;padding:10px;background:#1a1a2e;border-radius:10px 10px 0 0;align-items:center'><button id='env-tab-mail' style='padding:6px 12px;border-radius:6px;border:none;cursor:pointer;font-weight:700'>✉ Mail</button><button id='env-tab-pdf' style='padding:6px 12px;border-radius:6px;border:none;cursor:pointer;font-weight:700'>📄 Synthèse PDF</button><span style='flex:1;color:#aaa;font-size:11px'>Objet : "+_envE(B.objet)+" · À : "+_envE(g.mail||"(adresse manquante)")+(g.mailRpm?" · CC : "+_envE(g.mailRpm):"")+"</span><button onclick=\"document.getElementById('env-modal').remove()\" style='padding:6px 12px;border-radius:6px;border:none;cursor:pointer'>✕ Fermer</button></div><iframe id='env-frame' style='flex:1;border:none;background:#fff'></iframe></div>";
+  document.body.appendChild(m); var fr=document.getElementById("env-frame");
+  var show=function(w){ fr.srcdoc=w==="pdf"?B.pdfHtml:B.html; document.getElementById("env-tab-mail").style.background=w==="pdf"?"#ddd":"#90c4f5"; document.getElementById("env-tab-pdf").style.background=w==="pdf"?"#90c4f5":"#ddd"; };
+  document.getElementById("env-tab-mail").onclick=function(){show("mail");}; document.getElementById("env-tab-pdf").onclick=function(){show("pdf");}; show("mail");
+}
+// Envoi d'un mail via Apps Script (même moteur fiabilisé que les rapports prestataires) → promesse {ok,detail}
+function _rlSendOne(fields){
+  return new Promise(function(resolve){
+    var id=(window.crypto&&crypto.randomUUID)?crypto.randomUUID():("r"+Date.now()+Math.random().toString(36).slice(2)); fields.envoiId=id; fields.action="sendRapportPrestataire"; fields.token=_adminToken();
+    var ifr=document.getElementById("env-iframe"); if(!ifr){ ifr=document.createElement("iframe"); ifr.id="env-iframe"; ifr.name="env-iframe"; ifr.style.display="none"; document.body.appendChild(ifr); }
+    var f=document.createElement("form"); f.method="POST"; f.action=SCRIPT_URL; f.target="env-iframe"; f.style.display="none"; f.acceptCharset="UTF-8";
+    Object.keys(fields).forEach(function(k){ var t=document.createElement("textarea"); t.name=k; t.value=fields[k]; f.appendChild(t); }); document.body.appendChild(f); f.submit(); setTimeout(function(){ f.remove(); },2000);
+    var essais=0;
+    (function poll(){ essais++; var cb="_RL_"+Date.now()+"_"+essais, sc=document.createElement("script"); var clean=function(){ try{document.head.removeChild(sc);}catch(e){} try{delete window[cb];}catch(e){} };
+      window[cb]=function(r){ clean(); var e=r&&r.envoi; if(e&&e.statut==="OK"){ resolve({ok:true,detail:e.date}); return; } if(e&&e.statut==="ECHEC"){ resolve({ok:false,detail:e.detail}); return; } if(essais>=45){ resolve({ok:false,detail:"Pas de confirmation après 2 min — vérifier Log_Envois"}); return; } setTimeout(poll,3000); };
+      sc.onerror=function(){ clean(); if(essais>=45){ resolve({ok:false,detail:"Apps Script injoignable"}); return; } setTimeout(poll,3000); };
+      sc.src=SCRIPT_URL+"?action=statutEnvoi&id="+encodeURIComponent(id)+"&callback="+cb+"&t="+Date.now(); document.head.appendChild(sc); })();
+  });
+}
+function _rlLog(html){ var st=document.getElementById("rl-status"); if(st) st.innerHTML=html; }
+async function rlEnvoyer(test){
+  if(_rlEnCours) return;
+  if(!SCRIPT_URL){ toast("Configurez d'abord l'URL Apps Script",true); return; }
+  if(!_adminToken()){ toast("Envoi réservé à l'admin : ouvrez le dashboard avec ?admin=1 pour saisir le jeton",true); return; }
+  var sel=_rlSel(); if(!sel.length){ toast("Cochez au moins un CMM",true); return; }
+  var o=_rlParams(), recap=!!(document.getElementById("rl-recap")||{}).checked, copie=(document.getElementById("rl-copie")||{}).checked?"1":"0";
+  var manque=sel.filter(function(g){ return !g.mail; }); if(!test&&manque.length){ toast("Adresse manquante pour : "+manque.map(function(g){return g.nom;}).join(", "),true); return; }
+  var jobs=[];
+  sel.forEach(function(g){ var B=_rlBuild(g,o,false); jobs.push({lib:"CMM "+g.nom,g:g,to:g.mail,cc:g.mailRpm||"",B:B,xlsx:_rlXlsx(g)}); });
+  if(recap){ var byR={}; sel.forEach(function(g){ if(!g.rpm||!g.mailRpm) return; var r=byR[g.rpm]||(byR[g.rpm]={cmm:null,nom:g.rpm,rpm:g.rpm,stores:[],woAtt:0,dv:0,nps:0,woEc:0,mail:g.mailRpm}); r.stores=r.stores.concat(g.stores); r.woAtt+=g.woAtt; r.dv+=g.dv; r.nps+=g.nps; r.woEc+=g.woEc; });
+    Object.keys(byR).forEach(function(k){ var r=byR[k]; r.stores.sort(function(a,b){return b.n-a.n;}); jobs.push({lib:"Récap RPM "+k,g:r,to:r.mail,cc:"",B:_rlBuild(r,o,true),xlsx:_rlXlsx(r)}); }); }
+  if(test) jobs=jobs.slice(0,1);
+  if(jobs.length>40){ toast("Maximum 40 mails par envoi : décochez des CMM ("+jobs.length+" prévus)",true); return; }
+  if(!test && !confirm("Envoyer "+jobs.length+" mail(s) :\n"+jobs.map(function(j){return "• "+j.lib+" → "+j.to+(j.cc?" (cc "+j.cc+")":"");}).join("\n")+"\n\nChaque mail contient la synthèse PDF"+(jobs.some(function(j){return j.xlsx;})?" + Excel":"")+".\n\nConfirmer ?")) return;
+  _rlEnCours=true; var btns=document.querySelectorAll(".rl-send"); btns.forEach(function(b){b.disabled=true;});
+  var res=[], hist=_rlLS("mc_relances"), logP=[];
+  for(var i=0;i<jobs.length;i++){
+    var j=jobs[i]; _rlLog(res.concat(["<span style='color:var(--amber)'>⏳ "+_envE(j.lib)+" ("+(i+1)+"/"+jobs.length+")…</span>"]).join("<br>"));
+    var f={test:test?"1":"0",copie:copie,to:j.to,cc:j.cc,nomGroupe:j.g.nom,periode:"Relance "+new Date().toLocaleDateString("fr-FR"),objet:j.B.objet,htmlBody:j.B.html,textBody:j.B.text,pdfHtml:j.B.pdfHtml,pdfNom:"Synthese_"+j.g.nom.replace(/[^A-Za-z0-9]+/g,"_")+".pdf"};
+    if(j.xlsx){ f.xlsxB64=j.xlsx; f.xlsxNom="A_traiter_"+j.g.nom.replace(/[^A-Za-z0-9]+/g,"_")+".xlsx"; }
+    var r=await _rlSendOne(f);
+    res.push(r.ok?"<span style='color:var(--green)'>✅ "+_envE(j.lib)+(test?" (test envoyé à vous)":" → "+_envE(j.to))+"</span>":"<span style='color:var(--red)'>❌ "+_envE(j.lib)+" : "+_envE(r.detail)+"</span>");
+    if(r.ok&&!test&&j.g.cmm) hist[j.g.nom]=Date.now();
+    if(r.ok&&!test){ var gi=_relItemsCmm(j.g); logP.push(_relLog(j.g.cmm?"CMM":"RPM",j.g.nom,j.to,"WO ≥30 j / devis > 7 j / WO en cours",gi,j.g.cmm?gi.length:(j.g.stores||[]).length)); }
+    _rlLog(res.join("<br>"));
+  }
+  if(!test) _rlLSset("mc_relances",hist);
+  if(logP.length){ var lr=await Promise.all(logP); if(lr.some(function(x){return !x.ok;})) toast("Relances envoyées, mais journal incomplet : "+(lr.filter(function(x){return !x.ok;})[0].message||"erreur"),true); EFF.rows=null; }
+  _rlEnCours=false; btns.forEach(function(b){b.disabled=false;}); renderRelances();
+  toast(test?"Test terminé":"Envoi terminé : "+res.filter(function(x){return x.indexOf("✅")>=0;}).length+"/"+jobs.length+" réussi(s)");
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RELANCES PRESTATAIRES (volet 2 de l'onglet Relances) — validation avant envoi
+// ═══════════════════════════════════════════════════════════════
+var _rlpRows=[], _rlpEnCours=false;
+function rlVolet(v){
+  ["cmm","prest","eff"].forEach(function(k){ var e=document.getElementById("rl-vol-"+k); if(e) e.style.display=(k===v)?"":"none"; var b=document.getElementById("rl-vb-"+k); if(b){ b.style.background=(k===v)?"var(--blue)":"transparent"; b.style.color=(k===v)?"#fff":"var(--t2)"; } });
+  if(v==="prest") renderRelancesPrest();
+  if(v==="eff") renderEfficacite();
+}
+function _rlpContact(nom){ return CONTACTS.find(function(x){ return x.nom===nom||x.groupe===nom; })||null; }
+function _rlpParams(){
+  var c=function(id){ var e=document.getElementById(id); return !!(e&&e.checked); }, v=function(id,d){ var e=document.getElementById(id); var x=e?parseFloat(e.value):NaN; return isNaN(x)?d:x; };
+  return {eq:c("rp-t-eq"),eqMin:v("rp-eqmin",3),woEc:c("rp-t-woec"),woMin:v("rp-womin",1),score:c("rp-t-score"),scoreSeuil:v("rp-sseuil",50),baisse:v("rp-baisse",5),obj:c("rp-t-obj"),min:v("rp-min",20),delai:v("rp-delai",7)};
+}
+function _rlpEnsureScore(){ if(!_scRows||!_scRows.length){ try{ initScore(); }catch(e){} } }
+function _rlpCompute(o){
+  _rlpEnsureScore();
+  var S={}, G=function(f){ return S[f]||(S[f]={f:f,n:0,cl:0,ts:0,tn:0,eqN:0,woEc:0,el:0,rep:0}); };
+  WO.forEach(function(r){ var f=r._f; if(!f||f==="Inconnu") return; var s=G(f); s.n++; if(r._e==="CL"){ s.cl++; if(r._ttr!=null){ s.ts+=r._ttr; s.tn++; } } if(_woEc(r)) s.woEc++; });
+  _eqRepeats(function(r){ return r._f&&r._f!=="Inconnu"; },o.eqMin,true).forEach(function(a){ G(a.f).eqN++; });
+  var P=_fbPairs(30,"strict",true); P.list.forEach(function(p){ var f=p.w._f; if(!f||f==="Inconnu"||!p.eligible) return; var s=G(f); s.el++; if(p.rep) s.rep++; });
+  var sc={}; (_scRows||[]).forEach(function(x){ sc[x.f]=x; });
+  var L=Object.keys(S).map(function(k){ return S[k]; }).filter(function(s){ return s.n>=o.min; });
+  var last=_rlLS("mc_relances_p");
+  L.forEach(function(s){
+    var c=_rlpContact(s.f); s.contact=c; s.to=(c&&c.email)||(_rlLS("mc_mail_ov")["prest:"+s.f]||""); s.cc=(c&&c.email2)||"";
+    var ob=_envObjFor(c?{nom:s.f,contact:c}:{nom:s.f,contact:null}); s.ob=ob;
+    s.taux=s.n?s.cl/s.n*100:null; s.reint=s.el>=10?s.rep/s.el*100:null; s.ttr=s.tn>=10?s.ts/s.tn:null; s.sc=sc[s.f]||null; s.last=last[s.f]||0;
+    var m=[];
+    if(o.eq&&s.eqN>0) m.push(s.eqN+" équipement(s) avec ≥ "+o.eqMin+" interventions (réparer/remplacer à étudier)");
+    if(o.woEc&&s.woEc>=o.woMin) m.push(s.woEc+" WO en cours/assignés ≥ 30 j");
+    if(o.score&&s.sc){ if(s.sc.score<o.scoreSeuil) m.push("score "+Math.round(s.sc.score)+"/100 (critique)"); else if(s.sc.trend!==null&&s.sc.trend<=-o.baisse) m.push("score en baisse ("+Math.round(s.sc.trend)+" pts)"); }
+    if(o.obj){ if(s.taux!==null&&s.taux<s.ob.taux) m.push("clôture "+s.taux.toFixed(1).replace(".",",")+" % < objectif "+s.ob.taux+" %"); if(s.reint!==null&&s.reint>s.ob.reint) m.push("réinterventions "+s.reint.toFixed(1).replace(".",",")+" % > "+s.ob.reint+" %"); if(s.ttr!==null&&s.ttr>s.ob.ttr) m.push("délai moyen "+s.ttr.toFixed(1).replace(".",",")+" j > "+s.ob.ttr+" j"); }
+    s.motifs=m;
+  });
+  return L.filter(function(s){return s.motifs.length;}).sort(function(a,b){return b.motifs.length-a.motifs.length||(a.sc?a.sc.score:100)-(b.sc?b.sc.score:100);});
+}
+function renderRelancesPrest(){
+  if(!WO.length) return; var o=_rlpParams(); _rlpRows=_rlpCompute(o);
+  var rc=_rlpRows.filter(function(s){return s.sc&&s.sc.score<o.scoreSeuil;}).length;
+  kg("rp-kg",[{l:"Prestataires à relancer",v:fN(_rlpRows.length),s:"≥ "+o.min+" WO",c:"var(--red)"},{l:"Dont score critique",v:fN(rc),s:"< "+o.scoreSeuil,c:"var(--red)"},{l:"Équipements à interventions répétées",v:fN(_rlpRows.reduce(function(a,s){return a+s.eqN;},0)),s:"≥ "+o.eqMin+" interventions",c:"var(--amber)"},{l:"WO en cours ≥ 30 j",v:fN(_rlpRows.reduce(function(a,s){return a+s.woEc;},0)),s:"",c:"var(--amber)"}]);
+  var tb=document.getElementById("rp-tb"); if(!tb) return;
+  tb.innerHTML=_rlpRows.map(function(s,i){
+    var recent=s.last&&((Date.now()-s.last)/86400000<7), lv=s.sc?_scLevel(s.sc.score):null;
+    var mail="<input type='text' value=\""+_cmpEsc(s.to)+"\" placeholder='mail prestataire' data-n=\""+_cmpEsc(s.f)+"\" onchange=\"_rlSetMail('prest',this.dataset.n,this.value);renderRelancesPrest()\" style='width:190px;background:var(--bg);border:1px solid "+(s.to?"rgba(255,255,255,.1)":"#E24B4A")+";color:var(--text);border-radius:5px;padding:3px 6px;font-size:10px'>";
+    return "<tr><td><input type='checkbox' class='rp-chk' data-i='"+i+"'"+(s.to&&!recent?" checked":"")+"></td><td><b>"+_cmpEsc(s.f)+"</b>"+(recent?"<div style='font-size:9px;color:#EFC96A'>relancé le "+new Date(s.last).toLocaleDateString("fr-FR")+"</div>":"")+"</td><td>"+mail+"</td>"
+     +"<td>"+(lv?"<span class='pill "+lv.c+"'>"+Math.round(s.sc.score)+"</span>":"—")+"</td><td>"+(s.taux===null?"—":s.taux.toFixed(1).replace(".",",")+" %")+"<div style='font-size:9px;color:var(--t3)'>obj. "+s.ob.taux+" %</div></td><td>"+s.eqN+"</td><td>"+s.woEc+"</td><td style='font-size:10px;color:var(--t2)'>"+_cmpEsc(s.motifs.join(" · "))+"</td>"
+     +"<td><button onclick='rlpPreview("+i+")' style='padding:3px 8px;font-size:10px;background:transparent;color:#90c4f5;border:1px solid rgba(55,138,221,.3);border-radius:5px;cursor:pointer'>👁</button></td></tr>"; }).join("")
+    || "<tr><td colspan='9' style='color:var(--t3);padding:10px'>Aucun prestataire en alerte avec ces critères.</td></tr>";
+}
+function rlpCheckAll(v){ document.querySelectorAll(".rp-chk").forEach(function(c){ c.checked=v; }); }
+function _rlpSelNames(){ var a=[]; document.querySelectorAll(".rp-chk:checked").forEach(function(c){ a.push(_rlpRows[parseInt(c.getAttribute("data-i"),10)]); }); return a.filter(Boolean); }
+// Fiche score au format tableau (compatible conversion PDF Google : pas de flex ni de variables CSS)
+function _rlpFicheTable(nm){
+  var d=_scFicheData(nm); if(!d) return ""; var s=d.s;
+  var fm=[function(v){return _fbPct(v*100);},function(v){return _fbPct(v*100);},function(v){return _fbPct(v*100);},function(v){return v.toFixed(1).replace(".",",")+" /100 WO";},function(v){return v.toFixed(1).replace(".",",")+" j";},function(v){return (v>0?"+":"")+Math.round(v);}];
+  var th="padding:6px 8px;background:#eef1f7;font-size:10px;text-transform:uppercase;color:#555;text-align:left", td="padding:6px 8px;border-bottom:1px solid #e3e6ee;font-size:11px";
+  var rows=SC_NOMS.map(function(n,k){ var nt=s.notes[k], col=nt===null?"#888":nt>=75?"#1D9E75":nt>=50?"#BA7517":"#E24B4A"; return "<tr><td style='"+td+"'>"+n+"</td><td style='"+td+";font-weight:bold'>"+(s.v[k]===null?"n/d":fm[k](s.v[k]))+"</td><td style='"+td+"'>"+(d.mean[k]===null?"—":fm[k](d.mean[k]))+"</td><td style='"+td+";font-weight:bold;color:"+col+"'>"+(nt===null?"n/d":Math.round(nt))+"</td></tr>"; }).join("");
+  return "<div style='page-break-before:always'></div><h2 style='font-size:16px;color:#004B9B;border-bottom:3px solid #004B9B;padding-bottom:4px'>Fiche prestataire — "+_envE(s.f)+"</h2>"
+   +"<table width='100%' cellspacing='0' style='margin:8px 0'><tr><td style='width:34%;border:1px solid #e2e4eb;border-top:4px solid "+d.lv.col+";text-align:center;padding:10px'><div style='font-size:10px;color:#888'>SCORE GLOBAL</div><div style='font-size:34px;font-weight:bold;color:"+d.lv.col+"'>"+Math.round(s.score)+" /100</div><div style='font-weight:bold;color:"+d.lv.col+"'>"+d.lv.t+"</div><div style='font-size:10px;color:#888'>Rang "+s.rank+" sur "+d.total+"</div></td><td style='padding-left:12px;vertical-align:top'><table width='100%' cellspacing='0' style='border-collapse:collapse'><tr><th style='"+th+"'>Critère</th><th style='"+th+"'>Valeur</th><th style='"+th+"'>Moyenne</th><th style='"+th+"'>Note</th></tr>"+rows+"</table></td></tr></table>"
+   +"<h3 style='font-size:13px;color:#004B9B'>Points d'attention</h3><ul style='font-size:11px;line-height:1.7'>"+d.pts.map(function(p){return "<li>"+_envE(p)+"</li>";}).join("")+"</ul>";
+}
+function _rlpBuild(s,o){
+  var D={wo:WO.filter(function(r){return r._f===s.f;}),quo:QUO.filter(function(r){return r._f===s.f;}),nps:NPS.filter(function(r){return r._f===s.f;}),prev:PREV.filter(function(r){return r._prest===s.f;})};
+  var sel={nom:s.f,entites:[s.f],contact:s.contact,D:D,territoire:""};
+  var C=_envCompute(sel,""), pl=_envPeriodeLabel(D); C.xlsx=true; C.obj.delai=o.delai;
+  var t=_rlObj(), motifs=s.motifs.map(function(m){return "• "+m;}).join("\n");
+  var intro=(document.getElementById("rp-intro")||{value:""}).value.replace(/\{groupe\}/g,s.f).replace(/\{delai\}/g,_envDateLimite(o.delai))+"\n\nMotifs de cette relance :\n"+motifs;
+  var objet=((document.getElementById("rp-objet")||{value:"Relance suivi maintenance — {groupe}"}).value).replace(/\{groupe\}/g,s.f);
+  var pdf=_envPdfHtml(C,pl).replace(/<\/body><\/html>\s*$/,_rlpFicheTable(s.f)+"</body></html>");
+  var cc=[s.cc]; 
+  if((document.getElementById("rp-cccmm")||{}).checked){ var seen={}; s.cmmList=[]; WO.concat(QUO).forEach(function(r){ if(r._f!==s.f||!r._cmm||seen[r._cmm]) return; if(!_woEc(r)) return; seen[r._cmm]=1; var m=_rlMailCmm(r._cmm); if(m) cc.push(m); var rm=_rlMailRpm(r._rpm); if(rm) cc.push(rm); }); }
+  var uniq={}; cc=cc.join(";").split(/[;,\s]+/).filter(function(x){ x=x.trim(); if(!x||uniq[x.toLowerCase()]) return false; uniq[x.toLowerCase()]=1; return true; });
+  return {C:C,html:_envEmailHtml(C,pl,intro),text:_envEmailText(C,pl,intro),pdfHtml:pdf,objet:objet,cc:cc.slice(0,10).join(";"),nbCc:cc.length};
+}
+function rlpPreview(i){
+  var s=_rlpRows[i]; if(!s) return; var B=_rlpBuild(s,_rlpParams());
+  var old=document.getElementById("env-modal"); if(old) old.remove();
+  var m=document.createElement("div"); m.id="env-modal"; m.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px";
+  m.innerHTML="<div style='background:#fff;border-radius:10px;width:min(900px,100%);height:90vh;display:flex;flex-direction:column'><div style='display:flex;gap:8px;padding:10px;background:#1a1a2e;border-radius:10px 10px 0 0;align-items:center'><button id='env-tab-mail' style='padding:6px 12px;border-radius:6px;border:none;cursor:pointer;font-weight:700'>✉ Mail</button><button id='env-tab-pdf' style='padding:6px 12px;border-radius:6px;border:none;cursor:pointer;font-weight:700'>📄 PDF (rapport + fiche)</button><span style='flex:1;color:#aaa;font-size:11px'>À : "+_envE(s.to||"(manquant)")+" · CC : "+_envE(B.cc||"—")+"</span><button onclick=\"document.getElementById('env-modal').remove()\" style='padding:6px 12px;border-radius:6px;border:none;cursor:pointer'>✕ Fermer</button></div><iframe id='env-frame' style='flex:1;border:none;background:#fff'></iframe></div>";
+  document.body.appendChild(m); var fr=document.getElementById("env-frame");
+  var show=function(w){ fr.srcdoc=w==="pdf"?B.pdfHtml:B.html; document.getElementById("env-tab-mail").style.background=w==="pdf"?"#ddd":"#90c4f5"; document.getElementById("env-tab-pdf").style.background=w==="pdf"?"#90c4f5":"#ddd"; };
+  document.getElementById("env-tab-mail").onclick=function(){show("mail");}; document.getElementById("env-tab-pdf").onclick=function(){show("pdf");}; show("mail");
+}
+async function rlpEnvoyer(test){
+  if(_rlpEnCours) return;
+  if(!SCRIPT_URL){ toast("Configurez d'abord l'URL Apps Script",true); return; }
+  if(!_adminToken()){ toast("Envoi réservé à l'admin : ouvrez le dashboard avec ?admin=1",true); return; }
+  var sel=_rlpSelNames(); if(!sel.length){ toast("Cochez au moins un prestataire",true); return; }
+  var manque=sel.filter(function(s){return !s.to;}); if(!test&&manque.length){ toast("Adresse manquante pour : "+manque.map(function(s){return s.f;}).join(", "),true); return; }
+  if(test) sel=sel.slice(0,1); if(sel.length>40){ toast("Maximum 40 mails par envoi ("+sel.length+" cochés)",true); return; }
+  var o=_rlpParams(), copie=(document.getElementById("rp-copie")||{}).checked?"1":"0";
+  var jobs=sel.map(function(s){ return {s:s,B:_rlpBuild(s,o)}; });
+  if(!test && !confirm("Envoyer "+jobs.length+" relance(s) prestataire :\n"+jobs.map(function(j){return "• "+j.s.f+" → "+j.s.to+(j.B.cc?" (cc "+j.B.nbCc+")":"");}).join("\n")+"\n\nChaque mail : rapport + fiche score en PDF et Excel (WO à traiter, équipements répétés).\n\nConfirmer ?")) return;
+  _rlpEnCours=true; var btns=document.querySelectorAll(".rp-send"); btns.forEach(function(b){b.disabled=true;});
+  var st=document.getElementById("rp-status"), res=[], hist=_rlLS("mc_relances_p"), logP=[];
+  for(var i=0;i<jobs.length;i++){
+    var j=jobs[i]; if(st) st.innerHTML=res.concat(["<span style='color:var(--amber)'>⏳ "+_envE(j.s.f)+" ("+(i+1)+"/"+jobs.length+")…</span>"]).join("<br>");
+    var f={test:test?"1":"0",copie:copie,to:j.s.to,cc:j.B.cc,nomGroupe:j.s.f,periode:"Relance "+new Date().toLocaleDateString("fr-FR"),objet:j.B.objet,htmlBody:j.B.html,textBody:j.B.text,pdfHtml:j.B.pdfHtml,pdfNom:"Suivi_"+j.s.f.replace(/[^A-Za-z0-9]+/g,"_")+".pdf"};
+    var x=_envXlsx(j.B.C); if(x){ f.xlsxB64=x; f.xlsxNom="A_traiter_"+j.s.f.replace(/[^A-Za-z0-9]+/g,"_")+".xlsx"; }
+    var r=await _rlSendOne(f);
+    res.push(r.ok?"<span style='color:var(--green)'>✅ "+_envE(j.s.f)+(test?" (test envoyé à vous)":" → "+_envE(j.s.to))+"</span>":"<span style='color:var(--red)'>❌ "+_envE(j.s.f)+" : "+_envE(r.detail)+"</span>");
+    if(r.ok&&!test){ hist[j.s.f]=Date.now(); logP.push(_relLog("PREST",j.s.f,j.s.to,j.s.motifs.join(" · "),_relItemsPrest(j.s.f))); } if(st) st.innerHTML=res.join("<br>");
+  }
+  if(!test) _rLSsafe(hist);
+  if(logP.length){ var lr2=await Promise.all(logP); if(lr2.some(function(x){return !x.ok;})) toast("Relances envoyées, mais journal incomplet : "+(lr2.filter(function(x){return !x.ok;})[0].message||"erreur"),true); EFF.rows=null; }
+  _rlpEnCours=false; btns.forEach(function(b){b.disabled=false;}); renderRelancesPrest();
+  toast(test?"Test terminé":"Envoi terminé : "+res.filter(function(x){return x.indexOf("✅")>=0;}).length+"/"+jobs.length+" réussi(s)");
+}
+function _rLSsafe(h){ _rlLSset("mc_relances_p",h); }
+
+// ═══════════════════════════════════════════════════════════════
+// v29 — STOCKAGE PARTAGÉ · ÉVOLUTION (historique) · EFFICACITÉ DES RELANCES · QUALITÉ DES DONNÉES
+// Écritures vers Apps Script : POST (jeton admin) confirmé par « ack » ; lectures : JSONP.
+// ═══════════════════════════════════════════════════════════════
+function _uid(){ return (window.crypto&&crypto.randomUUID)?crypto.randomUUID():("u"+Date.now()+Math.random().toString(36).slice(2)); }
+function _safeJ(s,d){ try{ var v=JSON.parse(s); return (v===null||v===undefined)?d:v; }catch(e){ return d; } }
+function _qs(o){ return Object.keys(o||{}).map(function(k){ return encodeURIComponent(k)+"="+encodeURIComponent(o[k]); }).join("&"); }
+
+function _scriptRead(action, params, timeoutMs){
+  return new Promise(function(resolve){
+    if(!SCRIPT_URL){ resolve(null); return; }
+    var cb="_SR_"+Date.now()+"_"+Math.floor(Math.random()*1e6), sc=document.createElement("script"), done=false, tm=null;
+    var fin=function(v){ if(done) return; done=true; clearTimeout(tm); try{ document.head.removeChild(sc); }catch(e){} try{ delete window[cb]; }catch(e){} resolve(v); };
+    tm=setTimeout(function(){ fin(null); }, timeoutMs||30000);
+    window[cb]=function(r){ fin(r); }; sc.onerror=function(){ fin(null); };
+    sc.src=SCRIPT_URL+"?action="+action+"&"+_qs(params)+"&callback="+cb+"&t="+Date.now();
+    document.head.appendChild(sc);
+  });
+}
+// Écriture admin : POST dans un iframe dédié, puis confirmation réelle par le script (action « ack »)
+function _scriptWrite(action, fields, essaisMax){
+  return new Promise(function(resolve){
+    if(!SCRIPT_URL||!_adminToken()){ resolve({ok:false,message:"Jeton admin ou URL Apps Script manquant"}); return; }
+    var id=_uid(), name="wr-"+id.slice(0,8), ifr=document.createElement("iframe");
+    ifr.name=name; ifr.style.display="none"; document.body.appendChild(ifr);
+    var f=document.createElement("form"); f.method="POST"; f.action=SCRIPT_URL; f.target=name; f.style.display="none"; f.acceptCharset="UTF-8";
+    var all=Object.assign({},fields,{action:action,token:_adminToken(),opId:id});
+    Object.keys(all).forEach(function(k){ var t=document.createElement("textarea"); t.name=k; t.value=all[k]; f.appendChild(t); });
+    document.body.appendChild(f); f.submit();
+    var essais=0;
+    var fin=function(r){ try{ f.remove(); }catch(e){} setTimeout(function(){ try{ ifr.remove(); }catch(e){} },1500); resolve(r); };
+    (function poll(){ essais++;
+      _scriptRead("ack",{id:id},15000).then(function(r){ var a=r&&r.ack;
+        if(a){ fin({ok:!!a.ok,detail:a.detail,message:a.message}); return; }
+        if(essais>=(essaisMax||30)){ fin({ok:false,message:"Pas de confirmation du script (déployer la version v13 de MainScript.gs ?)"}); return; }
+        setTimeout(poll,2000); }); })();
+  });
+}
+
+// ───────────────────────── 3 · STOCKAGE PARTAGÉ ─────────────────────────
+var SHARED_KEYS={"mc_contacts":"contacts","mc_env_obj":"env_obj","mc_env_obj_p":"env_obj_p","mc_mail_ov":"mail_ov","mc_relances":"relances","mc_relances_p":"relances_p"};
+var _cfgApplying=false, _cfgTimers={}, _cfgInfo={etat:"local",msg:""};
+function _cfgMeta(){ try{ return JSON.parse(localStorage.getItem("mc_cfg_meta")||"{}")||{}; }catch(e){ return {}; } }
+function _cfgMetaSet(m){ try{ localStorage.setItem("mc_cfg_meta",JSON.stringify(m)); }catch(e){} }
+// Toute écriture d'une clé partagée dans le navigateur déclenche l'envoi vers le Sheet (1,5 s après la dernière modification)
+(function(){ try{ var o=Storage.prototype.setItem; Storage.prototype.setItem=function(k,v){ o.apply(this,arguments); try{ if(SHARED_KEYS[k]&&!_cfgApplying&&this===window.localStorage) _cfgDirty(k); }catch(e){} }; }catch(e){} })();
+function _cfgDirty(k){
+  var m=_cfgMeta(); m[k]=Object.assign(m[k]||{},{dirty:true}); _cfgMetaSet(m);
+  clearTimeout(_cfgTimers[k]); _cfgTimers[k]=setTimeout(function(){ _cfgPush(k); },1500); _cfgBadge();
+}
+function _cfgApply(k,v){ _cfgApplying=true; try{ localStorage.setItem(k,v); }finally{ _cfgApplying=false; } }
+function _cfgPush(k){
+  if(!SCRIPT_URL||!_adminToken()) return Promise.resolve({ok:false});
+  var v=localStorage.getItem(k); if(v===null||v==="") v=(k==="mc_contacts")?"[]":"{}";
+  return _scriptWrite("saveConfig",{key:SHARED_KEYS[k],value:v}).then(function(r){
+    var m=_cfgMeta();
+    if(r.ok){ m[k]={dirty:false,sync:(r.detail&&r.detail.maj)||Date.now()}; _cfgInfo.etat="sync"; _cfgInfo.msg=""; }
+    else { m[k]=Object.assign(m[k]||{},{dirty:true}); _cfgInfo.etat="erreur"; _cfgInfo.msg=r.message||"échec"; }
+    _cfgMetaSet(m); _cfgBadge(); return r;
+  });
+}
+function _cfgBadge(){
+  var m=_cfgMeta(), nd=Object.keys(SHARED_KEYS).filter(function(k){ return m[k]&&m[k].dirty; }).length, t, c="var(--t3)";
+  if(!_adminToken()||!SCRIPT_URL){ t="💾 Données enregistrées dans ce navigateur uniquement (synchronisation réservée à l'admin : ?admin=1)"; }
+  else if(_cfgInfo.etat==="load"){ t="☁️ Synchronisation en cours…"; }
+  else if(_cfgInfo.etat==="erreur"){ t="⚠️ Synchronisation en échec : "+_cfgInfo.msg; c="#E24B4A"; }
+  else if(nd){ t="☁️ "+nd+" modification(s) en attente d'envoi vers le Sheet"; c="var(--amber)"; }
+  else if(_cfgInfo.etat==="sync"){ t="☁️ Contacts, objectifs et historique d'envoi synchronisés avec le Google Sheet"; c="#5DCAA5"; }
+  else { t="☁️ Synchronisation prête"; }
+  document.querySelectorAll(".cfg-badge").forEach(function(e){ e.textContent=t; e.style.color=c; });
+}
+async function _cfgPull(manual){
+  if(!SCRIPT_URL||!_adminToken()){ _cfgBadge(); if(manual) toast("Synchronisation réservée à l'admin (ouvrir le dashboard avec ?admin=1)",true); return; }
+  _cfgInfo.etat="load"; _cfgBadge();
+  var r=await _scriptRead("getConfig",{token:_adminToken()});
+  if(!r||r.status!=="ok"||r.config===undefined){ _cfgInfo.etat="erreur"; _cfgInfo.msg=(r&&r.status==="error"&&r.message)||(r?"MainScript.gs v13 non déployé (action inconnue)":"Apps Script injoignable"); _cfgBadge(); if(manual) toast("Synchronisation impossible : "+_cfgInfo.msg,true); return; }
+  var cfg=r.config||{}, meta=_cfgMeta(), changed=[], pushes=[];
+  Object.keys(SHARED_KEYS).forEach(function(k){
+    var srv=cfg[SHARED_KEYS[k]], loc=localStorage.getItem(k), m=meta[k]||{};
+    var locVide=(loc===null||loc===""||loc==="[]"||loc==="{}");
+    if(srv){
+      if(k==="mc_relances"||k==="mc_relances_p"){
+        var a=_safeJ(loc,{}), b=_safeJ(srv.value,{}), mg=Object.assign({},b);
+        Object.keys(a).forEach(function(x){ if(!(mg[x]>=a[x])) mg[x]=a[x]; });
+        var mgs=JSON.stringify(mg);
+        if(mgs!==loc){ _cfgApply(k,mgs); changed.push(k); }
+        if(mgs!==srv.value) pushes.push(k); else meta[k]={dirty:false,sync:srv.maj};
+      } else if(m.dirty){ pushes.push(k); }
+      else if(!m.sync||srv.maj>m.sync){ if(srv.value!==loc){ _cfgApply(k,srv.value); changed.push(k); } meta[k]={dirty:false,sync:srv.maj}; }
+    } else if(!locVide){ pushes.push(k); }   // migration initiale : on envoie ce que le navigateur contient déjà
+  });
+  _cfgMetaSet(meta);
+  await Promise.all(pushes.map(_cfgPush));
+  if(changed.indexOf("mc_contacts")>=0){ CONTACTS=_safeJ(localStorage.getItem("mc_contacts"),[]); if(TAB==="contacts"){ try{ renderContacts(); }catch(e){} } }
+  if(changed.indexOf("mc_env_obj")>=0||changed.indexOf("mc_env_obj_p")>=0){ try{ _envObjToInputs(); }catch(e){} }
+  _cfgInfo.etat="sync"; _cfgInfo.msg=""; _cfgBadge();
+  if(changed.length) toast("☁️ Configuration synchronisée depuis le Sheet");
+  else if(manual) toast(pushes.length?"☁️ "+pushes.length+" élément(s) envoyé(s) vers le Sheet":"☁️ Déjà à jour");
+}
+
+// ───────────────────────── 1 · ÉVOLUTION & HISTORIQUE ─────────────────────────
+var EVH={rows:null,err:"",loading:false};
+var EV_COL={sem:0,date:1,niv:2,nom:3,wo:4,cl:5,taux:6,w30ec:7,w30o:8,ttr:9,fast:10,reint:11,nps:12,score:13,rang:14,dv:15,reg:16};
+function _evFmtD(t){ var d=new Date(t); return ("0"+d.getDate()).slice(-2)+"/"+("0"+(d.getMonth()+1)).slice(-2); }
+function initEvol(){
+  var reg=document.getElementById("ev-reg");
+  if(reg&&reg.options.length<=1){ var rs={}; WO.forEach(function(r){ if(r._r&&r._r!=="INCONNU") rs[r._r]=1; }); Object.keys(rs).sort().forEach(function(v){ var o=document.createElement("option"); o.value=v; o.textContent=v.replace(/_/g," "); reg.appendChild(o); }); }
+  var ty=document.getElementById("ev-type");
+  if(ty&&ty.options.length<=1){ var ts={}; WO.forEach(function(r){ if(r._t) ts[r._t]=1; }); Object.keys(ts).sort().forEach(function(v){ var o=document.createElement("option"); o.value=v; o.textContent=v; ty.appendChild(o); }); }
+  var pr=document.getElementById("ev-prest");
+  if(pr&&pr.options.length<=1){ var ps={}; WO.forEach(function(r){ if(r._f&&r._f!=="Inconnu"&&_xOf(r)) ps[r._f]=(ps[r._f]||0)+1; }); Object.keys(ps).sort().forEach(function(v){ var o=document.createElement("option"); o.value=v; o.textContent=v; pr.appendChild(o); }); }
+  renderEvol(); if(EVH.rows===null&&!EVH.loading) _evLoadHist();
+}
+function _evParams(){ var g=function(id,d){ var e=document.getElementById(id); return e&&e.value!==""?e.value:d; }; return {aff:g("ev-aff","all"),reg:g("ev-reg",""),type:g("ev-type",""),prest:g("ev-prest",""),n:parseInt(g("ev-n","26"),10)||26}; }
+function _evOk(r,o){ if(o.aff==="ext"&&!_xOf(r)) return false; if(o.aff==="int"&&_xOf(r)) return false; if(o.reg&&r._r!==o.reg) return false; if(o.type&&r._t!==o.type) return false; if(o.prest&&r._f!==o.prest) return false; return true; }
+// Reconstitution de l'historique à partir des dates de création et de fin de tâche (le statut passé exact n'est pas connu : on reconstitue les flux et le stock « ouvert »)
+function _evCompute(o){
+  var maxD=null; WO.forEach(function(r){ if(r._d&&(!maxD||r._d>maxD)) maxD=r._d; }); if(!maxD) return null;
+  var n=o.n, DAY=864e5, step=7*DAY, end=new Date(maxD.getFullYear(),maxD.getMonth(),maxD.getDate(),23,59,59,999).getTime(), p0=end-(n-1)*step;
+  var idx=function(t){ return Math.ceil((t-p0)/step); }, z=function(){ return new Array(n).fill(0); };
+  var wc=z(), wcl=z(), sT=z(), nT=z(), fT=z(), diff=new Array(n+1).fill(0), baseC=0, baseCl=0;
+  WO.forEach(function(r){
+    if(r._e==="AN"||!r._d||!_evOk(r,o)) return;
+    var d=r._d.getTime(), k=idx(d);
+    if(k<=-1) baseC++; else if(k<n) wc[k]++; else return;
+    var closed=(r._e==="CL"), f=d;
+    if(closed){ var F=_fbFin(r); f=(F&&F.getTime()>=d)?F.getTime():d; var kf=idx(f);
+      if(kf<=-1) baseCl++; else if(kf<n){ wcl[kf]++; if(r._ttr!=null){ sT[kf]+=r._ttr; nT[kf]++; if(r._ttr<=7) fT[kf]++; } } }
+    var lo=Math.max(0,idx(d+30*DAY)), hi=closed?Math.min(n,idx(f)):n;
+    if(lo<hi){ diff[lo]++; diff[hi]--; }
+  });
+  var np=z(), nd=z(), nn=z();
+  NPS.forEach(function(r){
+    if(!r._d) return; if(o.reg&&r._r!==o.reg) return; if(o.type&&r._t!==o.type) return; if(o.prest&&r._f!==o.prest) return;
+    if(o.aff==="ext"&&(!r._f||r._f==="Inconnu")) return;
+    var k=idx(r._d.getTime()); if(k<0||k>=n) return; nn[k]++; if(r._cat==="P") np[k]++; else if(r._cat==="D") nd[k]++;
+  });
+  var E={n:n,labels:[],created:wc,closed:wcl,backlog:[],taux:[],open30:[],ttr:[],fast:[],nps:[],maxD:maxD}, c=baseC, cl=baseCl, run=0;
+  for(var i=0;i<n;i++){
+    c+=wc[i]; cl+=wcl[i]; run+=diff[i];
+    E.labels.push(_evFmtD(p0+i*step)); E.backlog.push(c-cl); E.taux.push(c?+(cl/c*100).toFixed(1):null); E.open30.push(run);
+    var a=Math.max(0,i-3), s=0,nt=0,ft=0,P=0,D=0,N=0;
+    for(var j=a;j<=i;j++){ s+=sT[j]; nt+=nT[j]; ft+=fT[j]; P+=np[j]; D+=nd[j]; N+=nn[j]; }
+    E.ttr.push(nt?+(s/nt).toFixed(1):null); E.fast.push(nt?+(ft/nt*100).toFixed(1):null); E.nps.push(N>=5?Math.round((P-D)/N*100):null);
+  }
+  return E;
+}
+function _evLine(id,labels,sets,yfmt,opts){
+  var ctx=document.getElementById(id); if(!ctx) return; dc(id);
+  var tick={color:"rgba(232,234,240,.5)",font:{size:10}};
+  var scales={x:{grid:{display:false},ticks:tick},y:{grid:{color:gc()},ticks:Object.assign({callback:yfmt||function(v){return v;}},tick)}};
+  if(opts&&opts.y1) scales.y1={position:"right",grid:{display:false},ticks:tick};
+  CHARTS[id]=new Chart(ctx,{type:(opts&&opts.type)||"line",data:{labels:labels,datasets:sets},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:sets.length>1,labels:{color:"rgba(232,234,240,.7)",font:{size:10}}}},scales:scales}});
+}
+function renderEvol(){
+  if(!WO.length) return;
+  var o=_evParams(), E=_evCompute(o); if(!E) return; var n=E.n, L=n-1, P=Math.max(0,n-5);
+  var dl=function(arr,low,u){ var a=arr[L],b=arr[P]; if(a===null||b===null||a===undefined||b===undefined) return ""; var d=a-b; if(Math.abs(d)<0.05) return "stable sur 4 sem."; return (d>0?"▲ +":"▼ ")+(Math.round(d*10)/10).toString().replace(".",",")+u+" sur 4 sem."; };
+  var last4=function(a){ var s=0; for(var i=Math.max(0,n-4);i<n;i++) s+=a[i]; return s; };
+  kg("ev-kg",[
+    {l:"WO ouverts (stock)",v:fN(E.backlog[L]),s:dl(E.backlog,true,""),c:"var(--blue)"},
+    {l:"WO ouverts ≥ 30 j",v:fN(E.open30[L]),s:dl(E.open30,true,""),c:"var(--red)"},
+    {l:"Taux de clôture cumulé",v:E.taux[L]===null?"—":E.taux[L].toFixed(1).replace(".",",")+" %",s:dl(E.taux,false," pt"),c:"var(--green)"},
+    {l:"Délai moyen (4 sem.)",v:E.ttr[L]===null?"—":E.ttr[L].toFixed(1).replace(".",",")+" j",s:dl(E.ttr,true," j"),c:"var(--amber)"},
+    {l:"Créés / clôturés (4 sem.)",v:fN(last4(E.created))+" / "+fN(last4(E.closed)),s:last4(E.closed)>=last4(E.created)?"le stock diminue":"le stock augmente",c:"var(--purple)"}
+  ]);
+  var nom=document.getElementById("ev-scope-txt"); if(nom) nom.textContent="Données jusqu'au "+E.maxD.toLocaleDateString("fr-FR")+" — "+fN(WO.filter(function(r){return r._d&&_evOk(r,o);}).length)+" WO dans le périmètre.";
+  var th=function(c){ return {borderColor:c,backgroundColor:c,tension:.3,pointRadius:2,borderWidth:2,spanGaps:true}; };
+  _evLine("ev-c1",E.labels,[{type:"bar",label:"Créés",data:E.created,backgroundColor:"rgba(55,138,221,.7)",borderRadius:3},{type:"bar",label:"Clôturés",data:E.closed,backgroundColor:"rgba(29,158,117,.75)",borderRadius:3},Object.assign({type:"line",label:"Stock ouvert",data:E.backlog,yAxisID:"y1"},th("#E8A317"),{backgroundColor:"transparent"})],null,{type:"bar",y1:true});
+  _evLine("ev-c2",E.labels,[Object.assign({label:"Taux de clôture cumulé %",data:E.taux},th("#1D9E75"))],function(v){return v+"%";});
+  _evLine("ev-c3",E.labels,[Object.assign({label:"WO ouverts ≥ 30 j",data:E.open30},th("#E24B4A"))]);
+  _evLine("ev-c4",E.labels,[Object.assign({label:"Délai moyen (j)",data:E.ttr},th("#378ADD")),Object.assign({label:"Clôturés ≤ 7 j (%)",data:E.fast,yAxisID:"y1"},th("#1D9E75"))],null,{y1:true});
+  _evLine("ev-c5",E.labels,[Object.assign({label:"NPS (4 sem. glissantes)",data:E.nps},th("#8B5CF6"))]);
+  var tb=document.getElementById("ev-tb");
+  if(tb) tb.innerHTML=E.labels.map(function(l,i){ return "<tr><td>"+l+"</td><td>"+fN(E.created[i])+"</td><td>"+fN(E.closed[i])+"</td><td>"+fN(E.backlog[i])+"</td><td>"+fN(E.open30[i])+"</td><td>"+(E.taux[i]===null?"—":E.taux[i].toFixed(1).replace(".",",")+" %")+"</td><td>"+(E.ttr[i]===null?"—":E.ttr[i].toFixed(1).replace(".",","))+"</td><td>"+(E.fast[i]===null?"—":E.fast[i].toFixed(0)+" %")+"</td><td>"+(E.nps[i]===null?"—":E.nps[i])+"</td></tr>"; }).reverse().join("");
+  window._evLast=E;
+  _evRenderHist();
+}
+function evExport(){
+  var E=window._evLast; if(!E){ toast("Rien à exporter",true); return; }
+  var rows=[["Semaine se terminant le","Créés","Clôturés","Stock ouvert","Ouverts ≥30 j","Taux cumulé %","Délai moyen 4 sem. (j)","Clôturés ≤7 j 4 sem. (%)","NPS 4 sem."]];
+  E.labels.forEach(function(l,i){ rows.push([l,E.created[i],E.closed[i],E.backlog[i],E.open30[i],E.taux[i],E.ttr[i],E.fast[i],E.nps[i]]); });
+  var wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),"Évolution"); XLSX.writeFile(wb,"Evolution_"+new Date().toISOString().slice(0,10)+".xlsx");
+}
+async function _evLoadHist(){
+  if(!SCRIPT_URL){ EVH.rows=[]; EVH.err="URL Apps Script non configurée"; _evRenderHist(); return; }
+  EVH.loading=true; var r=await _scriptRead("getHistorique",{}); EVH.loading=false;
+  if(!r||r.status!=="ok"||r.rows===undefined){ EVH.rows=[]; EVH.err=(r&&r.status==="error"&&r.message)||(r?"MainScript.gs v13 non déployé":"Apps Script injoignable"); }
+  else { EVH.rows=r.rows||[]; EVH.err=""; }
+  _evRenderHist();
+}
+function _evRenderHist(){
+  var box=document.getElementById("ev-hist"); if(!box) return;
+  var adm=!!_adminToken();
+  var btn=adm?"<button onclick='evSnapshotNow()' style='padding:6px 12px;background:var(--blue);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer'>📸 Enregistrer le snapshot maintenant</button>":"";
+  if(EVH.rows===null){ box.innerHTML="<p style='color:var(--t3);font-size:12px'>Chargement de l'historique…</p>"; return; }
+  if(!EVH.rows.length){ box.innerHTML="<p style='color:var(--t3);font-size:12px;line-height:1.7'>Aucun snapshot enregistré"+(EVH.err?" ("+_envE(EVH.err)+")":"")+". Le premier s'enregistre automatiquement à la première ouverture du dashboard par l'admin, puis chaque semaine. Il fige les scores et indicateurs du jour : c'est ce qui permet de suivre l'évolution réelle des scores (la reconstitution ci-dessus ne peut pas les recalculer).</p>"+btn; return; }
+  var niv=(document.getElementById("ev-hn")||{}).value||"PREST", met=(document.getElementById("ev-hm")||{}).value||"score";
+  var rows=EVH.rows.filter(function(r){ return r[EV_COL.niv]===niv; });
+  var sems=[]; EVH.rows.forEach(function(r){ if(sems.indexOf(r[0])<0) sems.push(r[0]); }); sems.sort(); var vis=sems.slice(-8);
+  var by={}; rows.forEach(function(r){ var k=r[EV_COL.nom]; (by[k]=by[k]||{})[r[0]]=r[EV_COL[met]]; });
+  var lowBetter=["w30ec","w30o","ttr","reint","dv","rang"].indexOf(met)>=0;
+  var names=Object.keys(by).sort(function(a,b){ var la=by[a][vis[vis.length-1]], lb=by[b][vis[vis.length-1]]; la=(la===""||la===undefined)?(lowBetter?1e9:-1e9):+la; lb=(lb===""||lb===undefined)?(lowBetter?1e9:-1e9):+lb; return lowBetter?la-lb:lb-la; });
+  var cell=function(v){ if(v===""||v===undefined||v===null) return "<td style='color:var(--t3)'>—</td>"; var col=""; if(met==="score") col=v>=75?"#5DCAA5":v>=50?"#F0B94F":"#F09595"; return "<td"+(col?" style='color:"+col+";font-weight:700'":"")+">"+(typeof v==="number"?(Math.round(v*10)/10).toString().replace(".",","):v)+"</td>"; };
+  var head="<tr><th>"+(niv==="PREST"?"Prestataire":niv==="REGION"?"Région":"Périmètre")+"</th>"+vis.map(function(s){ return "<th>"+s.replace(/^\d{4}-/,"")+"</th>"; }).join("")+"<th>Δ</th></tr>";
+  var body=names.slice(0,150).map(function(nm){ var a=by[nm], last=a[vis[vis.length-1]], prev=a[vis[vis.length-2]], d="";
+    if(vis.length>1&&last!==""&&last!==undefined&&prev!==""&&prev!==undefined){ var x=+last-+prev; var good=lowBetter?x<0:x>0; d=Math.abs(x)<0.05?"<span style='color:var(--t3)'>▬</span>":"<span style='color:"+(good?"#5DCAA5":"#F09595")+"'>"+(x>0?"▲ +":"▼ ")+(Math.round(x*10)/10).toString().replace(".",",")+"</span>"; }
+    return "<tr><td>"+_cmpEsc(nm)+"</td>"+vis.map(function(s){ return cell(a[s]); }).join("")+"<td>"+d+"</td></tr>"; }).join("");
+  box.innerHTML="<div style='font-size:11px;color:var(--t3);margin-bottom:8px'>"+sems.length+" snapshot(s) enregistré(s) : "+sems[0]+" → "+sems[sems.length-1]+" · affichage des "+vis.length+" dernières semaines.</div><div class='tscroll' style='max-height:420px'><table><thead>"+head+"</thead><tbody>"+(body||"<tr><td colspan='"+(vis.length+2)+"' style='color:var(--t3)'>Aucune donnée pour ce niveau.</td></tr>")+"</tbody></table></div><div style='margin-top:8px'>"+btn+"</div>";
+}
+function _isoWeekKey(d){ var t=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())), day=t.getUTCDay()||7; t.setUTCDate(t.getUTCDate()+4-day); var y=t.getUTCFullYear(), w=Math.ceil(((t-Date.UTC(y,0,1))/864e5+1)/7); return y+"-S"+(w<10?"0":"")+w; }
+// Snapshot hebdomadaire : situation du jour par prestataire, région, magasin et au national (mêmes définitions que le dashboard)
+function _snapBuild(){
+  var now=new Date(), maxD=null; WO.forEach(function(r){ if(r._d&&(!maxD||r._d>maxD)) maxD=r._d; }); var M=maxD?maxD.getMonth()+1:12;
+  var rd=function(v,k){ return (v===null||v===undefined||v===""||isNaN(v))?"":Math.round(v*(k||10))/(k||10); };
+  var dvBy={}, dvReg={}; QUO.forEach(function(r){ if(!_dvAtt(r)) return; if(r._f) dvBy[r._f]=(dvBy[r._f]||0)+1; if(r._r) dvReg[r._r]=(dvReg[r._r]||0)+1; });
+  var agg=function(list){ var n=0,cl=0,ts=0,tn=0,fs=0,ec=0,op=0; list.forEach(function(r){ n++; if(r._e==="CL"){ cl++; if(r._ttr!=null){ ts+=r._ttr; tn++; if(r._ttr<=7) fs++; } } if(_woEc(r)) ec++; if(r._e!=="CL"&&r._e!=="AN"&&r._age>=30) op++; }); return {n:n,cl:cl,taux:n?cl/n*100:null,ec:ec,op:op,ttr:tn?ts/tn:null,fast:tn?fs/tn*100:null}; };
+  var npsOf=function(f){ var P=0,D=0,N=0; NPS.forEach(function(r){ if(!f(r)) return; N++; if(r._cat==="P") P++; else if(r._cat==="D") D++; }); return N>=5?(P-D)/N*100:""; };
+  var rows=[];
+  var push=function(niv,nom,a,reint,nps,score,rang,dv,reg){ rows.push([niv,nom,a.n,a.cl,rd(a.taux),a.ec,a.op,rd(a.ttr),rd(a.fast),rd(reint),rd(nps,1),rd(score),rang===""?"":rang,dv,reg||""]); };
+  push("NATIONAL","Tous WO",agg(WO),"",npsOf(function(){return true;}),"","",QUO.filter(_dvAtt).length,"");
+  push("NATIONAL","Externes (FR_EXT)",agg(WO.filter(function(r){return _xOf(r);})),"",npsOf(function(r){return r._f&&r._f!=="Inconnu";}),"","","","");
+  push("NATIONAL","Internes",agg(WO.filter(function(r){return !_xOf(r);})),"","","","","","");
+  var regs={}; WO.forEach(function(r){ if(r._r&&r._r!=="INCONNU") (regs[r._r]=regs[r._r]||[]).push(r); });
+  Object.keys(regs).sort().forEach(function(g){ push("REGION",g,agg(regs[g]),"",npsOf(function(r){return r._r===g;}),"","",dvReg[g]||0,g); });
+  var open30By={}, byF={}; WO.forEach(function(r){ var f=r._f; if(!f||f==="Inconnu") return; if(r._e!=="CL"&&r._e!=="AN"&&r._age>=30) open30By[f]=(open30By[f]||0)+1; });
+  var sc=_scCompute({type:"",reg:"",m1:1,m2:M,min:20,w:[30,15,10,20,15,10]},1,M,true,20); sc.sort(function(a,b){return b.score-a.score;});
+  sc.forEach(function(s,i){ var reg=Object.keys(s.regs).sort(function(a,b){return s.regs[b]-s.regs[a];})[0]||"";
+    push("PREST",s.f,{n:s.n,cl:s.cl,taux:s.v[0]===null?null:s.v[0]*100,ec:s.w30,op:open30By[s.f]||0,ttr:s.v[4],fast:s.v[2]===null?null:s.v[2]*100},s.v[1]===null?"":s.v[1]*100,s.v[5],s.score,i+1,dvBy[s.f]||0,reg); });
+  try{ var mp=Object.assign(_smParams(),{type:"",reg:"",cmm:"",m1:1,m2:M,min:20}), sm=_smCompute(mp); sm.sort(function(a,b){return b.score-a.score;});
+    sm.forEach(function(s,i){ push("MAG",s.m,{n:s.n,cl:s.cl,taux:s.v[0]===null?null:s.v[0]*100,ec:"",op:s.w30,ttr:s.v[4],fast:null},s.v[3]===null?"":s.v[3]*100,s.v[5],s.score,i+1,s.dv,s.reg); }); }catch(e){}
+  return {semaine:_isoWeekKey(now),date:now.toISOString().slice(0,10),rows:rows};
+}
+var _snapBusy=false;
+async function _snapSave(){
+  if(_snapBusy) return {ok:false,message:"déjà en cours"}; _snapBusy=true;
+  try{
+    if(!_adminToken()) return {ok:false,message:"Jeton admin requis"};
+    var B=_snapBuild(); var r=await _scriptWrite("saveSnapshot",{semaine:B.semaine,date:B.date,rows:JSON.stringify(B.rows)});
+    if(r.ok){ r.semaine=B.semaine; r.lignes=B.rows.length; await _evLoadHist(); }
+    return r;
+  } finally { _snapBusy=false; }
+}
+async function evSnapshotNow(){
+  if(!_adminToken()){ toast("Réservé à l'admin (?admin=1)",true); return; }
+  if(!WO.length){ toast("Données non chargées",true); return; }
+  toast("📸 Enregistrement du snapshot…"); var r=await _snapSave();
+  toast(r.ok?"📸 Snapshot "+r.semaine+" enregistré ("+r.lignes+" lignes)":"Snapshot non enregistré : "+(r.message||"erreur"),!r.ok);
+}
+// Snapshot automatique : une fois par semaine, à la première ouverture admin (données WO + devis chargées)
+var _snapAutoDone=false, _snapSince=0;
+async function _snapAuto(){
+  if(_snapAutoDone||!SCRIPT_URL||!_adminToken()||!WO.length||!QUO.length) return;
+  if(!_snapSince) _snapSince=Date.now();
+  if(!NPS.length && Date.now()-_snapSince<90000) return;   // on laisse 90 s au NPS pour arriver
+  _snapAutoDone=true;
+  var r=await _scriptRead("getHistorique",{niveau:"NATIONAL"}); if(!r||r.status!=="ok"||r.rows===undefined){ _snapAutoDone=false; _snapSince=Date.now()+60000; return; }
+  var key=_isoWeekKey(new Date()); if((r.rows||[]).some(function(x){ return x[0]===key; })) return;
+  var s=await _snapSave(); if(s.ok) toast("📸 Snapshot hebdomadaire "+s.semaine+" enregistré");
+}
+setInterval(function(){ try{ _snapAuto(); }catch(e){} },20000);
+
+// ───────────────────────── 2 · JOURNAL & EFFICACITÉ DES RELANCES ─────────────────────────
+function _relItemsCmm(g){
+  var it=[]; (g.stores||[]).forEach(function(s){
+    (s.woAtt||[]).forEach(function(r){ if(r["Numéro"]) it.push("W:"+r["Numéro"]+":"+r._e); });
+    (s.woEc||[]).forEach(function(r){ if(r["Numéro"]) it.push("W:"+r["Numéro"]+":"+r._e); });
+    (s.dv||[]).forEach(function(r){ if(r["Numéro"]) it.push("D:"+r["Numéro"]+":"+r._s); });
+  }); return it.slice(0,1000);
+}
+function _relItemsPrest(f){
+  var it=[]; WO.forEach(function(r){ if(r._f===f&&_woEc(r)&&r["Numéro"]) it.push("W:"+r["Numéro"]+":"+r._e); }); return it.slice(0,1000);
+}
+function _relLog(type,cible,dest,motifs,items,nb){
+  return _scriptWrite("logRelance",{type:type,cible:cible,dest:dest,motifs:motifs||"",nb:String(nb!=null?nb:items.length),items:JSON.stringify(items||[])},10);
+}
+var EFF={rows:null,err:"",loading:false};
+async function efLoad(force){
+  if(EFF.loading) return; if(EFF.rows!==null&&!force){ renderEfficacite(); return; }
+  if(!SCRIPT_URL||!_adminToken()){ EFF.rows=[]; EFF.err="Journal réservé à l'admin (ouvrir le dashboard avec ?admin=1)."; renderEfficacite(); return; }
+  EFF.loading=true; var h=document.getElementById("ef-status"); if(h) h.textContent="Chargement du journal…";
+  var r=await _scriptRead("getRelances",{token:_adminToken()}); EFF.loading=false;
+  if(!r||r.status!=="ok"||r.relances===undefined){ EFF.rows=[]; EFF.err=(r&&r.status==="error"&&r.message)||(r?"MainScript.gs v13 non déployé":"Apps Script injoignable"); } else { EFF.rows=r.relances||[]; EFF.err=""; }
+  renderEfficacite();
+}
+var _effIdx={n:-1,wo:null,quo:null};
+function _effIndex(){ if(_effIdx.n!==WO.length+":"+QUO.length){ var w=new Map(), q=new Map(); WO.forEach(function(r){ if(r["Numéro"]) w.set(r["Numéro"],r); }); QUO.forEach(function(r){ if(r["Numéro"]) q.set(r["Numéro"],r); }); _effIdx={n:WO.length+":"+QUO.length,wo:w,quo:q}; } return _effIdx; }
+// Résultat d'une relance au regard des données actuelles
+function _effOne(rel){
+  var ix=_effIndex(), items=_safeJ(rel.items,[]), age=(Date.now()-rel.ts)/864e5, tot=0, done=0, d7=0, d14=0, wTot=0, delays=[], evo=0;
+  items.forEach(function(s){ var p=String(s).split(":"), kind=p[0], num=p[1], st=p[2];
+    if(kind==="W"){ var r=ix.wo.get(num); if(!r) return; tot++; wTot++;
+      if(r._e==="CL"||r._e==="AN"){ done++; var F=_fbFin(r), d=F?Math.max(0,(F.getTime()-rel.ts)/864e5):0; if(r._e==="CL") delays.push(d); if(d<=7) d7++; if(d<=14) d14++; }
+      else if(r._e!==st) evo++; }
+    else if(kind==="D"){ var q=ix.quo.get(num); if(!q) return; tot++; if(q._s!=="AT"&&q._s!=="ATDA") done++; else if(q._s!==st) evo++; } });
+  var pct=tot?done/tot*100:null, verdict="";
+  if(!tot) verdict="n/d"; else if(age<7) verdict="en cours"; else if(pct>=60) verdict="efficace"; else if(pct>=30||age<14) verdict="partiel"; else verdict="sans effet";
+  delays.sort(function(a,b){return a-b;});
+  return {tot:tot,done:done,pct:pct,d7:wTot&&age>=7?d7/wTot*100:null,d14:wTot&&age>=14?d14/wTot*100:null,med:delays.length?delays[Math.floor(delays.length/2)]:null,age:age,verdict:verdict,evo:evo};
+}
+function _effCompute(){
+  var typ=(document.getElementById("ef-type")||{}).value||"", per=parseInt((document.getElementById("ef-per")||{}).value||"90",10)||90, lim=Date.now()-per*864e5;
+  var L=(EFF.rows||[]).filter(function(r){ return r.type!=="RPM"&&(!typ||r.type===typ)&&r.ts>=lim; }).map(function(r){ return Object.assign({},r,{e:_effOne(r)}); });
+  L.sort(function(a,b){ return b.ts-a.ts; });
+  var byC={}; L.forEach(function(r){ (byC[r.type+"|"+r.cible]=byC[r.type+"|"+r.cible]||[]).push(r); });
+  var rep=Object.keys(byC).map(function(k){ var a=byC[k]; return {k:k,type:a[0].type,cible:a[0].cible,n:a.length,last:a[0],last_pct:a[0].e.pct}; })
+    .filter(function(x){ return x.n>=2&&x.last.e.tot>0&&(x.last.e.verdict==="sans effet"||x.last.e.verdict==="partiel"); }).sort(function(a,b){ return b.n-a.n; });
+  return {L:L,rep:rep,per:per};
+}
+function renderEfficacite(){
+  var tb=document.getElementById("ef-tb"); if(!tb) return;
+  var st=document.getElementById("ef-status");
+  if(EFF.rows===null){ efLoad(false); return; }
+  if(st) st.textContent=EFF.err?EFF.err:(EFF.rows.length+" relance(s) dans le journal.");
+  var C=_effCompute(), L=C.L, mes=L.filter(function(r){ return r.e.tot>0&&r.e.age>=7; });
+  var avg=mes.length?mes.reduce(function(a,r){return a+r.e.pct;},0)/mes.length:null;
+  var tot=L.reduce(function(a,r){return a+r.e.tot;},0), done=L.reduce(function(a,r){return a+r.e.done;},0);
+  kg("ef-kg",[
+    {l:"Relances envoyées",v:fN(L.length),s:"sur "+C.per+" jours",c:"var(--blue)"},
+    {l:"Éléments visés",v:fN(tot),s:fN(done)+" traités depuis",c:"var(--purple)"},
+    {l:"Taux de traitement moyen",v:avg===null?"—":avg.toFixed(0)+" %",s:"relances de plus de 7 jours",c:avg===null?"var(--t3)":avg>=60?"var(--green)":avg>=30?"var(--amber)":"var(--red)"},
+    {l:"Efficaces (≥ 60 %)",v:fN(mes.filter(function(r){return r.e.verdict==="efficace";}).length),s:"",c:"var(--green)"},
+    {l:"Sans effet (< 30 %, > 14 j)",v:fN(L.filter(function(r){return r.e.verdict==="sans effet";}).length),s:"à escalader",c:"var(--red)"}
+  ]);
+  var pill=function(v){ var c={"efficace":"pg","partiel":"pa","sans effet":"pr"}[v]||""; return "<span class='pill "+c+"'>"+v+"</span>"; };
+  var pc=function(v){ return v===null?"—":Math.round(v)+" %"; };
+  tb.innerHTML=L.map(function(r){ var e=r.e; return "<tr><td>"+new Date(r.ts).toLocaleDateString("fr-FR")+"</td><td>"+(r.type==="PREST"?"Prestataire":"CMM")+"</td><td><b>"+_cmpEsc(r.cible)+"</b></td><td>"+fN(e.tot)+"</td><td>"+fN(e.done)+"</td><td>"+pc(e.pct)+"</td><td>"+pc(e.d7)+"</td><td>"+pc(e.d14)+"</td><td>"+(e.med===null?"—":e.med.toFixed(0)+" j")+"</td><td>"+pill(e.verdict)+"</td></tr>"; }).join("")
+    || "<tr><td colspan='10' style='color:var(--t3);padding:10px'>"+(EFF.err?_envE(EFF.err):"Aucune relance enregistrée sur la période. Chaque relance envoyée depuis cet onglet est désormais journalisée automatiquement.")+"</td></tr>";
+  var rb=document.getElementById("ef-rep");
+  if(rb) rb.innerHTML=C.rep.length?"<table><thead><tr><th>Type</th><th>Cible</th><th>Relances</th><th>Dernière</th><th>Traité</th></tr></thead><tbody>"+C.rep.map(function(x){ return "<tr><td>"+(x.type==="PREST"?"Prestataire":"CMM")+"</td><td><b>"+_cmpEsc(x.cible)+"</b></td><td>"+x.n+"</td><td>"+new Date(x.last.ts).toLocaleDateString("fr-FR")+"</td><td>"+pc(x.last_pct)+"</td></tr>"; }).join("")+"</tbody></table><div style='font-size:10px;color:var(--t3);margin-top:6px'>Relancés au moins deux fois sans amélioration notable : passer par le RPM, un point direct ou la revue contractuelle plutôt que renvoyer le même mail.</div>":"<p style='color:var(--t3);font-size:12px'>Aucune cible relancée plusieurs fois sans effet sur la période.</p>";
+  window._effLast=C;
+}
+function efExport(){
+  var C=window._effLast; if(!C||!C.L.length){ toast("Rien à exporter",true); return; }
+  var rows=[["Date","Type","Cible","Destinataire","Éléments visés","Traités","Taux %","Traités ≤7 j %","Traités ≤14 j %","Délai médian (j)","Verdict","Motifs"]];
+  C.L.forEach(function(r){ var e=r.e; rows.push([new Date(r.ts).toLocaleDateString("fr-FR"),r.type,r.cible,r.dest,e.tot,e.done,e.pct===null?"":Math.round(e.pct),e.d7===null?"":Math.round(e.d7),e.d14===null?"":Math.round(e.d14),e.med===null?"":Math.round(e.med),e.verdict,r.motifs]); });
+  var wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),"Efficacité relances"); XLSX.writeFile(wb,"Efficacite_relances_"+new Date().toISOString().slice(0,10)+".xlsx");
+}
+
+// ───────────────────────── 7 · QUALITÉ DES DONNÉES ─────────────────────────
+var _qdList={};
+function _qdChecks(){
+  var today=Date.now(), C=[], add=function(id,groupe,titre,grav,n,total,impact,cols,rowsFn){ var rows=n?rowsFn():[]; C.push({id:id,groupe:groupe,titre:titre,grav:n?grav:"ok",n:n,total:total,impact:impact,cols:cols,rowsFn:function(){ return rows; }}); };   // lignes figées à la création du contrôle
+  var wl=function(r){ return [r["Numéro"]||"",r._d?r._d.toLocaleDateString("fr-FR"):"",r["Compte"]||"",r["Groupe d'affectation"]||"",r._e||""]; }, wc=["N° WO","Créé le","Magasin (compte)","Groupe d'affectation","Statut"];
+  var f=function(fn){ return WO.filter(fn); };
+  var a;
+  a=f(function(r){ return !r._m; }); add("wo_mag","Demandes (WO)","WO sans magasin identifié","crit",a.length,WO.length,"Absents des alertes CMM, du score magasin et des rapports magasin.",wc,function(){return a.map(wl);});
+  a=f(function(r){ return !r._r||r._r==="INCONNU"; }); add("wo_reg","Demandes (WO)","WO sans région","warn",a.length,WO.length,"Hors filtres et classements par région.",wc,function(){return a.map(wl);});
+  a=f(function(r){ return !String(r["Groupe d'affectation"]||"").trim(); }); add("wo_grp","Demandes (WO)","WO sans groupe d'affectation","warn",a.length,WO.length,"Impossible de dire si c'est une équipe interne ou un prestataire.",wc,function(){return a.map(wl);});
+  a=f(function(r){ return _xOf(r)&&(!r._f||r._f==="Inconnu"); }); add("wo_ext","Demandes (WO)","WO externes (FR_EXT) sans prestataire reconnu","crit",a.length,WO.length,"Non comptés dans le score et les rapports prestataire.",wc,function(){return a.map(wl);});
+  a=f(function(r){ if(r._e!=="CL") return false; var F=_fbFin(r); return !F||(r._d&&F<r._d); }); add("wo_fin","Demandes (WO)","WO clôturés sans fin de tâche valide (absente ou avant la création)","warn",a.length,WO.length,"Délais de résolution et réinterventions faussés.",wc,function(){return a.map(wl);});
+  a=f(function(r){ return !r._d||r._d.getTime()>today+864e5; }); add("wo_date","Demandes (WO)","WO avec date de création invalide ou dans le futur","crit",a.length,WO.length,"Exclus des calculs par mois et par période.",wc,function(){return a.map(wl);});
+  var seen={}, dup={}; WO.forEach(function(r){ var n=r["Numéro"]; if(!n) return; if(seen[n]) dup[n]=1; seen[n]=1; });
+  a=f(function(r){ return dup[r["Numéro"]]; }); add("wo_dup","Demandes (WO)","Numéros de WO en doublon","warn",a.length,WO.length,"Volumes et taux légèrement gonflés (à vérifier à la source ou sur la fusion Hyper/Market).",wc,function(){return a.map(wl);});
+  a=f(function(r){ return r._e!=="CL"&&r._e!=="AN"&&r._age>365; }); add("wo_old","Demandes (WO)","WO ouverts depuis plus d'un an","info",a.length,WO.length,"Probablement à clôturer ou annuler dans ServiceNow : ils alourdissent le stock ≥ 30 j.",wc,function(){return a.map(wl);});
+  a=f(function(r){ return !String(r["Équipement"]||"").trim(); }); add("wo_eq","Demandes (WO)","WO sans équipement renseigné","info",a.length,WO.length,"Exclus de l'analyse des équipements à interventions répétées.",wc,function(){return a.map(wl);});
+  var qc=["N° devis","Créé le","Compte","Prestataire","Statut","Coût (€)"], ql=function(r){ return [r["Numéro"]||"",r._d?r._d.toLocaleDateString("fr-FR"):"",r["Compte"]||"",r._f||"",r._s||"",Math.round(r._c||0)]; };
+  a=QUO.filter(function(r){ return !r._f||r._f==="Inconnu"; }); add("q_prest","Devis","Devis sans prestataire reconnu","warn",a.length,QUO.length,"Hors budgets et classements par prestataire.",qc,function(){return a.map(ql);});
+  a=QUO.filter(function(r){ return r._s==="APP"&&!(r._c>0); }); add("q_cout","Devis","Devis approuvés avec coût nul ou négatif","warn",a.length,QUO.length,"Budget sous-estimé.",qc,function(){return a.map(ql);});
+  var woNums=_effIndex().wo; a=QUO.filter(function(r){ var n=r["Numéro_1"]; return n&&!woNums.has(n); }); add("q_orph","Devis","Devis rattachés à un WO absent des données","info",a.length,QUO.length,"WO hors période chargée ou export WO incomplet.",qc,function(){return a.map(ql);});
+  // Mapping magasin → CMM / RPM et contacts
+  var bddOk=(CMM_MAP_ENTRIES||[]).length>0;
+  if(!bddOk){ C.push({id:"bdd",groupe:"Rattachement et contacts",titre:"Feuille BDD (magasin → CMM / RPM) non chargée",grav:"warn",n:1,total:1,impact:"Relances CMM et rapports par CMM indisponibles.",cols:["Info"],rowsFn:function(){ return [["La feuille BDD est absente ou vide dans le Google Sheet."]]; }}); }
+  else {
+    var mags={}; WO.forEach(function(r){ if(r._m&&!r._cmm) mags[r._m]=(mags[r._m]||0)+1; });
+    a=Object.keys(mags); add("m_cmm","Rattachement et contacts","Magasins (présents dans les WO) sans CMM dans la BDD","crit",a.length,Object.keys(WO.reduce(function(o,r){ if(r._m) o[r._m]=1; return o; },{})).length,"Aucune relance CMM possible pour ces magasins.",["Magasin","Nb WO"],function(){ return a.map(function(m){return [m,mags[m]];}).sort(function(x,y){return y[1]-x[1];}); });
+    var cm={}; CMM_MAP_ENTRIES.forEach(function(e){ if(e.cmm&&!_rlMailCmm(e.cmm)) cm[e.cmm]=1; }); a=Object.keys(cm); add("c_mail","Rattachement et contacts","CMM sans adresse mail","crit",a.length,Object.keys(CMM_MAP_ENTRIES.reduce(function(o,e){ if(e.cmm) o[e.cmm]=1; return o; },{})).length,"Relance impossible tant que l'adresse n'est pas renseignée (BDD ou saisie dans Relances).",["CMM"],function(){ return a.map(function(x){return [x];}); });
+    var rm={}; CMM_MAP_ENTRIES.forEach(function(e){ if(e.rpm&&!_rlMailRpm(e.rpm)) rm[e.rpm]=1; }); a=Object.keys(rm); add("r_mail","Rattachement et contacts","RPM sans adresse mail","warn",a.length,Object.keys(CMM_MAP_ENTRIES.reduce(function(o,e){ if(e.rpm) o[e.rpm]=1; return o; },{})).length,"Pas de copie ni de récapitulatif régional.",["RPM"],function(){ return a.map(function(x){return [x];}); });
+  }
+  var act={}, lim=today-90*864e5; WO.forEach(function(r){ if(r._f&&r._f!=="Inconnu"&&_xOf(r)&&r._d&&r._d.getTime()>=lim) act[r._f]=(act[r._f]||0)+1; });
+  var names=Object.keys(act); a=names.filter(function(nm){ var c=_rlpContact(nm); return !(c&&c.email)&&!(_rlLS("mc_mail_ov")["prest:"+nm]); });
+  add("p_mail","Rattachement et contacts","Prestataires actifs (90 j) sans adresse mail dans Contacts","crit",a.length,names.length,"Rapports et relances prestataire impossibles à envoyer.",["Prestataire","WO sur 90 j"],function(){ return a.map(function(x){return [x,act[x]];}).sort(function(x,y){return y[1]-x[1];}); });
+  var all={}; WO.forEach(function(r){ if(r._f) all[r._f]=1; });
+  a=(CONTACTS||[]).filter(function(c){ var k=c.groupe||c.nom; return k&&!all[k]&&!all[c.nom]; }); add("p_orph","Rattachement et contacts","Contacts dont le prestataire n'apparaît plus dans les WO","info",a.length,(CONTACTS||[]).length,"Contact probablement obsolète ou nom différent de celui de ServiceNow.",["Contact","Groupe","Mail"],function(){ return a.map(function(c){return [c.nom||"",c.groupe||"",c.email||""];}); });
+  // Fraîcheur et sources
+  var maxD=null; WO.forEach(function(r){ if(r._d&&(!maxD||r._d>maxD)) maxD=r._d; });
+  var ageJ=maxD?Math.floor((today-maxD.getTime())/864e5):null;
+  add("fresh","Fraîcheur et sources","Dernier WO créé il y a plus de 4 jours","warn",ageJ!==null&&ageJ>4?1:0,1,"Les exports ServiceNow ne sont peut-être pas à jour (dernier WO créé le "+(maxD?maxD.toLocaleDateString("fr-FR"):"?")+").",["Info"],function(){ return [["Dernier WO créé le "+(maxD?maxD.toLocaleDateString("fr-FR"):"?")+" ("+ageJ+" j)"]]; });
+  add("src_nps","Fraîcheur et sources","Aucune donnée NPS chargée","warn",NPS.length?0:1,1,"Critère NPS ignoré dans les scores.",["Info"],function(){ return [["Fichier NPS absent ou illisible"]]; });
+  add("src_prev","Fraîcheur et sources","Aucune donnée de maintenance préventive chargée","warn",PREV.length?0:1,1,"Rapports prestataire sans bloc préventif.",["Info"],function(){ return [["Fichier préventif absent ou illisible"]]; });
+  return C;
+}
+function renderQualite(){
+  var box=document.getElementById("qd-tb"); if(!box) return;
+  if(!WO.length){ box.innerHTML="<tr><td colspan='6' style='color:var(--t3);padding:10px'>Chargez d'abord les données.</td></tr>"; return; }
+  var C=_qdChecks(); _qdList={}; C.forEach(function(c){ _qdList[c.id]=c; });
+  var nc=C.filter(function(c){return c.grav==="crit";}).length, nw=C.filter(function(c){return c.grav==="warn";}).length, ni=C.filter(function(c){return c.grav==="info";}).length, no=C.filter(function(c){return c.grav==="ok";}).length;
+  kg("qd-kg",[{l:"Contrôles réalisés",v:C.length,s:"",c:"var(--blue)"},{l:"Conformes",v:no,s:"",c:"var(--green)"},{l:"À corriger (critique)",v:nc,s:"impact direct sur les relances/scores",c:"var(--red)"},{l:"À surveiller",v:nw,s:"",c:"var(--amber)"},{l:"Pour information",v:ni,s:"",c:"var(--t3)"}]);
+  var pill={ok:"<span class='pill pg'>OK</span>",info:"<span class='pill'>Info</span>",warn:"<span class='pill pa'>À surveiller</span>",crit:"<span class='pill pr'>Critique</span>"};
+  var ord={crit:0,warn:1,info:2,ok:3}, grp="";
+  C.sort(function(a,b){ return ord[a.grav]-ord[b.grav]; });
+  box.innerHTML=C.map(function(c){ return "<tr><td>"+pill[c.grav]+"</td><td style='color:var(--t3);font-size:10px'>"+_envE(c.groupe)+"</td><td>"+_envE(c.titre)+"</td><td><b>"+fN(c.n)+"</b>"+(c.total?"<span style='color:var(--t3)'> / "+fN(c.total)+"</span>":"")+"</td><td style='font-size:11px;color:var(--t2)'>"+_envE(c.n?c.impact:"—")+"</td><td>"+(c.n?"<button onclick=\"qdDetail('"+c.id+"')\" style='padding:3px 9px;font-size:10px;background:transparent;color:#90c4f5;border:1px solid rgba(55,138,221,.3);border-radius:5px;cursor:pointer'>Voir</button>":"")+"</td></tr>"; }).join("");
+}
+function qdDetail(id){
+  var c=_qdList[id]; if(!c) return; var rows=c.rowsFn(), box=document.getElementById("qd-detail");
+  if(!box) return; box.style.display="";
+  box.innerHTML="<div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:6px'><div class='ct' style='margin:0'>"+_envE(c.titre)+" — "+fN(rows.length)+" ligne(s)"+(rows.length>200?" (200 premières affichées)":"")+"</div><div><button onclick=\"qdExport('"+id+"')\" style='padding:4px 10px;font-size:10px;background:var(--blue);color:#fff;border:none;border-radius:5px;cursor:pointer'>⬇ Excel (liste complète)</button> <button onclick=\"document.getElementById('qd-detail').style.display='none'\" style='padding:4px 10px;font-size:10px;background:transparent;color:var(--t2);border:1px solid var(--border);border-radius:5px;cursor:pointer'>✕</button></div></div><div class='tscroll' style='max-height:380px'><table><thead><tr>"+c.cols.map(function(h){return "<th>"+_envE(h)+"</th>";}).join("")+"</tr></thead><tbody>"+rows.slice(0,200).map(function(r){ return "<tr>"+r.map(function(v){return "<td>"+_envE(v)+"</td>";}).join("")+"</tr>"; }).join("")+"</tbody></table></div>";
+  box.scrollIntoView({behavior:"smooth",block:"nearest"});
+}
+function qdExport(id){ var c=_qdList[id]; if(!c) return; var wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([c.cols].concat(c.rowsFn().slice(0,50000))),"Contrôle"); XLSX.writeFile(wb,"Qualite_"+id+"_"+new Date().toISOString().slice(0,10)+".xlsx"); }
+function qdExportAll(){
+  var C=_qdChecks(), wb=XLSX.utils.book_new(), s=[["Contrôle","Gravité","Nb","Total","Impact"]]; C.forEach(function(c){ s.push([c.titre,c.grav,c.n,c.total,c.impact]); });
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(s),"Synthèse");
+  C.filter(function(c){return c.n&&c.cols.length>1;}).forEach(function(c){ XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([c.cols].concat(c.rowsFn().slice(0,20000))),c.id.slice(0,28)); });
+  XLSX.writeFile(wb,"Qualite_donnees_"+new Date().toISOString().slice(0,10)+".xlsx");
+}
+
+setTimeout(function(){ try{ _cfgBadge(); _cfgPull(false); }catch(e){} },1200);
 
 function buildExcelWB(data, kpi){
   var wb = XLSX.utils.book_new();
@@ -6108,6 +7163,7 @@ function rapportMagasin(mag){
         H.push("</tbody></table>");
       }
 
+      H.push(_smBlockHtml(mag));
       H.push("<div class='footer'><span>Carrefour — Direction Technique France</span><span>"+now+"</span></div>");
       H.push("</body></html>");
 
@@ -7108,6 +8164,32 @@ function _fbPairs(win, mode, excl){
   return val;
 }
 
+// Équipements à interventions répétées : même magasin + même équipement (nom), hors libellés génériques.
+// mine(r) filtre les WO/devis concernés ; byF=true regroupe aussi par prestataire. Coût = devis approuvés (APP) liés au même couple.
+var EQ_MIN_DEF=3;
+function _eqMin(){ var e=document.getElementById("sc-eqmin"); var v=e?parseInt(e.value,10):NaN; return v>=2?v:EQ_MIN_DEF; }
+function _eqRepeats(mine, minN, byF){
+  var G={}, kf=function(r){ return (byF?r._f+"||":"")+r._m+"||"+_cmpKey(_cmpEq(r)); };
+  WO.forEach(function(r){
+    if(r._e==="AN"||!r._m||!mine(r)) return;
+    var eq=_cmpEq(r); if(!eq||FB_GENERIC.test(eq)) return;
+    var k=kf(r), a=G[k]||(G[k]={f:r._f,m:r._m,eq:eq,n:0,last:null,first:null,cout:0,ouverts:0,cl:0});
+    a.n++; if(r._e==="CL") a.cl++; else a.ouverts++;
+    if(r._d){ if(!a.last||r._d>a.last) a.last=r._d; if(!a.first||r._d<a.first) a.first=r._d; }
+  });
+  QUO.forEach(function(r){
+    if(r._s!=="APP"||!r._m||!mine(r)) return;
+    var eq=_cmpEq(r); if(!eq) return; var a=G[kf(r)]; if(a) a.cout+=(r._c||0);
+  });
+  return Object.keys(G).map(function(k){return G[k];}).filter(function(a){return a.n>=minN;}).sort(function(a,b){return b.n-a.n||b.cout-a.cout;});
+}
+function _eqTableHtml(list, max, style){
+  if(!list.length) return "";
+  var th=style&&style.th||"", td=style&&style.td||"", h="<table width='100%' cellspacing='0' style='border-collapse:collapse'><thead><tr><th style='"+th+"'>Magasin</th><th style='"+th+"'>Équipement</th><th style='"+th+";text-align:right'>Interventions</th><th style='"+th+";text-align:right'>Dernière</th><th style='"+th+";text-align:right'>Devis approuvés</th></tr></thead><tbody>";
+  list.slice(0,max).forEach(function(a){ h+="<tr><td style='"+td+"'>"+_envE(a.m)+"</td><td style='"+td+"'>"+_envE(a.eq)+"</td><td style='"+td+";text-align:right;font-weight:bold'>"+a.n+"</td><td style='"+td+";text-align:right'>"+(a.last?a.last.toLocaleDateString("fr-FR"):"—")+"</td><td style='"+td+";text-align:right'>"+(a.cout?_envE(fmt(a.cout)):"—")+"</td></tr>"; });
+  if(list.length>max) h+="<tr><td colspan='5' style='"+td+";color:#888'>… et "+(list.length-max)+" autre(s) équipement(s) (liste complète dans le fichier Excel)</td></tr>";
+  return h+"</tbody></table>";
+}
 function _fbMedian(a){ if(!a.length) return null; var s=a.slice().sort(function(x,y){return x-y;}), m=Math.floor(s.length/2); return s.length%2?s[m]:(s[m-1]+s[m])/2; }
 function _fbPct(v){ return v.toFixed(1).replace(".",",")+"%"; }
 
@@ -7358,7 +8440,7 @@ function fbOpenPCDetail(i){
 // ═══════════════════════════════════════════════════════════════
 // SCORE PRESTATAIRE — 6 critères notés par rang, moyenne pondérée
 // ═══════════════════════════════════════════════════════════════
-var SC_NOMS=["Taux de clôture","Réinterventions à 30 j","Devis en attente > 7 j","WO en attente / en cours ≥ 30 j","Délai moyen de résolution","NPS"];
+var SC_NOMS=["Taux de clôture","Réinterventions à 30 j","Réactivité : clôturés sous 7 j","WO en cours / assignés ≥ 30 j","Délai moyen de résolution","NPS"];
 var _scRows=[], _scSel="", _scCtx={};
 function _scLevel(s){ return s>=75?{t:"Bon",c:"pg",col:"#1D9E75"}:s>=50?{t:"À surveiller",c:"pa",col:"#BA7517"}:{t:"Critique",c:"pr",col:"#E24B4A"}; }
 
@@ -7380,18 +8462,18 @@ function initScore(){
 function _scParams(){
   var g=function(id,d){ var e=document.getElementById(id); return e?e.value:d; };
   var m1=parseInt(g("sc-m1","1"),10)||1, m2=parseInt(g("sc-m2","12"),10)||12; if(m2<m1){var t=m1;m1=m2;m2=t;}
-  var w=[25,20,15,15,15,10].map(function(d,i){ var v=parseFloat(g("sc-w"+(i+1),String(d))); return isNaN(v)||v<0?0:v; });
+  var w=[30,15,10,20,15,10].map(function(d,i){ var v=parseFloat(g("sc-w"+(i+1),String(d))); return isNaN(v)||v<0?0:v; });
   return {type:g("sc-type",""), reg:g("sc-reg",""), m1:m1, m2:m2, min:parseInt(g("sc-min","20"),10)||1, w:w, sort:g("sc-sort","desc")};
 }
 // Calcule les métriques par prestataire puis les notes. useStock=false : uniquement les critères « flux » (pour la tendance).
 function _scCompute(o, m1, m2, useStock, minWO){
-  var S={}, G=function(f){ return S[f]||(S[f]={f:f,n:0,cl:0,ts:0,tn:0,el:0,rep:0,dv:0,w30:0,np:0,nd:0,nn:0,types:{},regs:{}}); };
+  var S={}, G=function(f){ return S[f]||(S[f]={f:f,n:0,cl:0,ts:0,tn:0,fast:0,el:0,rep:0,w30:0,np:0,nd:0,nn:0,types:{},regs:{}}); };
   WO.forEach(function(r){
     var f=r._f; if(!f||f==="Inconnu") return;
     if(o.type && r._t!==o.type) return; if(o.reg && r._r!==o.reg) return;
-    if(useStock && (_woAtt(r)||_woEc(r))) G(f).w30++;
+    if(useStock && _woEc(r)) G(f).w30++;
     if(!r._d) return; var m=r._d.getMonth()+1; if(m<m1||m>m2) return;
-    var s=G(f); s.n++; if(r._e==="CL"){ s.cl++; if(r._ttr!=null){ s.ts+=r._ttr; s.tn++; } }
+    var s=G(f); s.n++; if(r._e==="CL"){ s.cl++; if(r._ttr!=null){ s.ts+=r._ttr; s.tn++; if(r._ttr<=7) s.fast++; } }
     s.types[r._t]=(s.types[r._t]||0)+1; s.regs[r._r]=(s.regs[r._r]||0)+1;
   });
   var P=_fbPairs(30,"strict",true);
@@ -7401,7 +8483,6 @@ function _scCompute(o, m1, m2, useStock, minWO){
     var m=p.F.getMonth()+1; if(m<m1||m>m2) return;
     var s=G(f); s.el++; if(p.rep) s.rep++;
   });
-  if(useStock) QUO.forEach(function(r){ if(!_dvAtt(r)) return; var f=r._f; if(!f||f==="Inconnu") return; if(o.type&&r._t!==o.type) return; if(o.reg&&r._r!==o.reg) return; G(f).dv++; });
   NPS.forEach(function(r){
     var f=r._f; if(!f||f==="Inconnu"||!r._d) return; if(o.type&&r._t!==o.type) return; if(o.reg&&r._r!==o.reg) return;
     var m=r._d.getMonth()+1; if(m<m1||m>m2) return;
@@ -7409,9 +8490,9 @@ function _scCompute(o, m1, m2, useStock, minWO){
   });
   var L=Object.keys(S).map(function(k){return S[k];}).filter(function(s){return s.n>=minWO;});
   L.forEach(function(s){
-    s.v=[ s.n?s.cl/s.n:null, s.el>=5?s.rep/s.el:null, useStock?s.dv/s.n*100:null, useStock?s.w30/s.n*100:null, s.tn>=3?s.ts/s.tn:null, s.nn>=5?(s.np-s.nd)/s.nn*100:null ];
+    s.v=[ s.n?s.cl/s.n:null, s.el>=5?s.rep/s.el:null, s.tn>=3?s.fast/s.tn:null, useStock?s.w30/s.n*100:null, s.tn>=3?s.ts/s.tn:null, s.nn>=5?(s.np-s.nd)/s.nn*100:null ];
   });
-  var higher=[true,false,false,false,false,true];
+  var higher=[true,false,true,false,false,true];
   var notes=L.map(function(){return [];});
   for(var k=0;k<6;k++){
     var idx=[], vals=[];
@@ -7459,11 +8540,11 @@ function renderScore(){
     var lv=_scLevel(s.score), t=s.trend, ft=Object.keys(s.types).sort(function(a,b){return s.types[b]-s.types[a];}).slice(0,2).join(" + ");
     var tr_= t===null?"<span style='color:var(--t3)'>—</span>":(Math.abs(t)<1?"<span style='color:var(--t3)'>▬ 0</span>":(t>0?"<span style='color:#5DCAA5'>▲ +":"<span style='color:#F09595'>▼ −")+Math.abs(Math.round(t))+"</span>");
     var cell=function(k,txt){ return "<td style='color:"+cn(s.notes[k])+"' title='Note "+(s.notes[k]===null?"n/d":Math.round(s.notes[k]))+" / 100'>"+txt+"</td>"; };
-    return "<tr style='cursor:pointer' onclick='scSelect(_scRows["+(s.rank-1)+"].f,true)'><td class='trank'>"+s.rank+"</td><td style='color:var(--blue)'>"+_cmpEsc(s.f)+"</td><td style='font-size:10px;color:var(--t3)'>"+_cmpEsc(ft)+"</td><td>"+fN(s.n)+"</td>"
+    return "<tr style='cursor:pointer' onclick='scSelect(_scRows["+(s.rank-1)+"].f,true)'><td class='trank'><input type='checkbox' class='sc-chk' data-f=\""+_cmpEsc(s.f)+"\" onclick='event.stopPropagation()' style='margin-right:4px'>"+s.rank+"</td><td style='color:var(--blue)'>"+_cmpEsc(s.f)+"</td><td style='font-size:10px;color:var(--t3)'>"+_cmpEsc(ft)+"</td><td>"+fN(s.n)+"</td>"
       +"<td><div style='display:flex;align-items:center;gap:6px;min-width:100px'><b style='width:22px;text-align:right'>"+Math.round(s.score)+"</b><div style='flex:1;height:6px;background:rgba(128,128,128,.25);border-radius:3px'><div style='width:"+Math.round(s.score)+"%;height:6px;border-radius:3px;background:"+lv.col+"'></div></div></div></td>"
       +"<td><span class='pill "+lv.c+"'>"+lv.t+"</span></td><td>"+tr_+"</td>"
       +cell(0,fv(s.v[0],function(v){return _fbPct(v*100);}))+cell(1,fv(s.v[1],function(v){return _fbPct(v*100);}))
-      +cell(2,fv(s.v[2],function(v){return v.toFixed(1).replace(".",",")+" <span style='color:var(--t3)'>("+s.dv+")</span>";}))
+      +cell(2,fv(s.v[2],function(v){return _fbPct(v*100);}))
       +cell(3,fv(s.v[3],function(v){return v.toFixed(1).replace(".",",")+" <span style='color:var(--t3)'>("+s.w30+")</span>";}))
       +cell(4,fv(s.v[4],function(v){return v.toFixed(1).replace(".",",");}))+cell(5,fv(s.v[5],function(v){return (v>0?"+":"")+Math.round(v);}))+"</tr>";
   }).join("") || "<tr><td colspan='13' style='color:var(--t3);padding:10px'>Aucun prestataire avec au moins "+o.min+" WO sur cette période.</td></tr>";
@@ -7477,24 +8558,22 @@ function renderScore(){
 }
 function scSelect(f, scroll){ _scSel=f; var sel=document.getElementById("sc-prest"); if(sel) sel.value=f; _scRenderFiche(); if(scroll){ var c=document.getElementById("sc-fiche-card"); if(c) c.scrollIntoView({behavior:"smooth",block:"start"}); } }
 
-function _scFicheData(){
-  var s=null; _scRows.forEach(function(x){ if(x.f===_scSel) s=x; }); if(!s) return null;
+function _scFicheData(nm){
+  nm=nm||_scSel; var s=null; _scRows.forEach(function(x){ if(x.f===nm) s=x; }); if(!s) return null;
   var o=_scCtx.o, mean=[0,1,2,3,4,5].map(function(k){ var a=_scRows.filter(function(x){return x.v[k]!==null;}).map(function(x){return x.v[k];}); return a.length?a.reduce(function(p,q){return p+q;},0)/a.length:null; });
-  // sites à traiter : devis > 7 j + WO ≥ 30 j de ce prestataire, par magasin
-  var mg={};
-  var add=function(r,kind){ if(!r._m) return; var a=mg[r._m]||(mg[r._m]={m:r._m,dv:0,wa:0,ec:0}); a[kind]++; };
-  QUO.forEach(function(r){ if(r._f!==s.f||!_dvAtt(r)) return; if(o.type&&r._t!==o.type) return; if(o.reg&&r._r!==o.reg) return; add(r,"dv"); });
-  WO.forEach(function(r){ if(r._f!==s.f) return; if(o.type&&r._t!==o.type) return; if(o.reg&&r._r!==o.reg) return; if(_woAtt(r)) add(r,"wa"); else if(_woEc(r)) add(r,"ec"); });
-  var sites=Object.keys(mg).map(function(k){var a=mg[k]; a.t=a.dv+a.wa+a.ec; return a;}).sort(function(a,b){return b.t-a.t;}).slice(0,5);
-  var wa=0, ec=0; WO.forEach(function(r){ if(r._f!==s.f) return; if(o.type&&r._t!==o.type) return; if(o.reg&&r._r!==o.reg) return; if(_woAtt(r)) wa++; else if(_woEc(r)) ec++; });
+  // sites à traiter : WO en cours / assignés depuis 30 jours ou plus, par magasin
+  var mg={}, ec=0;
+  WO.forEach(function(r){ if(r._f!==s.f||!_woEc(r)) return; if(o.type&&r._t!==o.type) return; if(o.reg&&r._r!==o.reg) return; ec++; if(!r._m) return; var a=mg[r._m]||(mg[r._m]={m:r._m,ec:0,age:0}); a.ec++; if((r._age||0)>a.age) a.age=r._age||0; });
+  var sites=Object.keys(mg).map(function(k){return mg[k];}).sort(function(a,b){return b.ec-a.ec||b.age-a.age;}).slice(0,5);
   // équipements revenus en panne (≥ 2 fois) imputés à ce prestataire
   var P=_fbPairs(30,"strict",true), em={};
   P.list.forEach(function(p){ if(!p.rep||p.w._f!==s.f) return; if(o.type&&p.w._t!==o.type) return; if(o.reg&&p.w._r!==o.reg) return; em[p.key]=(em[p.key]||0)+1; });
   var eqRep=Object.keys(em).filter(function(k){return em[k]>=2;}).length;
   var worst=[0,1,2,3,4,5].filter(function(k){return s.notes[k]!==null;}).sort(function(a,b){return s.notes[a]-s.notes[b];}).slice(0,2);
   var pts=[];
-  if(s.dv>0) pts.push(fN(s.dv)+" devis en attente depuis plus de 7 jours (hors « Ouvert »).");
-  if(wa+ec>0) pts.push(fN(wa+ec)+" WO ouverts depuis 30 jours ou plus : "+fN(wa)+" en attente d'approbation, "+fN(ec)+" en cours / assignés.");
+  if(ec>0) pts.push(fN(ec)+" WO en cours / assignés depuis 30 jours ou plus.");
+  var eqmin=_eqMin(), eqL=_eqRepeats(function(r){ return r._f===s.f && (!o.type||r._t===o.type) && (!o.reg||r._r===o.reg); }, eqmin, false);
+  if(eqL.length) pts.push(fN(eqL.length)+" équipement(s) ayant nécessité "+eqmin+" interventions ou plus de ce prestataire sur un même magasin : réparer ou remplacer à arbitrer.");
   if(eqRep>0) pts.push(fN(eqRep)+" équipement(s) revenus en panne au moins 2 fois dans les 30 jours après une intervention clôturée.");
   worst.forEach(function(k){ if(s.notes[k]<50) pts.push("Critère le plus faible : "+SC_NOMS[k]+" (note "+Math.round(s.notes[k])+"/100)."); });
   if(!pts.length) pts.push("Aucun point bloquant relevé sur le périmètre filtré.");
@@ -7502,13 +8581,13 @@ function _scFicheData(){
   var piste = s.score>=75 ? "Maintenir, candidat à davantage de volume ou à un rôle de référence sur le lot."
             : s.score>=50 ? "Plan d'amélioration à 30 jours sur les critères les plus faibles, point d'étape à prévoir."
             : "Revue contractuelle : plan de rattrapage chiffré, pénalités ou réallocation de volume à envisager.";
-  return {s:s,mean:mean,sites:sites,pts:pts,lv:lv,piste:piste,total:_scRows.length};
+  return {s:s,mean:mean,sites:sites,eq:eqL,eqmin:eqmin,pts:pts,lv:lv,piste:piste,total:_scRows.length};
 }
 function _scRenderFiche(){
   var box=document.getElementById("sc-fiche"); if(!box) return;
   var d=_scFicheData(); if(!d){ box.innerHTML="<p style='color:var(--t3);font-size:12px'>Aucun prestataire à afficher.</p>"; return; }
   var s=d.s, trT=s.trend===null?"":(Math.abs(s.trend)<1?"tendance stable":(s.trend>0?"▲ +":"▼ −")+Math.abs(Math.round(s.trend))+" pts vs trimestre précédent");
-  var fmts=[function(v){return _fbPct(v*100);},function(v){return _fbPct(v*100);},function(v){return v.toFixed(1).replace(".",",")+" /100 WO";},function(v){return v.toFixed(1).replace(".",",")+" /100 WO";},function(v){return v.toFixed(1).replace(".",",")+" j";},function(v){return (v>0?"+":"")+Math.round(v);}];
+  var fmts=[function(v){return _fbPct(v*100);},function(v){return _fbPct(v*100);},function(v){return _fbPct(v*100);},function(v){return v.toFixed(1).replace(".",",")+" /100 WO";},function(v){return v.toFixed(1).replace(".",",")+" j";},function(v){return (v>0?"+":"")+Math.round(v);}];
   var rows=SC_NOMS.map(function(n,k){
     var nt=s.notes[k], col=nt===null?"#888":nt>=75?"#1D9E75":nt>=50?"#BA7517":"#E24B4A";
     return "<tr><td>"+n+"</td><td><b>"+(s.v[k]===null?"n/d":fmts[k](s.v[k]))+"</b></td><td style='color:var(--t3)'>"+(d.mean[k]===null?"—":fmts[k](d.mean[k]))+"</td><td>"+(nt===null?"n/d":Math.round(nt))+"</td>"
@@ -7520,33 +8599,56 @@ function _scRenderFiche(){
     +"<table><thead><tr><th>Critère</th><th>Valeur</th><th>Moyenne</th><th>Note</th><th></th><th>Poids</th></tr></thead><tbody>"+rows+"</tbody></table></div></div>"
     +"<div class='g2'><div class='card'><div class='ct'>Points d'attention</div><ul style='margin:6px 0 0 16px;padding:0;font-size:12px;line-height:1.8;color:var(--t2)'>"+d.pts.map(function(p){return "<li>"+_cmpEsc(p)+"</li>";}).join("")+"</ul>"
     +"<div style='margin-top:10px;font-size:11px;color:var(--t2)'><b>Piste (indicative) :</b> "+_cmpEsc(d.piste)+"</div></div>"
-    +"<div class='card'><div class='ct'>Sites à traiter en priorité</div>"+(d.sites.length?"<table><thead><tr><th>Magasin</th><th>Devis &gt;7j</th><th>WO appro. ≥30j</th><th>WO en cours ≥30j</th></tr></thead><tbody>"+d.sites.map(function(a){return "<tr><td style='color:var(--blue);cursor:pointer' data-mg='"+_cmpEsc(a.m)+"' onclick='openStoreDetail(this.dataset.mg)'>"+_cmpEsc(a.m)+"</td><td>"+a.dv+"</td><td>"+a.wa+"</td><td>"+a.ec+"</td></tr>";}).join("")+"</tbody></table>":"<p style='color:var(--t3);font-size:12px'>Aucun site en retard.</p>")+"</div></div>";
+    +"<div class='card'><div class='ct'>Sites à traiter en priorité</div>"+(d.sites.length?"<table><thead><tr><th>Magasin</th><th>WO en cours ≥30j</th><th>Plus ancien (j)</th></tr></thead><tbody>"+d.sites.map(function(a){return "<tr><td style='color:var(--blue);cursor:pointer' data-mg='"+_cmpEsc(a.m)+"' onclick='openStoreDetail(this.dataset.mg)'>"+_cmpEsc(a.m)+"</td><td>"+a.ec+"</td><td>"+a.age+"</td></tr>";}).join("")+"</tbody></table>":"<p style='color:var(--t3);font-size:12px'>Aucun WO en cours depuis 30 jours ou plus.</p>")+"</div></div>"
+    +"<div class='card' style='margin-top:12px'><div class='ct'>Équipements à interventions répétées (≥ "+d.eqmin+") — réparer ou remplacer ?</div>"+(d.eq.length?_eqTableHtml(d.eq,10,{th:"text-align:left",td:""})+"<div style='font-size:10px;color:var(--t3);margin-top:6px'>Même magasin et même nom d'équipement, tout l'historique chargé. Un nom générique (ex. « Porte ») peut regrouper plusieurs appareils : à vérifier sur site avant de décider d'un remplacement.</div>":"<p style='color:var(--t3);font-size:12px'>Aucun équipement n'a atteint "+d.eqmin+" interventions pour ce prestataire.</p>")+"</div>";
 }
 function exporterScore(){
   if(!_scRows.length){ toast("Rien à exporter", true); return; }
-  var rows=[["Rang","Prestataire","Format","WO","Score /100","Niveau","Tendance (pts)","Taux clôture","Réinterventions 30 j","Devis att. >7j (nb)","Devis att. /100 WO","WO ≥30 j (nb)","WO ≥30 j /100 WO","Délai moyen (j)","NPS","Note clôture","Note réinterv.","Note devis","Note WO ≥30 j","Note délai","Note NPS"]];
+  var rows=[["Rang","Prestataire","Format","WO","Score /100","Niveau","Tendance (pts)","Taux clôture","Réinterventions 30 j","Clôturés ≤ 7 j (%)","WO en cours ≥30 j (nb)","WO en cours ≥30 j /100 WO","Délai moyen (j)","NPS","Note clôture","Note réinterv.","Note réactivité ≤7 j","Note WO ≥30 j","Note délai","Note NPS"]];
   _scRows.forEach(function(s){ rows.push([s.rank,s.f,Object.keys(s.types).join(" + "),s.n,+s.score.toFixed(1),_scLevel(s.score).t,s.trend===null?"":Math.round(s.trend),
-    s.v[0]===null?"":+(s.v[0]*100).toFixed(1),s.v[1]===null?"":+(s.v[1]*100).toFixed(1),s.dv,s.v[2]===null?"":+s.v[2].toFixed(1),s.w30,s.v[3]===null?"":+s.v[3].toFixed(1),s.v[4]===null?"":+s.v[4].toFixed(1),s.v[5]===null?"":Math.round(s.v[5])]
+    s.v[0]===null?"":+(s.v[0]*100).toFixed(1),s.v[1]===null?"":+(s.v[1]*100).toFixed(1),s.v[2]===null?"":+(s.v[2]*100).toFixed(1),s.w30,s.v[3]===null?"":+s.v[3].toFixed(1),s.v[4]===null?"":+s.v[4].toFixed(1),s.v[5]===null?"":Math.round(s.v[5])]
     .concat(s.notes.map(function(n){return n===null?"":Math.round(n);}))); });
   var wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),"Score prestataires");
   var w=_scCtx.o.w; XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([["Critère","Pondération"]].concat(SC_NOMS.map(function(n,i){return [n,w[i]];}))),"Pondérations");
+  var o_=_scCtx.o, eqAll=_eqRepeats(function(r){ return r._f&&r._f!=="Inconnu"&&(!o_.type||r._t===o_.type)&&(!o_.reg||r._r===o_.reg); }, _eqMin(), true), eqRows=[["Prestataire","Magasin","Équipement","Interventions","Dont clôturées","Dont ouvertes","Première","Dernière","Devis approuvés (€)"]];
+  eqAll.slice(0,3000).forEach(function(a){ eqRows.push([a.f,a.m,a.eq,a.n,a.cl,a.ouverts,a.first?a.first.toLocaleDateString("fr-FR"):"",a.last?a.last.toLocaleDateString("fr-FR"):"",Math.round(a.cout)]); });
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(eqRows),"Équipements répétés");
   XLSX.writeFile(wb,"Score_prestataires_"+new Date().toISOString().slice(0,10)+".xlsx"); toast("✅ Export score généré");
 }
-function scFichePDF(){
-  var d=_scFicheData(); if(!d){ toast("Aucun prestataire sélectionné", true); return; }
+function _scFicheBody(nm){
+  var d=_scFicheData(nm); if(!d) return "";
   var s=d.s, now=new Date().toLocaleDateString("fr-FR");
-  var fmts=[function(v){return _fbPct(v*100);},function(v){return _fbPct(v*100);},function(v){return v.toFixed(1).replace(".",",")+" /100 WO";},function(v){return v.toFixed(1).replace(".",",")+" /100 WO";},function(v){return v.toFixed(1).replace(".",",")+" j";},function(v){return (v>0?"+":"")+Math.round(v);}];
+  var fmts=[function(v){return _fbPct(v*100);},function(v){return _fbPct(v*100);},function(v){return _fbPct(v*100);},function(v){return v.toFixed(1).replace(".",",")+" /100 WO";},function(v){return v.toFixed(1).replace(".",",")+" j";},function(v){return (v>0?"+":"")+Math.round(v);}];
   var rows=SC_NOMS.map(function(n,k){ var nt=s.notes[k], col=nt===null?"#888":nt>=75?"#1D9E75":nt>=50?"#E8A317":"#E24B4A";
     return "<tr><td>"+n+"</td><td><b>"+(s.v[k]===null?"n/d":fmts[k](s.v[k]))+"</b></td><td>"+(d.mean[k]===null?"—":fmts[k](d.mean[k]))+"</td><td>"+(nt===null?"n/d":Math.round(nt))+"</td><td><span class='bar'><i style='width:"+(nt===null?0:Math.round(nt))+"%;background:"+col+"'></i></span></td><td>"+_scCtx.o.w[k]+"</td></tr>"; }).join("");
-  var html="<!DOCTYPE html><html><head><meta charset='utf-8'><title>Fiche prestataire</title><style>@page{margin:12mm}body{font-family:Arial,sans-serif;color:#1a1a2e;font-size:11px;margin:0;padding:20px}.hdr{display:flex;justify-content:space-between;border-bottom:3px solid #004B9B;padding-bottom:10px;margin-bottom:14px}.t{font-size:18px;font-weight:800;color:#004B9B}.m{font-size:10px;color:#888}.big{border:1px solid #e2e4eb;border-top:4px solid "+d.lv.col+";border-radius:8px;padding:12px;text-align:center;width:170px}.n{font-size:40px;font-weight:800;color:"+d.lv.col+"}table{width:100%;border-collapse:collapse}th{background:#f4f6fa;text-align:left;padding:5px 7px;font-size:9px;text-transform:uppercase;color:#666}td{padding:6px 7px;border-bottom:1px solid #eef0f4}.bar{display:inline-block;width:100px;height:7px;background:#eef0f4;border-radius:4px}.bar i{display:block;height:7px;border-radius:4px}h3{font-size:12px;color:#004B9B;margin:14px 0 5px}li{line-height:1.7}.f{margin-top:16px;font-size:9px;color:#aaa;border-top:1px solid #eee;padding-top:5px}</style></head><body>"
-   +"<div class='hdr'><div><div class='t'>Fiche prestataire — "+_cmpEsc(s.f)+"</div><div class='m'>Période : mois "+_scCtx.o.m1+" à "+_scCtx.o.m2+(_scCtx.o.type?" · "+_scCtx.o.type:"")+(_scCtx.o.reg?" · "+_cmpEsc(_scCtx.o.reg.replace(/_/g," ")):"")+" · "+fN(s.n)+" WO</div></div><div class='m' style='text-align:right'>Carrefour — DTF<br><b>"+now+"</b></div></div>"
+  var body="<div class='fiche' style='--col:"+d.lv.col+"'><div class='hdr'><div><div class='t'>Fiche prestataire — "+_cmpEsc(s.f)+"</div><div class='m'>Période : mois "+_scCtx.o.m1+" à "+_scCtx.o.m2+(_scCtx.o.type?" · "+_scCtx.o.type:"")+(_scCtx.o.reg?" · "+_cmpEsc(_scCtx.o.reg.replace(/_/g," ")):"")+" · "+fN(s.n)+" WO</div></div><div class='m' style='text-align:right'>Carrefour — DTF<br><b>"+now+"</b></div></div>"
    +"<div style='display:flex;gap:16px'><div class='big'><div class='m'>SCORE GLOBAL</div><div class='n'>"+Math.round(s.score)+"<span style='font-size:14px;color:#888'> /100</span></div><b style='color:"+d.lv.col+"'>"+d.lv.t+"</b><div class='m' style='margin-top:6px'>Rang "+s.rank+" sur "+d.total+"</div></div>"
    +"<div style='flex:1'><table><thead><tr><th>Critère</th><th>Valeur</th><th>Moyenne</th><th>Note /100</th><th></th><th>Poids</th></tr></thead><tbody>"+rows+"</tbody></table></div></div>"
    +"<h3>Points d'attention</h3><ul>"+d.pts.map(function(p){return "<li>"+_cmpEsc(p)+"</li>";}).join("")+"</ul>"
-   +"<h3>Sites à traiter en priorité</h3>"+(d.sites.length?"<table><thead><tr><th>Magasin</th><th>Devis &gt;7j</th><th>WO appro. ≥30j</th><th>WO en cours ≥30j</th></tr></thead><tbody>"+d.sites.map(function(a){return "<tr><td>"+_cmpEsc(a.m)+"</td><td>"+a.dv+"</td><td>"+a.wa+"</td><td>"+a.ec+"</td></tr>";}).join("")+"</tbody></table>":"<div class='m'>Aucun site en retard.</div>")
+   +"<h3>Sites à traiter en priorité</h3>"+(d.sites.length?"<table><thead><tr><th>Magasin</th><th>WO en cours ≥30j</th><th>Plus ancien (j)</th></tr></thead><tbody>"+d.sites.map(function(a){return "<tr><td>"+_cmpEsc(a.m)+"</td><td>"+a.ec+"</td><td>"+a.age+"</td></tr>";}).join("")+"</tbody></table>":"<div class='m'>Aucun WO en cours depuis 30 jours ou plus.</div>")
+   +(d.eq.length?"<h3>Équipements à interventions répétées (≥ "+d.eqmin+") — réparer ou remplacer ?</h3>"+_eqTableHtml(d.eq,8,{th:"text-align:left",td:""})+"<div class='m'>Même magasin et même nom d'équipement. À vérifier sur site avant toute décision de remplacement.</div>":"")
    +"<h3>Piste (indicative)</h3><div>"+_cmpEsc(d.piste)+"</div><h3>Décisions et plan d'action</h3><div style='height:70px;border:1px dashed #bbb;border-radius:6px'></div>"
-   +"<div class='f'>Carrefour — Direction Technique France · Score prestataire · note par rang parmi les prestataires de la sélection</div></body></html>";
-  ouvrirRapport(html,"fiche_prestataire");
+   +"<div class='f'>Carrefour — Direction Technique France · Score prestataire · note par rang parmi les prestataires de la sélection</div></div>";
+  return body;
+}
+
+
+var FICHE_CSS="@page{margin:12mm}body{font-family:Arial,sans-serif;color:#1a1a2e;font-size:11px;margin:0;padding:20px}"+"@page{margin:12mm}body{font-family:Arial,sans-serif;color:#1a1a2e;font-size:11px;margin:0;padding:20px}.hdr{display:flex;justify-content:space-between;border-bottom:3px solid #004B9B;padding-bottom:10px;margin-bottom:14px}.t{font-size:18px;font-weight:800;color:#004B9B}.m{font-size:10px;color:#888}.big{border:1px solid #e2e4eb;border-top:4px solid var(--col);border-radius:8px;padding:12px;text-align:center;width:170px}.n{font-size:40px;font-weight:800;color:var(--col)}table{width:100%;border-collapse:collapse}th{background:#f4f6fa;text-align:left;padding:5px 7px;font-size:9px;text-transform:uppercase;color:#666}td{padding:6px 7px;border-bottom:1px solid #eef0f4}.bar{display:inline-block;width:100px;height:7px;background:#eef0f4;border-radius:4px}.bar i{display:block;height:7px;border-radius:4px}h3{font-size:12px;color:#004B9B;margin:14px 0 5px}li{line-height:1.7}.f{margin-top:16px;font-size:9px;color:#aaa;border-top:1px solid #eee;padding-top:5px}";
+function _fichesDoc(bodies,titre){ return "<!DOCTYPE html><html><head><meta charset='utf-8'><title>"+titre+"</title><style>"+FICHE_CSS+".fiche{page-break-after:always}.fiche:last-child{page-break-after:auto}</style></head><body>"+bodies.join("")+"</body></html>"; }
+function scFichePDF(){
+  if(!_scFicheData(_scSel)){ toast("Aucun prestataire sélectionné", true); return; }
+  ouvrirRapport(_fichesDoc([_scFicheBody(_scSel)],"Fiche prestataire"),"fiche_prestataire");
+}
+// Fiches en lot : prestataires cochés, ou tous ceux affichés (un seul PDF, une fiche par page)
+function scFichesLot(tous){
+  var noms=[];
+  if(tous) noms=_scRows.map(function(x){return x.f;});
+  else document.querySelectorAll(".sc-chk:checked").forEach(function(c){ noms.push(c.getAttribute("data-f")); });
+  if(!noms.length){ toast(tous?"Aucun prestataire affiché":"Cochez au moins un prestataire dans le classement",true); return; }
+  if(noms.length>60){ toast("Maximum 60 fiches par PDF — affinez les filtres ("+noms.length+" sélectionnées)",true); return; }
+  var bodies=noms.map(_scFicheBody).filter(Boolean);
+  ouvrirRapport(_fichesDoc(bodies,"Fiches prestataires ("+bodies.length+")"),"fiches_prestataires");
+  toast("📄 "+bodies.length+" fiche(s) prestataire dans un seul PDF");
 }
 
 function renderFlop10Devis(quo, type, containerId){
