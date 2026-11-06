@@ -1048,15 +1048,14 @@ tr:hover td{background:rgba(255,255,255,.025)}
         <div class="fl"><label>Type client</label><select class="fs" id="rl-type" onchange="renderRelances()"><option value="">Tous</option><option value="Hyper">Hyper</option><option value="Market">Market</option><option value="Match">Match</option></select></div>
         <div class="fl"><label>Région</label><select class="fs" id="rl-reg" onchange="renderRelances()"><option value="">Toutes</option></select></div>
         <div class="fl"><label>CMM</label><select class="fs" id="rl-cmm" onchange="renderRelances()"><option value="">Tous</option></select></div>
-        <div class="fl"><label>Min. alertes / magasin</label><input class="fs" type="number" id="rl-min" value="1" min="1" style="width:70px" onchange="renderRelances()"></div>
-        <div class="fl"><label>Délai de retour (jours)</label><input class="fs" type="number" id="rl-delai" value="7" min="1" style="width:70px" onchange="renderRelances()"></div>
+        <div class="fl"><label>Min. alertes / magasin (WO att. + devis + NPS)</label><input class="fs" type="number" id="rl-min" value="1" min="1" style="width:70px" onchange="renderRelances()"></div>
       </div>
       <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:12px;font-size:11px;color:var(--t2);align-items:center">
         <b>Déclencheurs :</b>
         <label><input type="checkbox" id="rl-t-woatt" checked onchange="renderRelances()"> WO en attente d'approbation ≥ 30 j</label>
         <label><input type="checkbox" id="rl-t-dv" checked onchange="renderRelances()"> Devis en attente &gt; 7 j (hors Ouvert)</label>
         <label><input type="checkbox" id="rl-t-nps" checked onchange="renderRelances()"> NPS détracteurs des <input class="fs" type="number" id="rl-npsj" value="30" min="1" style="width:56px;display:inline-block" onchange="renderRelances()"> derniers jours</label>
-        <label><input type="checkbox" id="rl-t-woec" checked onchange="renderRelances()"> WO en cours ≥ 30 j / très urgents ouverts</label>
+        <label><input type="checkbox" id="rl-t-woec" checked onchange="renderRelances()"> WO en cours ≥ 30 j (prestataires externes, hors TU)</label>
       </div>
       <div class="kg" id="rl-kg"></div>
       <div class="g1 card">
@@ -1067,10 +1066,10 @@ tr:hover td{background:rgba(255,255,255,.025)}
       <div class="card g1">
         <div class="ct" style="margin-bottom:8px">Message</div>
         <div style="display:flex;flex-direction:column;gap:8px">
-          <div class="fl"><label>Objet ({cmm}, {nb} = nombre de magasins)</label><input id="rl-objet" type="text" value="Points à traiter sur vos magasins — {cmm}" style="background:var(--bg);border:1px solid rgba(255,255,255,.1);color:var(--text);border-radius:7px;padding:6px 10px;font-size:11px;width:100%"></div>
-          <div class="fl"><label>Introduction ({cmm}, {nb}, {delai})</label><textarea id="rl-intro" rows="4" style="width:100%;background:var(--bg);border:1px solid rgba(255,255,255,.1);color:var(--text);border-radius:7px;padding:7px 10px;font-size:11px;resize:vertical;line-height:1.5">Bonjour,
+          <div class="fl"><label>Objet ({cmm}, {nb} = nombre de magasins — facultatifs)</label><input id="rl-objet" type="text" value="Points d'alerte à traiter sur vos magasins" style="background:var(--bg);border:1px solid rgba(255,255,255,.1);color:var(--text);border-radius:7px;padding:6px 10px;font-size:11px;width:100%"></div>
+          <div class="fl"><label>Introduction ({cmm}, {nb})</label><textarea id="rl-intro" rows="4" style="width:100%;background:var(--bg);border:1px solid rgba(255,255,255,.1);color:var(--text);border-radius:7px;padding:7px 10px;font-size:11px;resize:vertical;line-height:1.5">Bonjour {cmm},
 
-Nous avons identifié {nb} magasin(s) de votre périmètre avec des points en attente (WO, devis, avis clients). Vous trouverez ci-dessous le récapitulatif, et en pièce jointe la synthèse détaillée à traiter avant le {delai}.</textarea></div>
+Nous avons identifié {nb} magasin(s) de votre périmètre avec des points d'alerte (WO en attente, devis en attente, avis clients). Vous trouverez ci-dessous le récapitulatif, et en pièce jointe la synthèse détaillée. Merci de relancer les magasins concernés ou de traiter directement ces points.</textarea></div>
           <div style="display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--t2)">
             <label><input type="checkbox" id="rl-recap"> Envoyer aussi un récapitulatif à chaque RPM</label>
             <label><input type="checkbox" id="rl-copie" checked> M'envoyer une copie</label>
@@ -1081,6 +1080,34 @@ Nous avons identifié {nb} magasin(s) de votre périmètre avec des points en at
           </div>
           <div id="rl-status" style="font-size:11px;line-height:1.7"></div>
         </div>
+      </div>
+      <div class="card g1" id="ac-card" style="margin-top:12px;border:1px solid rgba(55,138,221,.35)">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px">
+          <div class="ct" style="margin:0">🤖 Envoi automatique aux CMM (lundi 8h)</div>
+          <div id="ac-badge" style="font-size:11px;font-weight:700"></div>
+        </div>
+        <div id="ac-etat" style="font-size:11px;line-height:1.7;color:var(--t2);margin-bottom:10px"></div>
+        <div style="display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--t2);align-items:center;margin-bottom:8px">
+          <label><input type="checkbox" id="ac-actif" class="ac-in"> <b>Activer</b> l'envoi automatique</label>
+          <label><input type="checkbox" id="ac-test" class="ac-in" checked> Mode test (les mails ne vont qu'à moi, 5 maximum)</label>
+          <label><input type="checkbox" id="ac-cc" class="ac-in" checked> RPM en copie</label>
+          <label><input type="checkbox" id="ac-copie" class="ac-in"> Copie cachée à moi</label>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:10px">
+          <div class="fl"><label>Premier lundi</label><input class="fs ac-in" type="date" id="ac-debut" style="width:140px"></div>
+          <div class="fl"><label>Toutes les (semaines)</label><input class="fs ac-in" type="number" id="ac-freq" value="2" min="1" max="8" style="width:80px"></div>
+          <div class="fl"><label>Pas de relance si relancé il y a moins de (jours)</label><input class="fs ac-in" type="number" id="ac-delai" value="7" min="0" max="60" style="width:80px"></div>
+          <div class="fl"><label>Plafond de mails / cycle</label><input class="fs ac-in" type="number" id="ac-max" value="40" min="1" max="80" style="width:80px"></div>
+          <div class="fl"><label>NPS : derniers jours</label><input class="fs ac-in" type="number" id="ac-npsj" value="30" min="1" max="180" style="width:80px"></div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="ac-btn" onclick="acSave()" style="padding:8px 14px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer">💾 Enregistrer les réglages</button>
+          <button class="ac-btn" onclick="acApercu()" style="padding:8px 14px;background:transparent;color:#90c4f5;border:1px solid rgba(55,138,221,.4);border-radius:8px;font-size:11px;font-weight:700;cursor:pointer">👁 Voir ce qui partirait (calcul serveur)</button>
+          <button class="ac-btn" onclick="acTest()" style="padding:8px 14px;background:rgba(239,159,39,.12);color:#EFC96A;border:1px solid rgba(239,159,39,.3);border-radius:8px;font-size:11px;font-weight:700;cursor:pointer">🧪 Lancer un test maintenant (5 mails à moi)</button>
+        </div>
+        <div id="ac-status" style="font-size:11px;line-height:1.7;margin-top:8px"></div>
+        <div id="ac-apercu" style="margin-top:8px"></div>
+        <div style="font-size:10px;color:var(--t3);margin-top:8px;line-height:1.6">Mail, PDF et Excel sont identiques à l'envoi manuel ci-dessus. Les CMM relancés (à la main ou automatiquement) depuis moins de N jours sont sautés ; aucun mail n'est envoyé sans alerte ni sans adresse. En mode test, rien n'est journalisé et le planning n'avance pas. Chaque cycle se termine par un résumé dans votre boîte ; les envois réels sont tracés dans le journal (onglet Efficacité). Le déclencheur du lundi 8h se crée une fois en exécutant <code>setupTousDeclencheurs</code> dans Apps Script.</div>
       </div>
       </div>
       <div id="rl-vol-prest" style="display:none">
@@ -2258,7 +2285,7 @@ function _showDiagPanel(){
   var versionHTML = "<div style='margin-bottom:12px;padding:8px 10px;background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.35);border-radius:6px'>"
     + "<b style='color:#F59E0B'>Version du code servi (PREV) :</b> "+(window._lastPrevBuildVersion||"jamais chargé")+"<br>"
     + "<b style='color:#F59E0B'>Version du code servi (BDD) :</b> "+(window._lastBddBuildVersion||"jamais chargé")+"<br>"
-    + "<span style='font-size:9px;color:#888'>Attendu : 2026-11-04-PARTAGE-v29 — si différent ou absent, le déploiement n'est pas à jour.</span>"
+    + "<span style='font-size:9px;color:#888'>Attendu : 2026-11-05-AUTO-CMM-v14 (MainScript.gs) — si différent ou absent, le déploiement n'est pas à jour.</span>"
     + "</div>";
   // Diagnostic ciblé : dump brut de WO[0] + test en direct de _getFuzzy,
   // pour comprendre précisément pourquoi le matching État échoue encore
@@ -4888,6 +4915,7 @@ function initRelances(){
   var cm=document.getElementById("rl-cmm");
   if(cm&&cm.options.length<=1){ var cs={}; WO.forEach(function(r){ if(r._cmm) cs[r._cmm]=1; }); Object.keys(cs).sort().forEach(function(v){ var o=document.createElement("option"); o.value=v; o.textContent=v; cm.appendChild(o); }); }
   renderRelances();
+  try{ acLoad(); }catch(e){}
 }
 function _rlParams(){
   var c=function(id){ var e=document.getElementById(id); return !!(e&&e.checked); }, v=function(id,d){ var e=document.getElementById(id); var x=e?parseFloat(e.value):NaN; return isNaN(x)?d:x; }, t=function(id){ var e=document.getElementById(id); return e?e.value:""; };
@@ -4899,10 +4927,10 @@ function _rlCompute(o){
   var today=new Date();
   WO.forEach(function(r){ if(!r._m||!ok(r)) return;
     if(o.woAtt&&_woAtt(r)){ var g=G(r); g.woAtt.push(r); }
-    else if(o.woEc&&(_woEc(r)||(r._p==="TU"&&r._e!=="CL"&&r._e!=="AN"))){ var g2=G(r); g2.woEc.push(r); } });
+    else if(o.woEc&&_woEc(r)&&_xOf(r)){ var g2=G(r); g2.woEc.push(r); } });   // WO en cours ≥ 30 j chez un prestataire externe (ni équipe interne, ni TU)
   if(o.dv) QUO.forEach(function(r){ if(!r._m||!ok(r)||!_dvAtt(r)) return; G(r).dv.push(r); });
   if(o.nps) NPS.forEach(function(r){ if(!r._m||r._cat!=="D"||!r._d||!ok(r)) return; if((today-r._d)/86400000>o.npsJ) return; var g=G(r); if(g) g.nps.push(r); });
-  var stores=Object.keys(M).map(function(k){ var s=M[k]; s.n=s.woAtt.length+s.dv.length+s.nps.length+s.woEc.length; s.age=Math.max.apply(null,[0].concat(s.woAtt.concat(s.woEc,s.dv).map(function(r){return r._age||0;}))); return s; }).filter(function(s){return s.n>=o.min;});
+  var stores=Object.keys(M).map(function(k){ var s=M[k]; s.na=s.woAtt.length+s.dv.length+s.nps.length; s.n=s.na+s.woEc.length; s.age=Math.max.apply(null,[0].concat(s.woAtt.concat(s.woEc,s.dv).map(function(r){return r._age||0;}))); return s; }).filter(function(s){return s.na>=o.min;});   // magasin « en alerte » = au moins un WO en attente, un devis en attente ou un NPS détracteur
   var C={}; stores.forEach(function(s){ var k=s.cmm||"(CMM non renseigné)"; var g=C[k]||(C[k]={cmm:s.cmm,nom:k,rpm:s.rpm,stores:[],woAtt:0,dv:0,nps:0,woEc:0}); g.stores.push(s); g.woAtt+=s.woAtt.length; g.dv+=s.dv.length; g.nps+=s.nps.length; g.woEc+=s.woEc.length; if(!g.rpm&&s.rpm) g.rpm=s.rpm; });
   var L=Object.keys(C).map(function(k){ var g=C[k]; g.stores.sort(function(a,b){return b.n-a.n||b.age-a.age;}); g.n=g.woAtt+g.dv+g.nps+g.woEc; g.mail=g.cmm?_rlMailCmm(g.cmm):""; g.mailRpm=_rlMailRpm(g.rpm); return g; }).sort(function(a,b){return b.n-a.n;});
   return L;
@@ -4911,7 +4939,7 @@ function renderRelances(){
   if(!WO.length) return;
   var o=_rlParams(); _rlGroups=_rlCompute(o);
   var tot={s:0,w:0,d:0,n:0,e:0}; _rlGroups.forEach(function(g){ tot.s+=g.stores.length; tot.w+=g.woAtt; tot.d+=g.dv; tot.n+=g.nps; tot.e+=g.woEc; });
-  kg("rl-kg",[{l:"CMM concernés",v:fN(_rlGroups.length),s:"",c:"var(--blue)"},{l:"Magasins en alerte",v:fN(tot.s),s:"",c:"var(--red)"},{l:"WO en attente ≥ 30 j",v:fN(tot.w),s:"",c:"var(--amber)"},{l:"Devis en attente > 7 j",v:fN(tot.d),s:"",c:"var(--amber)"},{l:"NPS détracteurs",v:fN(tot.n),s:"≤ "+o.npsJ+" j",c:"var(--purple)"},{l:"WO en cours ≥ 30 j / TU",v:fN(tot.e),s:"",c:"var(--blue)"}]);
+  kg("rl-kg",[{l:"CMM concernés",v:fN(_rlGroups.length),s:"",c:"var(--blue)"},{l:"Magasins en alerte",v:fN(tot.s),s:"",c:"var(--red)"},{l:"WO en attente ≥ 30 j",v:fN(tot.w),s:"",c:"var(--amber)"},{l:"Devis en attente > 7 j",v:fN(tot.d),s:"",c:"var(--amber)"},{l:"NPS détracteurs",v:fN(tot.n),s:"≤ "+o.npsJ+" j",c:"var(--purple)"},{l:"WO en cours ≥ 30 j",v:fN(tot.e),s:"presta. externes",c:"var(--blue)"}]);
   var last=_rlLS("mc_relances");
   var tb=document.getElementById("rl-tb");
   if(tb) tb.innerHTML=_rlGroups.map(function(g,i){
@@ -4933,39 +4961,39 @@ function _rlMailHtml(g,o,intro,recapRpm){
   var rows=g.stores.slice(0,25).map(_rlLigneStore).join(""), reste=g.stores.length>25?"<tr><td colspan='6' style='padding:5px 8px;color:#888;font-size:11px'>… et "+(g.stores.length-25)+" autre(s) magasin(s) — voir le détail en pièce jointe.</td></tr>":"";
   var kb=function(l,v,c){ return "<td align='center' style='padding:8px;border:1px solid #eceef3'><div style='font-size:9px;color:#888;text-transform:uppercase'>"+l+"</div><div style='font-size:18px;font-weight:700;color:"+c+"'>"+v+"</div></td>"; };
   return "<!DOCTYPE html><html><head><meta charset='UTF-8'></head><body style='margin:0;padding:0;background:#f3f4f8;font-family:Arial,Helvetica,sans-serif'><table role='presentation' width='100%' cellpadding='0' cellspacing='0' style='background:#f3f4f8;padding:18px 0'><tr><td align='center'><table role='presentation' width='640' cellpadding='0' cellspacing='0' style='max-width:640px;width:100%;background:#fff;border-radius:10px;overflow:hidden'>"
-   +"<tr><td style='background:#004B9B;padding:16px 22px'><div style='color:#fff;font-size:17px;font-weight:700'>"+(recapRpm?"Récapitulatif des relances — pôle "+_envE(g.nom):"Points à traiter sur vos magasins")+"</div><div style='color:#bcd4f2;font-size:12px;margin-top:3px'>"+_envE(g.nom)+" · "+g.stores.length+" magasin(s) en alerte · "+new Date().toLocaleDateString("fr-FR")+"</div></td></tr>"
+   +"<tr><td style='background:#004B9B;padding:16px 22px'><div style='color:#fff;font-size:17px;font-weight:700'>"+(recapRpm?"Récapitulatif des relances — pôle "+_envE(g.nom):"Points d'alerte à traiter sur vos magasins")+"</div><div style='color:#bcd4f2;font-size:12px;margin-top:3px'>"+_envE(g.nom)+" · "+g.stores.length+" magasin(s) en alerte · "+new Date().toLocaleDateString("fr-FR")+"</div></td></tr>"
    +"<tr><td style='padding:20px 22px;color:#1a1a2e;font-size:13px;line-height:1.55'><div style='white-space:pre-line'>"+_envE(intro)+"</div>"
    +"<table role='presentation' width='100%' cellpadding='0' cellspacing='0' style='border-collapse:collapse;margin:16px 0'><tr>"+kb("WO en attente ≥ 30 j",g.woAtt,"#BA7517")+kb("Devis en attente > 7 j",g.dv,"#BA7517")+kb("NPS détracteurs",g.nps,"#E24B4A")+kb("WO en cours",g.woEc,"#378ADD")+"</tr></table>"
    +"<table role='presentation' width='100%' cellpadding='0' cellspacing='0' style='border-collapse:collapse;border:1px solid #eceef3'>"+_rlTableHead()+rows+reste+"</table>"
-   +"<div style='background:#FFF7E8;border-left:4px solid #BA7517;border-radius:4px;padding:10px 12px;margin:16px 0;font-size:12px;color:#5a3d0a'><b>Action attendue avant le "+_envE(_envDateLimite(o.delai))+" :</b> valider ou refuser les devis en attente, lever les blocages sur les WO en attente d'approbation, et prendre contact avec les magasins ayant un avis détracteur.</div>"
+   +"<div style='background:#FFF7E8;border-left:4px solid #BA7517;border-radius:4px;padding:10px 12px;margin:16px 0;font-size:12px;color:#5a3d0a'><b>Action demandée :</b> relancer les magasins concernés ou traiter directement ces points — valider ou refuser les devis en attente, lever les blocages sur les WO en attente d'approbation, et prendre contact avec les magasins ayant un avis détracteur.</div>"
    +"<div style='font-size:12px;color:#444'>La synthèse détaillée (liste des WO, devis et avis concernés) est jointe à ce mail"+(recapRpm?"":" avec un fichier Excel")+".</div>"
    +"<div style='font-size:13px;margin-top:18px'>Cordialement,<br><b>Direction Technique France — Carrefour</b></div></td></tr><tr><td style='background:#f3f4f8;padding:10px 22px;font-size:10px;color:#888'>Données ServiceNow · édité le "+new Date().toLocaleDateString("fr-FR")+"</td></tr></table></td></tr></table></body></html>";
 }
 function _rlPdfHtml(g,o){
   var th="padding:5px 7px;background:#eef1f7;font-size:9px;text-transform:uppercase;color:#555;text-align:left", td="padding:5px 7px;border-bottom:1px solid #e3e6ee;font-size:10px";
   var sec=function(s){
-    var t=function(titre,a,f,head){ return a.length?"<div style='font-size:11px;font-weight:bold;margin:8px 0 3px'>"+titre+" ("+a.length+")</div><table width='100%' cellspacing='0' style='border-collapse:collapse'><tr>"+head.map(function(h){return "<th style='"+th+"'>"+h+"</th>";}).join("")+"</tr>"+a.slice().sort(function(x,y){return (y._age||0)-(x._age||0);}).slice(0,12).map(f).join("")+(a.length>12?"<tr><td colspan='5' style='"+td+";color:#888'>… et "+(a.length-12)+" autre(s) (liste complète dans l'Excel)</td></tr>":"")+"</table>":""; };
+    var t=function(titre,a,f,head,lim){ lim=lim||12; return a.length?"<div style='font-size:11px;font-weight:bold;margin:8px 0 3px'>"+titre+" ("+a.length+")</div><table width='100%' cellspacing='0' style='border-collapse:collapse'><tr>"+head.map(function(h){return "<th style='"+th+"'>"+h+"</th>";}).join("")+"</tr>"+a.slice().sort(function(x,y){return (y._age||0)-(x._age||0);}).slice(0,lim).map(f).join("")+(a.length>lim?"<tr><td colspan='5' style='"+td+";color:#888'>… et "+(a.length-lim)+" autre(s) (liste complète dans l'Excel)</td></tr>":"")+"</table>":""; };
     return "<div style='margin-top:14px;border-top:2px solid #004B9B;padding-top:6px'><div style='font-size:13px;font-weight:bold;color:#004B9B'>"+_envE(s.m)+"</div><div style='font-size:9px;color:#888'>"+_envE(s.t||"")+" · "+_envE((s.reg||"").replace(/_/g," "))+"</div>"
      +t("WO en attente d'approbation ≥ 30 jours",s.woAtt,function(r){return "<tr><td style='"+td+"'>"+_envE(r["Numéro"]||"")+"</td><td style='"+td+"'>"+_envE(r._f==="Inconnu"?"Équipe interne":r._f)+"</td><td style='"+td+"'>"+_envE(r["Équipement"]||"")+"</td><td style='"+td+"'>"+_envE(r["Titre de la demande"]||"")+"</td><td style='"+td+";text-align:right'>"+r._age+" j</td></tr>";},["N° WO","Prestataire","Équipement","Demande","Âge"])
      +t("Devis en attente de validation > 7 jours",s.dv,function(r){return "<tr><td style='"+td+"'>"+_envE(r["Numéro"]||"")+"</td><td style='"+td+"'>"+_envE(r._f)+"</td><td style='"+td+"'>"+_envE(r["Équipement"]||"")+"</td><td style='"+td+"'>"+Math.round(r._c||0)+" €</td><td style='"+td+";text-align:right'>"+r._age+" j</td></tr>";},["N° devis","Prestataire","Équipement","Montant","Âge"])
-     +t("WO en cours / très urgents",s.woEc,function(r){return "<tr><td style='"+td+"'>"+_envE(r["Numéro"]||"")+"</td><td style='"+td+"'>"+_envE(r._f==="Inconnu"?"Équipe interne":r._f)+"</td><td style='"+td+"'>"+_envE(r["Équipement"]||"")+"</td><td style='"+td+"'>"+_envE(_envStatut(r._e))+(r._p==="TU"?" · TU":"")+"</td><td style='"+td+";text-align:right'>"+(r._age>=0?r._age+" j":"")+"</td></tr>";},["N° WO","Prestataire","Équipement","Statut","Âge"])
-     +t("Avis NPS détracteurs",s.nps,function(r){return "<tr><td style='"+td+"'>"+(r._d?r._d.toLocaleDateString("fr-FR"):"")+"</td><td style='"+td+"'>"+_envE(r._f==="Inconnu"?"":r._f)+"</td><td style='"+td+"'>Note "+r._n+"</td><td colspan='2' style='"+td+"'>"+_envE(r["Commentaire"]||r["Commentaires"]||"")+"</td></tr>";},["Date","Prestataire","Note","Commentaire",""])+"</div>"; };
-  return "<!DOCTYPE html><html><head><meta charset='UTF-8'></head><body style='font-family:Arial,Helvetica,sans-serif;color:#1a1a2e;margin:24px'><table width='100%' cellspacing='0' style='border-bottom:3px solid #004B9B'><tr><td><div style='font-size:19px;font-weight:bold;color:#004B9B'>Synthèse des points à traiter — "+_envE(g.nom)+"</div><div style='font-size:10px;color:#666'>"+g.stores.length+" magasin(s) · WO en attente ≥ 30 j, devis en attente &gt; 7 j, NPS détracteurs ("+o.npsJ+" derniers jours), WO en cours</div></td><td style='text-align:right;font-size:10px;color:#666'>Carrefour — DTF<br><b>"+new Date().toLocaleDateString("fr-FR")+"</b></td></tr></table>"
+     +t("WO en cours / assignés depuis 30 jours ou plus (prestataires externes)",s.woEc,function(r){return "<tr><td style='"+td+"'>"+_envE(r["Numéro"]||"")+"</td><td style='"+td+"'>"+_envE(r._f==="Inconnu"?"Équipe interne":r._f)+"</td><td style='"+td+"'>"+_envE(r["Équipement"]||"")+"</td><td style='"+td+"'>"+_envE(_envStatut(r._e))+"</td><td style='"+td+";text-align:right'>"+(r._age>=0?r._age+" j":"")+"</td></tr>";},["N° WO","Prestataire","Équipement","Statut","Âge"],10)
+     +t("Avis NPS détracteurs",s.nps,function(r){return "<tr><td style='"+td+"'>"+(r._d?r._d.toLocaleDateString("fr-FR"):"")+"</td><td style='"+td+"'>"+_envE(r._f==="Inconnu"?"":r._f)+"</td><td style='"+td+"'>Note "+r._n+"</td><td colspan='2' style='"+td+"'>"+_envE(r["Commentaire"]||r["Commentaires"]||r["Valeur de chaîne"]||"")+"</td></tr>";},["Date","Prestataire","Note","Commentaire",""])+"</div>"; };
+  return "<!DOCTYPE html><html><head><meta charset='UTF-8'></head><body style='font-family:Arial,Helvetica,sans-serif;color:#1a1a2e;margin:24px'><table width='100%' cellspacing='0' style='border-bottom:3px solid #004B9B'><tr><td><div style='font-size:19px;font-weight:bold;color:#004B9B'>Synthèse des points d'alerte à traiter — "+_envE(g.nom)+"</div><div style='font-size:10px;color:#666'>"+g.stores.length+" magasin(s) · WO en attente ≥ 30 j, devis en attente &gt; 7 j, NPS détracteurs ("+o.npsJ+" derniers jours), WO en cours ≥ 30 j chez un prestataire externe</div></td><td style='text-align:right;font-size:10px;color:#666'>Carrefour — DTF<br><b>"+new Date().toLocaleDateString("fr-FR")+"</b></td></tr></table>"
    +"<table width='100%' cellspacing='0' style='border-collapse:collapse;margin-top:10px'><tr><th style='"+th+"'>Magasin</th><th style='"+th+"'>WO att.</th><th style='"+th+"'>Devis att.</th><th style='"+th+"'>NPS</th><th style='"+th+"'>WO en cours</th></tr>"+g.stores.map(function(s){return "<tr><td style='"+td+"'>"+_envE(s.m)+"</td><td style='"+td+"'>"+s.woAtt.length+"</td><td style='"+td+"'>"+s.dv.length+"</td><td style='"+td+"'>"+s.nps.length+"</td><td style='"+td+"'>"+s.woEc.length+"</td></tr>";}).join("")+"</table>"
    +g.stores.slice(0,40).map(sec).join("")+(g.stores.length>40?"<div style='margin-top:12px;color:#888;font-size:10px'>… "+(g.stores.length-40)+" autre(s) magasin(s) : voir le fichier Excel.</div>":"")
    +"<div style='margin-top:20px;border-top:1px solid #e3e6ee;padding-top:5px;font-size:9px;color:#888'>Carrefour — Direction Technique France · Source ServiceNow</div></body></html>";
 }
 function _rlXlsx(g){
   if(typeof XLSX==="undefined") return null; var wb=XLSX.utils.book_new(), W=[["Magasin","N° WO","Statut","Prestataire","Équipement","Demande","Âge (j)"]], D=[["Magasin","N° devis","Prestataire","Équipement","Montant (€)","Âge (j)"]], N=[["Magasin","Date","Note","Prestataire","Commentaire"]];
-  g.stores.forEach(function(s){ s.woAtt.concat(s.woEc).forEach(function(r){ W.push([s.m,r["Numéro"]||"",_envStatut(r._e)+(r._p==="TU"?" (TU)":""),r._f==="Inconnu"?"Équipe interne":r._f,r["Équipement"]||"",r["Titre de la demande"]||"",r._age>=0?r._age:""]); });
-    s.dv.forEach(function(r){ D.push([s.m,r["Numéro"]||"",r._f,r["Équipement"]||"",Math.round(r._c||0),r._age]); }); s.nps.forEach(function(r){ N.push([s.m,r._d?r._d.toLocaleDateString("fr-FR"):"",r._n,r._f==="Inconnu"?"":r._f,r["Commentaire"]||r["Commentaires"]||""]); }); });
+  g.stores.forEach(function(s){ s.woAtt.concat(s.woEc).forEach(function(r){ W.push([s.m,r["Numéro"]||"",_envStatut(r._e),r._f==="Inconnu"?"Équipe interne":r._f,r["Équipement"]||"",r["Titre de la demande"]||"",r._age>=0?r._age:""]); });
+    s.dv.forEach(function(r){ D.push([s.m,r["Numéro"]||"",r._f,r["Équipement"]||"",Math.round(r._c||0),r._age]); }); s.nps.forEach(function(r){ N.push([s.m,r._d?r._d.toLocaleDateString("fr-FR"):"",r._n,r._f==="Inconnu"?"":r._f,r["Commentaire"]||r["Commentaires"]||r["Valeur de chaîne"]||""]); }); });
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(W),"WO"); XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(D),"Devis"); XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(N),"NPS");
   return XLSX.write(wb,{bookType:"xlsx",type:"base64"});
 }
-function _rlObj(){ return {objet:(document.getElementById("rl-objet")||{}).value||"Points à traiter sur vos magasins — {cmm}",intro:(document.getElementById("rl-intro")||{}).value||""}; }
+function _rlObj(){ return {objet:(document.getElementById("rl-objet")||{}).value||"Points d'alerte à traiter sur vos magasins",intro:(document.getElementById("rl-intro")||{}).value||""}; }
 function _rlBuild(g,o,recap){
   var t=_rlObj(), intro=_rlIntro(t.intro,g,o);
-  return {html:_rlMailHtml(g,o,intro,recap),text:intro+"\n\n"+g.stores.length+" magasin(s) en alerte : "+g.woAtt+" WO en attente ≥ 30 j, "+g.dv+" devis en attente > 7 j, "+g.nps+" avis NPS détracteurs, "+g.woEc+" WO en cours.\nLa synthèse détaillée est jointe.\n\nDirection Technique France — Carrefour",pdfHtml:_rlPdfHtml(g,o),objet:(recap?"Récapitulatif relances — pôle {cmm}":t.objet).replace(/\{cmm\}/g,g.nom).replace(/\{nb\}/g,String(g.stores.length))};
+  return {html:_rlMailHtml(g,o,intro,recap),text:intro+"\n\n"+g.stores.length+" magasin(s) en alerte : "+g.woAtt+" WO en attente ≥ 30 j, "+g.dv+" devis en attente > 7 j, "+g.nps+" avis NPS détracteurs, "+g.woEc+" WO en cours.\nLa synthèse détaillée est jointe. Merci de relancer les magasins concernés ou de traiter directement ces points.\n\nDirection Technique France — Carrefour",pdfHtml:_rlPdfHtml(g,o),objet:(recap?"Récapitulatif relances — pôle {cmm}":t.objet).replace(/\{cmm\}/g,g.nom).replace(/\{nb\}/g,String(g.stores.length))};
 }
 function rlPreview(i){
   var g=_rlGroups[i]; if(!g) return; var B=_rlBuild(g,_rlParams(),false);
@@ -5021,6 +5049,86 @@ async function rlEnvoyer(test){
   if(logP.length){ var lr=await Promise.all(logP); if(lr.some(function(x){return !x.ok;})) toast("Relances envoyées, mais journal incomplet : "+(lr.filter(function(x){return !x.ok;})[0].message||"erreur"),true); EFF.rows=null; }
   _rlEnCours=false; btns.forEach(function(b){b.disabled=false;}); renderRelances();
   toast(test?"Test terminé":"Envoi terminé : "+res.filter(function(x){return x.indexOf("✅")>=0;}).length+"/"+jobs.length+" réussi(s)");
+}
+
+// ═══════════════════════════════════════════════════════════════
+// v30 — ENVOI AUTOMATIQUE AUX CMM : réglages, aperçu calculé par le serveur, test à la demande
+// Le calcul et l'envoi se font côté Apps Script (MainScript.gs v14) ; le dashboard ne fait que régler et contrôler.
+// ═══════════════════════════════════════════════════════════════
+var AC={cfg:null,etat:null,busy:false};
+function _acEl(id){ return document.getElementById(id); }
+function _acJourFr(s,court){ if(!s) return "—"; var p=String(s).split("-"); var d=new Date(+p[0],+p[1]-1,+p[2]); return d.toLocaleDateString("fr-FR",court?{day:"2-digit",month:"2-digit",year:"numeric"}:{weekday:"long",day:"numeric",month:"long",year:"numeric"}); }
+function _acLock(b){ AC.busy=b; document.querySelectorAll(".ac-btn").forEach(function(x){ x.disabled=b; x.style.opacity=b?".5":"1"; }); }
+function _acForm(on){ document.querySelectorAll(".ac-in").forEach(function(x){ x.disabled=!on; }); document.querySelectorAll(".ac-btn").forEach(function(x){ x.disabled=!on; x.style.opacity=on?"1":".5"; }); }
+function acToForm(){
+  var c=AC.cfg||{}; var set=function(id,v){ var e=_acEl(id); if(e) e.value=v; }, chk=function(id,v){ var e=_acEl(id); if(e) e.checked=!!v; };
+  chk("ac-actif",c.actif); chk("ac-test",c.test); chk("ac-cc",c.ccRpm); chk("ac-copie",c.copieMoi);
+  set("ac-debut",c.debut); set("ac-freq",c.freqSemaines); set("ac-delai",c.delaiMinJours); set("ac-max",c.maxMails); set("ac-npsj",c.npsJours);
+}
+function acFromForm(){
+  var n=function(id,d){ var x=parseInt((_acEl(id)||{}).value,10); return isNaN(x)?d:x; }, c=function(id){ return !!(_acEl(id)||{}).checked; };
+  return {actif:c("ac-actif"),test:c("ac-test"),ccRpm:c("ac-cc"),copieMoi:c("ac-copie"),debut:(_acEl("ac-debut")||{}).value||"2026-11-09",freqSemaines:n("ac-freq",2),delaiMinJours:n("ac-delai",7),maxMails:n("ac-max",40),maxTest:5,npsJours:n("ac-npsj",30)};
+}
+function acRenderEtat(r){
+  var c=r.config, e=r.etat||{}, b=_acEl("ac-badge"), h=[];
+  if(b){ if(!c.actif){ b.textContent="⏸ Désactivé"; b.style.color="var(--t3)"; } else if(c.test){ b.textContent="🧪 Actif — MODE TEST"; b.style.color="#EFC96A"; } else { b.textContent="🟢 Actif — MODE RÉEL"; b.style.color="#5DCAA5"; } }
+  h.push("Déclencheur du lundi 8h : "+(r.declencheur?"<b style='color:#5DCAA5'>✅ installé</b>":"<b style='color:#E24B4A'>❌ absent</b> — exécuter <code>setupTousDeclencheurs</code> dans Apps Script (une fois)"));
+  if(c.actif) h.push("Prochain envoi : <b>"+_acJourFr(r.prochain)+" vers 8h</b> — "+(c.test?"en mode test (un essai chaque lundi tant que le test est coché)":"toutes les "+c.freqSemaines+" semaine(s) ensuite"));
+  else h.push("Rien ne part tant que « Activer » n'est pas coché et enregistré.");
+  if(e.dernierResume){ var d=e.dernierResume; h.push("Dernier cycle : "+_acJourFr(d.jour,true)+" ("+(d.mode==="test"?"test":"réel")+(d.manuel?", lancé à la main":"")+") — <b>"+d.envoyes+"</b> mail(s), "+d.echecs+" échec(s), "+d.ignores+" ignoré(s)"); }
+  if(e.dernierCycle) h.push("Dernier cycle réel automatique : "+_acJourFr(e.dernierCycle,true));
+  if(e.enCours) h.push("<span style='color:var(--amber)'>⏳ Cycle en cours : "+(e.enCours.faits||[]).length+"/"+((e.enCours.file||[]).length||"?")+" CMM traités"+(r.suitePlanifiee?" (reprise planifiée)":"")+"</span>");
+  h.push("Quota Gmail restant aujourd'hui : "+r.quota+(r.moi?" · administrateur : "+_envE(r.moi):""));
+  var s=_acEl("ac-etat"); if(s) s.innerHTML=h.join("<br>");
+}
+async function acLoad(){
+  var s=_acEl("ac-etat"); if(!s) return;
+  if(!SCRIPT_URL||!_adminToken()){ s.innerHTML="🔒 Réservé à l'administrateur : ouvrez le dashboard avec <code>?admin=1</code> pour régler et contrôler l'envoi automatique."; _acForm(false); return; }
+  _acForm(true); s.textContent="Chargement…";
+  var r=await _scriptRead("getAutoCmm",{token:_adminToken()},40000);
+  if(!r||r.status!=="ok"||!r.config){ s.innerHTML="<span style='color:var(--red)'>⚠️ "+_envE((r&&r.status==="error"&&r.message)||(r?"MainScript.gs v14 non déployé (action inconnue)":"Apps Script injoignable"))+"</span>"; return; }
+  AC.cfg=r.config; AC.etat=r.etat; acToForm(); acRenderEtat(r);
+}
+async function acSave(){
+  if(AC.busy) return; var c=acFromForm();
+  var avant=AC.cfg||{}; if(c.actif&&!c.test&&!(avant.actif&&!avant.test)){
+    if(!confirm("⚠️ Mode RÉEL\n\nÀ partir du "+_acJourFr(c.debut)+", chaque CMM en alerte recevra automatiquement le mail (RPM en copie) toutes les "+c.freqSemaines+" semaine(s), le lundi vers 8h.\n\nConfirmer ?")) return; }
+  _acLock(true); var st=_acEl("ac-status"); if(st) st.innerHTML="<span style='color:var(--amber)'>⏳ Enregistrement…</span>";
+  var r=await _scriptWrite("saveConfig",{key:"auto_cmm",value:JSON.stringify(c)});
+  _acLock(false);
+  if(st) st.innerHTML=r.ok?"<span style='color:var(--green)'>✅ Réglages enregistrés</span>":"<span style='color:var(--red)'>❌ "+_envE(r.message||"échec")+"</span>";
+  if(r.ok) acLoad();
+}
+function _acModal(titre,mail,pdf,info){
+  var old=_acEl("env-modal"); if(old) old.remove();
+  var m=document.createElement("div"); m.id="env-modal"; m.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px";
+  m.innerHTML="<div style='background:#fff;border-radius:10px;width:min(900px,100%);height:90vh;display:flex;flex-direction:column'><div style='display:flex;gap:8px;padding:10px;background:#1a1a2e;border-radius:10px 10px 0 0;align-items:center'><button id='env-tab-mail' style='padding:6px 12px;border-radius:6px;border:none;cursor:pointer;font-weight:700'>✉ Mail</button><button id='env-tab-pdf' style='padding:6px 12px;border-radius:6px;border:none;cursor:pointer;font-weight:700'>📄 Synthèse PDF</button><span style='flex:1;color:#aaa;font-size:11px'>"+_envE(titre)+" · "+_envE(info||"")+"</span><button onclick=\"document.getElementById('env-modal').remove()\" style='padding:6px 12px;border-radius:6px;border:none;cursor:pointer'>✕ Fermer</button></div><iframe id='env-frame' style='flex:1;border:none;background:#fff'></iframe></div>";
+  document.body.appendChild(m); var fr=_acEl("env-frame");
+  var show=function(w){ fr.srcdoc=w==="pdf"?pdf:mail; _acEl("env-tab-mail").style.background=w==="pdf"?"#ddd":"#90c4f5"; _acEl("env-tab-pdf").style.background=w==="pdf"?"#90c4f5":"#ddd"; };
+  _acEl("env-tab-mail").onclick=function(){show("mail");}; _acEl("env-tab-pdf").onclick=function(){show("pdf");}; show("mail");
+}
+async function acVoir(nom){
+  if(AC.busy) return; _acLock(true); var st=_acEl("ac-status"); if(st) st.innerHTML="<span style='color:var(--amber)'>⏳ Mail et PDF générés par le serveur…</span>";
+  var r=await _scriptRead("autoCmmApercu",{token:_adminToken(),cmm:nom},120000); _acLock(false);
+  if(!r||r.status!=="ok"||!r.mailHtml){ if(st) st.innerHTML="<span style='color:var(--red)'>❌ "+_envE((r&&r.message)||"Aperçu indisponible")+"</span>"; return; }
+  if(st) st.innerHTML=""; var l=(r.liste||[]).filter(function(x){return x.nom===nom;})[0]||{};
+  _acModal("Objet : "+r.objet,r.mailHtml,r.pdfHtml,"À : "+(l.mail||"(adresse manquante)")+(l.mailRpm?" · CC : "+l.mailRpm:""));
+}
+async function acApercu(){
+  if(AC.busy) return; _acLock(true); var st=_acEl("ac-status"), box=_acEl("ac-apercu"); if(st) st.innerHTML="<span style='color:var(--amber)'>⏳ Calcul côté serveur (jusqu'à 1 minute)…</span>"; if(box) box.innerHTML="";
+  var r=await _scriptRead("autoCmmApercu",{token:_adminToken()},120000); _acLock(false);
+  if(!r||r.status!=="ok"){ if(st) st.innerHTML="<span style='color:var(--red)'>❌ "+_envE((r&&r.message)||(r?"Réponse inattendue":"Apps Script injoignable (ou MainScript.gs v14 non déployé)"))+"</span>"; return; }
+  var L=r.liste||[], ok=L.filter(function(x){return !x.ignore;}), ko=L.filter(function(x){return x.ignore;}), c=AC.cfg||{}, plaf=c.test?(c.maxTest||5):(c.maxMails||40);
+  if(st) st.innerHTML="<b>"+ok.length+"</b> CMM recevraient un mail, <b>"+ko.length+"</b> seraient ignorés"+(ok.length>plaf?" — <span style='color:var(--amber)'>plafond de "+plaf+" mails par cycle : seuls les "+plaf+" premiers (les plus chargés) partiraient</span>":"")+" · données : "+r.info.nbWO+" WO, "+r.info.nbQUO+" devis, "+r.info.nbNPS+" avis NPS, WO le plus récent du "+_envE(r.info.maxCree);
+  if(box) box.innerHTML="<div class='tscroll' style='max-height:360px'><table><thead><tr><th>CMM</th><th>Mail CMM</th><th>RPM (cc)</th><th>Mag.</th><th>WO att.</th><th>Devis</th><th>NPS</th><th>WO en cours</th><th>Statut</th><th></th></tr></thead><tbody>"+L.map(function(x){
+    return "<tr><td><b>"+_envE(x.nom)+"</b></td><td style='font-size:10px'>"+_envE(x.mail||"—")+"</td><td style='font-size:10px'>"+_envE(x.mailRpm||"—")+"</td><td>"+x.magasins+"</td><td>"+x.woAtt+"</td><td>"+x.dv+"</td><td>"+x.nps+"</td><td>"+x.woEc+"</td><td style='font-size:10px'>"+(x.ignore?"<span style='color:var(--amber)'>⛔ "+_envE(x.ignore)+"</span>":"<span style='color:#5DCAA5'>✅ partirait</span>")+"</td><td><button onclick='acVoir(\""+_envE(x.nom).replace(/'/g,"&#39;")+"\")' style='padding:3px 8px;font-size:10px;background:transparent;color:#90c4f5;border:1px solid rgba(55,138,221,.3);border-radius:5px;cursor:pointer'>👁</button></td></tr>"; }).join("")+"</tbody></table></div>";
+}
+async function acTest(){
+  if(AC.busy) return; if(!confirm("Envoyer jusqu'à 5 mails de TEST (mail + PDF + Excel) à votre propre adresse ?\n\nAucun CMM ne recevra quoi que ce soit, et le planning n'est pas modifié.")) return;
+  _acLock(true); var st=_acEl("ac-status"); if(st) st.innerHTML="<span style='color:var(--amber)'>⏳ Calcul et envoi des tests… (1 à 3 minutes, ne fermez pas la page)</span>";
+  var r=await _scriptWrite("autoCmmRun",{mode:"test"},110); _acLock(false);
+  if(st) st.innerHTML=r.ok&&r.detail&&!r.detail.enCours?"<span style='color:var(--green)'>✅ "+r.detail.envoyes+" mail(s) de test envoyé(s) à votre adresse"+(r.detail.echecs?" — <span style='color:var(--red)'>"+r.detail.echecs+" échec(s)</span>":"")+" ; le résumé arrive aussi par mail.</span>":r.ok?"<span style='color:var(--amber)'>⏳ Test en cours côté serveur (reprise automatique) — consultez votre boîte mail dans quelques minutes.</span>":"<span style='color:var(--red)'>❌ "+_envE(r.message||"échec")+"</span>";
+  acLoad();
 }
 
 // ═══════════════════════════════════════════════════════════════
