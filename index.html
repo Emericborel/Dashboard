@@ -459,6 +459,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
           style="width:260px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:var(--text);border-radius:7px;padding:6px 10px;font-size:11px">
         <div id="global-search-results" style="display:none;position:absolute;top:calc(100% + 4px);left:0;width:420px;max-height:420px;overflow-y:auto;background:var(--card);border:1px solid var(--border);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.4);z-index:500"></div>
       </div>
+      <a class="btn-sm" href="https://servicenow.fr.carrefour.com/now/cwf/agent/home" target="_blank" rel="noopener" title="Ouvrir ServiceNow" style="padding:6px 10px;background:rgba(98,217,150,.12);color:#62D996;border:1px solid rgba(98,217,150,.35);border-radius:8px;font-size:11px;font-weight:700;text-decoration:none;white-space:nowrap">🔗 ServiceNow</a>
       <button class="btn-sm" onclick="_showDiagPanel()" title="Diagnostic données chargées" style="padding:6px 9px;background:rgba(255,255,255,.06);color:var(--t3);border:1px solid rgba(255,255,255,.1);border-radius:6px;font-size:11px;cursor:pointer">🔧</button>
       <button class="btn-sm" id="adm-badge" onclick="adminLogin()" title="Connexion administrateur" style="display:none;padding:6px 10px;background:transparent;border:1px solid rgba(239,159,39,.4);border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;color:#EFC96A">🔑 Connexion admin</button>
       <button class="btn-sm" id="btn-maj-drive" onclick="majDriveAdmin()" title="Chercher les nouveaux fichiers (mail / Drive) et mettre à jour les données" style="display:none;padding:6px 10px;background:rgba(55,138,221,.15);color:var(--blue);border:1px solid var(--blue);border-radius:6px;font-size:11px;cursor:pointer">🔄 Mettre à jour</button>
@@ -489,7 +490,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
     <div id="store-detail-body" style="padding:20px 24px"></div>
   </div>
   <div class="tabs">
-    <div class="tab active" onclick="go('overview')">📊 Vue générale</div>
+    <div class="tab active" onclick="go('overview')">📊 Vue générale curatif</div>
     <div class="tab" onclick="go('taux')">📈 Taux clôture prestataire</div>
     <div class="tab" onclick="go('score')">🏅 Score prestataire</div>
     <div class="tab" onclick="go('scoremag')">🏪 Score magasin</div>
@@ -541,7 +542,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
   </div>
   <div class="main-wrap"><div class="main">
 
-    <!-- VUE GÉNÉRALE -->
+    <!-- VUE GÉNÉRALE CURATIF -->
     <div class="page active" id="page-overview">
       <div class="kg" id="kg-ov"></div>
       <div class="g2">
@@ -1134,6 +1135,8 @@ Nous avons identifié {nb} magasin(s) de votre périmètre avec des points d'ale
           <label><input type="checkbox" id="rp-t-woec" checked onchange="renderRelancesPrest()"> WO en cours / assignés ≥ 30 j : au moins <input class="fs" type="number" id="rp-womin" value="1" min="1" style="width:56px;display:inline-block" onchange="renderRelancesPrest()"></label>
           <label><input type="checkbox" id="rp-t-score" checked onchange="renderRelancesPrest()"> Score &lt; <input class="fs" type="number" id="rp-sseuil" value="50" style="width:56px;display:inline-block" onchange="renderRelancesPrest()"> ou en baisse de <input class="fs" type="number" id="rp-baisse" value="5" style="width:56px;display:inline-block" onchange="renderRelancesPrest()"> pts</label>
           <label><input type="checkbox" id="rp-t-obj" checked onchange="renderRelancesPrest()"> Clôture, réinterventions ou délai moyen hors objectif (objectifs réglés par prestataire dans Rapports)</label>
+          <label>Objectif clôture curatif ≥ <input class="fs" type="number" id="rp-taux" value="85" min="0" max="100" style="width:56px;display:inline-block" onchange="_rlpSaveObj()"> %</label>
+          <label>Préventif : <input class="fs" type="number" id="rp-prev" value="100" min="0" max="100" style="width:56px;display:inline-block" onchange="_rlpSaveObj()"> % au 31/12, suivi <select class="fs" id="rp-prevk" style="width:110px;display:inline-block" onchange="_rlpSaveObj()"><option value="4">trimestriel</option><option value="2">semestriel</option><option value="1">annuel</option></select> <span style="color:var(--t3)">(par défaut ; réglable par prestataire dans Rapports)</span></label>
           <label>Min. WO <input class="fs" type="number" id="rp-min" value="20" min="1" style="width:60px;display:inline-block" onchange="renderRelancesPrest()"></label>
           <label>Délai de retour (j) <input class="fs" type="number" id="rp-delai" value="7" min="1" style="width:56px;display:inline-block"></label>
         </div>
@@ -1321,6 +1324,15 @@ Dans le cadre du suivi de la performance maintenance, nous attirons votre attent
           <select id="al-mag" class="fs" style="min-width:160px" onchange="renderAlertes()">
             <option value="">Tous magasins</option>
           </select>
+          <select id="al-type" class="fs" style="min-width:130px" onchange="renderAlertes()" title="Type de client : Hyper, Market, Match…">
+            <option value="">Tous clients</option>
+          </select>
+          <select id="al-cmm" class="fs" style="min-width:160px" onchange="renderAlertes()">
+            <option value="">Tous CMM</option>
+          </select>
+          <select id="al-seuil" class="fs" style="min-width:120px" onchange="renderAlertes()" title="Ancienneté minimale des alertes">
+            <option value="7" selected>Plus de 7 jours</option><option value="15">Plus de 15 jours</option><option value="30">Plus de 30 jours</option><option value="60">Plus de 60 jours</option><option value="90">Plus de 90 jours</option>
+          </select>
           <button onclick="exporterAlertes()" style="padding:6px 14px;background:var(--green);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">📥 Excel</button>
         </div>
         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px" id="alerte-kpis"></div>
@@ -1401,7 +1413,8 @@ Veuillez trouver ci-joint votre rapport de performance maintenance pour la péri
                 <div id="env-o-hint" style="font-size:10px;color:var(--t3);margin-top:6px"></div>
                 <div style="display:grid;grid-template-columns:1fr 70px;gap:6px 10px;align-items:center;margin-top:8px;font-size:11px;color:var(--t2)">
                   <span>Taux de clôture curatif ≥ (%)</span><input id="env-o-taux" type="number" class="fs" onchange="_envSaveObj()">
-                  <span>Taux de clôture préventif ≥ (%) <i style="color:var(--t3)">— si le prestataire a du préventif</i></span><input id="env-o-prev" type="number" class="fs" onchange="_envSaveObj()">
+                  <span>Préventif : objectif de clôture au 31/12 (%) <i style="color:var(--t3)">— si le prestataire a du préventif</i></span><input id="env-o-prev" type="number" class="fs" onchange="_envSaveObj()">
+                  <span>Préventif : suivi intermédiaire <i style="color:var(--t3)">— selon la fréquence de maintenance du prestataire</i></span><select id="env-o-prevK" class="fs" onchange="_envSaveObj()"><option value="4">Trimestriel</option><option value="2">Semestriel</option><option value="1">Annuel</option></select>
                   <span>Réactivité : délai moyen de résolution — maximum (jours)</span><input id="env-o-ttr" type="number" class="fs" onchange="_envSaveObj()">
                   <span>WO en cours / assignés depuis ≥ 30 j — maximum</span><input id="env-o-wo30" type="number" class="fs" onchange="_envSaveObj()">
                   <span>Réinterventions à 30 j — maximum (%)</span><input id="env-o-reint" type="number" class="fs" onchange="_envSaveObj()">
@@ -4518,7 +4531,7 @@ function ctImportAppliquer(){
     if(x.coche&&(x.st==="nouveau"||x.st==="complete"||x.st==="suggestion")){
       var c=x.c;
       if(c){ if(!c.email){ c.email=x.mail; if(x.cc&&!c.email2) c.email2=x.cc; nUp++; } }
-      else { CONTACTS.push({nom:x.nom,email:x.mail,email2:x.cc||"",groupe:"",taux_ref:70,auto_send:auto,couleur:couleurs[CONTACTS.length%couleurs.length],domaines:ref?ref[3]:"",sap:ref?ref[4]:"",ref:ref?ref[0]:"",src:"référencement 06/11/2026"}); nNew++; }
+      else { CONTACTS.push({nom:x.nom,email:x.mail,email2:x.cc||"",groupe:"",taux_ref:null,auto_send:auto,couleur:couleurs[CONTACTS.length%couleurs.length],domaines:ref?ref[3]:"",sap:ref?ref[4]:"",ref:ref?ref[0]:"",src:"référencement 06/11/2026"}); nNew++; }
       var cc=c||CONTACTS[CONTACTS.length-1]; if(ref){ if(!cc.domaines) cc.domaines=ref[3]; if(!cc.sap) cc.sap=ref[4]; if(!cc.ref) cc.ref=ref[0]; }
     } else if(x.st==="deja"&&x.c&&x.sur&&ref){ var d=x.c, ch=false; if(!d.domaines&&ref[3]){ d.domaines=ref[3]; ch=true; } if(!d.sap&&ref[4]){ d.sap=ref[4]; ch=true; } if(!d.ref){ d.ref=ref[0]; ch=true; } if(ch) nEnr++; }
   });
@@ -4543,7 +4556,7 @@ function ctChargerFichier(input){
 }
 // ── Formulaire ajout / modification ──
 function ctForm(i){
-  var c=(i===undefined||i===null)?{nom:"",email:"",email2:"",groupe:"",taux_ref:70,auto_send:true,domaines:"",sap:""}:CONTACTS[i];
+  var c=(i===undefined||i===null)?{nom:"",email:"",email2:"",groupe:"",taux_ref:null,auto_send:true,domaines:"",sap:""}:CONTACTS[i];
   if(!c) return; var inp="width:100%;background:var(--bg);border:1px solid rgba(255,255,255,.15);color:var(--text);border-radius:7px;padding:7px 10px;font-size:12px", lab="display:block;font-size:10px;text-transform:uppercase;color:var(--t3);margin:10px 0 3px";
   var noms={}; _ctPrestWO().forEach(function(p){ noms[p.nom]=1; }); REF_PREST.forEach(function(r){ noms[r[0]]=1; });
   _ctModal(i===undefined||i===null?"Ajouter un contact prestataire":"Modifier « "+c.nom+" »",
@@ -4569,7 +4582,7 @@ function ctFormSauver(i){
   var bad=_ctMails(em2).filter(function(a){return !_ctMailOk(a);}); if(bad.length){ er.textContent="E-mail en copie invalide : "+bad.join(", "); return; }
   var dup=CONTACTS.findIndex(function(x,k){ return k!==i&&_ctNorm(x.nom)===_ctNorm(nom); }); if(dup>=0){ er.textContent="Un contact porte déjà ce nom."; return; }
   var ref=_ctRefTrouve(nom,_ctRefIndex(REF_PREST)), couleurs=["#378ADD","#1D9E75","#D85A30","#BA7517","#8B5CF6","#E24B4A"];
-  var d={nom:nom,email:em,email2:_ctMails(em2).join(";"),groupe:document.getElementById("ctf-groupe").value.trim(),taux_ref:parseFloat(document.getElementById("ctf-taux").value)||70,auto_send:document.getElementById("ctf-auto").checked};
+  var d={nom:nom,email:em,email2:_ctMails(em2).join(";"),groupe:document.getElementById("ctf-groupe").value.trim(),taux_ref:parseFloat(document.getElementById("ctf-taux").value)||null,auto_send:document.getElementById("ctf-auto").checked};
   if(i===null||i===undefined){ if(ref){ d.domaines=ref[3]; d.sap=ref[4]; d.ref=ref[0]; } d.couleur=couleurs[CONTACTS.length%couleurs.length]; CONTACTS.push(d); }
   else CONTACTS[i]=Object.assign({},CONTACTS[i],d);
   saveContacts(); displayContacts(CONTACTS); try{ buildSendSelects(); }catch(e){} _ctModalFerme(); toast("Contact enregistré : "+nom+" ✓");
@@ -4737,17 +4750,28 @@ function testerScript(){
 // ═══════════════════════════════════════════════════════════════
 // ENVOI FIABILISÉ DU RAPPORT PRESTATAIRE (mail personnalisé + PDF + Excel)
 // ═══════════════════════════════════════════════════════════════
-var ENV_OBJ_DEF={taux:70, prev:85, ttr:10, wo30:0, reint:10, nps:0, delai:7};
+var ENV_OBJ_DEF={taux:85, prev:100, prevK:2, ttr:10, wo30:0, reint:10, nps:0, delai:7};
+var SN_URL="https://servicenow.fr.carrefour.com/now/cwf/agent/home";
+// Objectifs enregistrés avant la v37 (sans marque v:2) : les anciennes valeurs par défaut (curatif 70 %, préventif 85 %) sont ignorées
+function _envClean(p){ if(!p||p.v===2) return p||{}; var o=Object.assign({},p); if(o.taux===70) delete o.taux; if(o.prev===85) delete o.prev; return o; }
+// Préventif : objectif de 100 % au 31/12, jalons intermédiaires selon le rythme de suivi du prestataire (K = 4 trimestre, 2 semestre, 1 année)
+var _ENV_MOIS=["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"];
+function _envPrevJalon(obj, endMo){
+  var K=obj.prevK; K=(K===4||K===2||K===1)?K:2; var m=parseInt(String(endMo).slice(5,7),10)||12, k=Math.floor(m*K/12), fin=obj.prev;
+  var att=fin*k/K, mj=k?k*12/K:0, kn=Math.min(K,k+1), mn=kn*12/K;
+  return {K:K,k:k,att:Math.round(att*10)/10,fin:fin,libK:K===4?"trimestriel":K===2?"semestriel":"annuel",
+    lib:k?"fin "+_ENV_MOIS[mj-1]:"",prochain:"fin "+_ENV_MOIS[mn-1],prochainPct:Math.round(fin*kn/K*10)/10};
+}
 function _envE(x){ return String(x==null?"":x).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
 function _envLS(k){ try{ return JSON.parse(localStorage.getItem(k)||"{}")||{}; }catch(e){ return {}; } }
-function _envDefGen(){ return Object.assign({},ENV_OBJ_DEF,_envLS("mc_env_obj")); }
+function _envDefGen(){ return Object.assign({},ENV_OBJ_DEF,_envClean(_envLS("mc_env_obj"))); }
 // Objectifs d'un prestataire : défaut général < objectif du contact (taux) < objectifs enregistrés pour CE prestataire
 function _envObjFor(s){
-  var o=_envDefGen(); if(s&&s.contact&&s.contact.taux_ref) o.taux=s.contact.taux_ref;
-  if(s){ var p=_envLS("mc_env_obj_p")[s.nom]; if(p) Object.assign(o,p); }
+  var o=_envDefGen(); if(s&&s.contact&&s.contact.taux_ref&&s.contact.taux_ref!==70) o.taux=s.contact.taux_ref;
+  if(s){ var p=_envLS("mc_env_obj_p")[s.nom]; if(p) Object.assign(o,_envClean(p)); }
   return o;
 }
-function _envObjInputs(){ if(_RAP_OVR) return {}; var o={}; Object.keys(ENV_OBJ_DEF).forEach(function(k){ var e=document.getElementById("env-o-"+k); var v=e?parseFloat(e.value):NaN; if(!isNaN(v)) o[k]=v; }); return o; }
+function _envObjInputs(){ if(_RAP_OVR) return {}; var o={v:2}; Object.keys(ENV_OBJ_DEF).forEach(function(k){ var e=document.getElementById("env-o-"+k); var v=e?parseFloat(e.value):NaN; if(!isNaN(v)) o[k]=v; }); return o; }
 function _envObjToInputs(){
   var s=_envSel(), o=_envObjFor(s);
   Object.keys(ENV_OBJ_DEF).forEach(function(k){ var e=document.getElementById("env-o-"+k); if(e) e.value=o[k]; });
@@ -4831,9 +4855,9 @@ function _tnIntro(C, ctx){
 function _tnPrevHtml(C){
   var P=C.prevA, box="margin:16px 0;border-radius:4px;padding:10px 12px;font-size:12px;";
   if(!P) return "<div style='"+box+"background:#f3f4f8;border-left:4px solid #888;color:#444'><b>Maintenance préventive.</b> Aucun WO préventif n'est rattaché à votre périmètre sur la période : rien à signaler sur ce volet.</div>";
-  var okT=P.taux!==null&&P.taux>=C.obj.prev, bad=(P.taux!==null&&!okT)||P.plus60>0, col=bad?"#BA7517":"#1D9E75", bg=bad?"#FFF7E8":"#E9F7F1", tc=bad?"#5a3d0a":"#0b4a37";
+  var J=C.prevJ, okT=P.taux!==null&&(!J.k||P.taux>=J.att), bad=(P.taux!==null&&!okT)||P.plus60>0, col=bad?"#BA7517":"#1D9E75", bg=bad?"#FFF7E8":"#E9F7F1", tc=bad?"#5a3d0a":"#0b4a37";
   var h="<div style='"+box+"background:"+bg+";border-left:4px solid "+col+";color:"+tc+"'><b>Maintenance préventive — votre périmètre en comporte.</b><br>"
-   +(P.n?P.n+" WO préventif(s) sur la période, dont <b>"+P.cl+"</b> clôturé(s) : taux de clôture <b>"+_tnPct(P.taux)+"</b> pour un objectif de "+C.obj.prev+" % ("+(okT?"objectif atteint":"objectif non atteint")+").":"Aucun WO préventif créé sur la période.")
+   +(P.n?P.n+" WO préventif(s) créé(s) depuis janvier, dont <b>"+P.cl+"</b> clôturé(s) : taux de clôture <b>"+_tnPct(P.taux)+"</b>. "+(J.k?"Objectif à "+J.lib+" : <b>"+J.att+" %</b> ("+(okT?"atteint":"non atteint")+")":"Aucun jalon intermédiaire échu")+" — objectif au 31/12 : <b>"+C.obj.prev+" %</b> (suivi "+J.libK+"). Les préventifs ne sont pas tous créés au même moment : tous ceux créés dans l'année doivent être clôturés d'ici fin décembre.":"Aucun WO préventif créé depuis janvier.")
    +(P.ouv?"<br>À ce jour, <b>"+P.ouv+"</b> WO préventif(s) restent à clôturer (dont "+P.ouvAppro+" en attente d'approbation) ; le plus ancien a été créé il y a <b>"+P.vieux+" jours</b>.":"<br>Aucun WO préventif en retard à ce jour.")+"</div>";
   if(P.ouv){
     h+="<table role='presentation' width='100%' cellpadding='0' cellspacing='0' style='border-collapse:collapse;border:1px solid #eceef3;font-size:12px;margin:0 0 10px'><tr style='background:#f3f4f8'><th align='left' style='padding:6px 10px;font-size:10px;color:#666;text-transform:uppercase'>Ancienneté de la demande préventive</th><th style='padding:6px 10px;font-size:10px;color:#666;text-transform:uppercase'>WO à clôturer</th><th style='padding:6px 10px;font-size:10px;color:#666;text-transform:uppercase'>dont en attente d'approbation</th></tr>"
@@ -4844,7 +4868,7 @@ function _tnPrevHtml(C){
 }
 function _tnPrevPdf(C, th, td){
   var P=C.prevA; if(!P) return "<h3 style='font-size:13px;color:#004B9B;margin:16px 0 4px'>Maintenance préventive</h3><div style='font-size:11px'>Aucun WO préventif rattaché à ce périmètre sur la période.</div>";
-  var h="<h3 style='font-size:13px;color:#004B9B;margin:16px 0 4px'>Maintenance préventive</h3><div style='font-size:11px'>"+(P.n?P.n+" WO préventifs sur la période · "+P.cl+" clôturés · taux de clôture <b>"+_tnPct(P.taux)+"</b> (objectif "+C.obj.prev+" %) · "+P.enCours+" en cours · "+P.appro+" en attente d'approbation.":"Aucun WO préventif créé sur la période.")+" Retard actuel : <b>"+P.ouv+"</b> WO à clôturer"+(P.ouv?", le plus ancien créé il y a "+P.vieux+" jours":"")+".</div>";
+  var h="<h3 style='font-size:13px;color:#004B9B;margin:16px 0 4px'>Maintenance préventive</h3><div style='font-size:11px'>"+(P.n?P.n+" WO préventifs créés depuis janvier · "+P.cl+" clôturés · taux de clôture <b>"+_tnPct(P.taux)+"</b> (jalon "+(C.prevJ.k?C.prevJ.att+" % à "+C.prevJ.lib:"aucun échu")+" · objectif "+C.obj.prev+" % au 31/12, suivi "+C.prevJ.libK+") · "+P.enCours+" en cours · "+P.appro+" en attente d'approbation.":"Aucun WO préventif créé depuis janvier.")+" Retard actuel : <b>"+P.ouv+"</b> WO à clôturer"+(P.ouv?", le plus ancien créé il y a "+P.vieux+" jours":"")+".</div>";
   if(P.ouv) h+="<table width='100%' cellspacing='0' style='border-collapse:collapse;margin-top:6px'><tr><th style='"+th+"'>Ancienneté depuis la création</th><th style='"+th+";text-align:right'>WO à clôturer</th><th style='"+th+";text-align:right'>dont en attente d'approbation</th></tr>"
     +P.tr.map(function(t){ return "<tr><td style='"+td+"'>"+t.lib+"</td><td style='"+td+";text-align:right'>"+t.n+"</td><td style='"+td+";text-align:right'>"+t.appro+"</td></tr>"; }).join("")+"</table>";
   return h;
@@ -4944,9 +4968,9 @@ function _menRpmHtml(R){
    +"<div style='background:#004B9B;padding:16px 20px'><div style='color:#fff;font-size:17px;font-weight:700'>Synthèse mensuelle du parc</div><div style='color:#c9dcf5;font-size:12px;margin-top:2px'>"+_envE(R.rpm.nom)+" · "+_envE(R.regs.map(function(x){return x.replace(/_/g," ");}).join(" / "))+" · "+_envE(R.per.label)+"</div></div>"
    +"<div style='padding:20px;font-size:13px;line-height:1.6'><div style='white-space:pre-line'>"+_envE(_menRpmIntro(R))+"</div>"
    +"<div style='font-size:12px;font-weight:700;margin:16px 0 4px'>Indicateurs de vos magasins (moyenne) comparés à la moyenne nationale</div><table role='presentation' width='100%' cellpadding='0' cellspacing='0' style='border-collapse:collapse;border:1px solid #eceef3'><tr><th style='"+th+"'>Indicateur</th><th style='"+th+";text-align:center'>Votre périmètre</th><th style='"+th+";text-align:center'>National</th></tr>"+kpiRows+"</table>"
-   +tM+tP+"<div style='margin-top:18px;font-size:11px;color:#888'>Carrefour — Direction Technique France · notes par rang parmi les magasins (ou prestataires) de la sélection, cumul de janvier à "+_envE(R.per.label)+"</div></div></div></body></html>";
+   +tM+tP+"<div style='margin-top:18px;font-size:11px;color:#888'>Carrefour — Direction Technique France · notes par rang parmi les magasins (ou prestataires) de la sélection, cumul de janvier à "+_envE(R.per.label)+"</div>"+_snBloc()+"</div></div></body></html>";
 }
-function _menRpmText(R){ return "Synthèse mensuelle du parc — "+R.rpm.nom+" — "+R.per.label+"\n\n"+_menRpmIntro(R)+"\n\nCarrefour — Direction Technique France"; }
+function _menRpmText(R){ return "Synthèse mensuelle du parc — "+R.rpm.nom+" — "+R.per.label+"\n\n"+_menRpmIntro(R)+"\n\nCarrefour — Direction Technique France"+_snTxt(); }
 function _menRpmPdf(R){
   var th="padding:5px 7px;background:#eef1f7;font-size:9px;text-transform:uppercase;color:#555;text-align:left", td="padding:5px 7px;border-bottom:1px solid #e3e6ee;font-size:10px";
   var lv=function(sc){ if(sc===null||sc===undefined) return "non noté"; return Math.round(sc)+"/100 · "+_smLevel(sc).t; };
@@ -4986,7 +5010,9 @@ function _envCompute(s, periode){
   var P=_fbPairs(30,"strict",true), elig=0, rep=0;
   P.list.forEach(function(p){ if(!mine(p.w)||!p.eligible||!inP(p.w)) return; elig++; if(p.rep) rep++; });
   var reint=elig>=10?rep/elig*100:null;
-  var prev=s.D.prev;
+  var endMo=range.au||(function(){ var d=new Date(); return d.getFullYear()+"-"+("0"+(d.getMonth()+1)).slice(-2); })(), yr=endMo.slice(0,4);
+  var prev=PREV.filter(function(r){ return ent.indexOf(r._prest)>=0&&(!terr||r._reg===terr)&&r._mo&&r._mo.slice(0,4)===yr&&r._mo<=endMo; });
+  var jal=_envPrevJalon(obj,endMo);
   var kp=prev.length?calcKPIsPrev(prev):null;
   var top=function(list,agef){ var m={}; list.forEach(function(r){ var a=m[r._m]||(m[r._m]={m:r._m,n:0,age:0}); a.n++; var g=agef(r); if(g>a.age) a.age=g; }); return Object.keys(m).map(function(x){return m[x];}).sort(function(a,b){return b.n-a.n||b.age-a.age;}); };
   var topWo=top(woL,function(r){return r._age||0;});
@@ -4999,13 +5025,13 @@ function _envCompute(s, periode){
     {key:"wo30", lib:"WO en cours / assignés depuis 30 jours ou plus", val:String(woL.length), obj:"≤ "+obj.wo30, st:stBas(woL.length,obj.wo30,Math.max(5,obj.wo30*2)), note:"Les WO en attente d'approbation ne sont pas comptés"},
     {key:"ttr", lib:"Réactivité : délai moyen de résolution", val:k.ttrN?k.ttrMoy.toFixed(1).replace(".",",")+" j":"—", obj:"≤ "+obj.ttr+" j", st:k.ttrN>=3?stBas(k.ttrMoy,obj.ttr,obj.ttr*1.5):"na", note:fastN?Math.round(fast/fastN*100)+" % des WO clôturés en 7 jours ou moins":"Moins de 3 WO clôturés"},
     {key:"reint", lib:"Réinterventions à 30 jours (même magasin, même équipement)", val:reint===null?"—":reint.toFixed(1).replace(".",",")+" %", obj:"≤ "+obj.reint+" %", st:reint===null?"na":stBas(reint,obj.reint,obj.reint*1.5), note:reint===null?"Volume insuffisant":rep+" sur "+elig+" WO clôturés"},
-    {key:"prev", lib:"Taux de clôture de la maintenance préventive", val:kp?kp.taux.toFixed(1).replace(".",",")+" %":"—", obj:"≥ "+obj.prev+" %", st:kp?stHaut(kp.taux,obj.prev,10):"na", note:kp?fN(kp.cl)+" clôturés sur "+fN(kp.n)+" WO préventifs · "+fN(kp.appro)+" en attente d'approbation":"", prev:true},
+    {key:"prev", lib:"Taux de clôture de la maintenance préventive (cumul depuis janvier)", val:kp?kp.taux.toFixed(1).replace(".",",")+" %":"—", obj:jal.k?"≥ "+jal.att+" % à "+jal.lib+" (objectif "+obj.prev+" % au 31/12)":"objectif "+obj.prev+" % au 31/12 (prochain jalon : "+jal.prochainPct+" % à "+jal.prochain+")", st:kp&&jal.k?stHaut(kp.taux,jal.att,10):"na", note:kp?fN(kp.cl)+" clôturés sur "+fN(kp.n)+" WO préventifs créés depuis janvier · "+fN(kp.appro)+" en attente d'approbation · suivi "+jal.libK:"", prev:true},
     {key:"nps", lib:"NPS", val:k.npsN>=3?(k.npsScore>0?"+":"")+k.npsScore.toFixed(0):"—", obj:"≥ "+obj.nps, st:k.npsN>=3?stHaut(k.npsScore,obj.nps,15):"na", note:k.npsN>=3?k.npsN+" réponses":"Moins de 3 réponses"},
   ];
   if(!kp) rows=rows.filter(function(r){return !r.prev;});
   var minePrev=function(r){ return ent.indexOf(r._prest)>=0 && (!terr||r._reg===terr); };
   var prevA=_tnPrev(prev.map(function(r){return {e:r._e,age:r._age};}), PREV.filter(minePrev).map(function(r){return {e:r._e,age:r._age};}));
-  return {nom:s.nom,entites:ent,obj:obj,k:k,kp:kp,rows:rows,woL:woL,eqL:eqL,topWo:topWo,mois:mois,nWO:wo.length,reint:reint,prevA:prevA,nWoEc:woL.length,nEq:eqL.length};
+  return {nom:s.nom,entites:ent,obj:obj,k:k,kp:kp,rows:rows,woL:woL,eqL:eqL,topWo:topWo,mois:mois,nWO:wo.length,reint:reint,prevA:prevA,prevJ:jal,nWoEc:woL.length,nEq:eqL.length};
 }
 var _ENV_ST={ok:{c:"#1D9E75",t:"✔ Objectif atteint"},warn:{c:"#BA7517",t:"▲ À améliorer"},ko:{c:"#E24B4A",t:"✖ Non atteint"},na:{c:"#888888",t:"—"}};
 function _envPeriodeLabel(D){ return _rapportPeriodeLabel(D.wo); }
@@ -5053,7 +5079,7 @@ function _envEmailHtml(C, periodeLabel, intro){
    +"<div style='font-size:12px;font-weight:700;color:#1a1a2e;margin:18px 0 4px;text-transform:uppercase;letter-spacing:.4px'>Rappel des objectifs</div>"
    +"<ul style='margin:0 0 0 18px;padding:0;font-size:12px;color:#444;line-height:1.6'>"
    +"<li>Taux de clôture des WO curatifs : au moins <b>"+C.obj.taux+" %</b>.</li>"
-   +(C.kp?"<li>Maintenance préventive : taux de clôture d'au moins <b>"+C.obj.prev+" %</b>.</li>":"")
+   +(C.kp?"<li>Maintenance préventive : <b>"+C.obj.prev+" % de clôture au 31/12</b>, avec un suivi "+C.prevJ.libK+(C.prevJ.k?" (au moins "+C.prevJ.att+" % à "+C.prevJ.lib+")":" (prochain jalon : "+C.prevJ.prochainPct+" % à "+C.prevJ.prochain+")")+".</li>":"")
    +"<li>Réactivité : délai moyen de résolution inférieur à <b>"+C.obj.ttr+" jours</b>.</li>"
    +"<li>WO : ne pas laisser d'intervention en cours ou assignée au-delà de <b>30 jours</b> (maximum "+C.obj.wo30+").</li>"
    +"<li>Qualité : réinterventions à 30 jours inférieures à <b>"+C.obj.reint+" %</b>.</li>"
@@ -5420,6 +5446,9 @@ function rlCheckAll(v){ document.querySelectorAll(".rl-chk:not(:disabled)").forE
 function _rlLigneStore(s){ return "<tr><td style='padding:5px 8px;border-bottom:1px solid #eceef3;font-size:12px'>"+_envE(s.m)+"</td><td style='padding:5px 8px;border-bottom:1px solid #eceef3;text-align:center;font-size:12px'>"+(s.woAtt.length||"")+"</td><td style='padding:5px 8px;border-bottom:1px solid #eceef3;text-align:center;font-size:12px'>"+(s.dv.length||"")+"</td><td style='padding:5px 8px;border-bottom:1px solid #eceef3;text-align:center;font-size:12px'>"+(s.nps.length||"")+"</td><td style='padding:5px 8px;border-bottom:1px solid #eceef3;text-align:center;font-size:12px'>"+(s.woEc.length||"")+"</td><td style='padding:5px 8px;border-bottom:1px solid #eceef3;text-align:right;font-size:11px;color:#888'>"+(s.age?s.age+" j":"")+"</td></tr>"; }
 function _rlTableHead(){ var h="padding:6px 8px;background:#f3f4f8;font-size:10px;color:#666;text-transform:uppercase;"; return "<tr><th align='left' style='"+h+"'>Magasin</th><th style='"+h+"'>WO att. ≥ 30 j</th><th style='"+h+"'>Devis att. &gt; 7 j</th><th style='"+h+"'>NPS détract.</th><th style='"+h+"'>WO en cours</th><th style='"+h+"text-align:right'>Plus ancien</th></tr>"; }
 function _rlIntro(txt,g,o){ return (txt||"").replace(/\{cmm\}/g,g.nom).replace(/\{nb\}/g,String(g.stores.length)).replace(/\{delai\}/g,_envDateLimite(o.delai)); }
+// Lien ServiceNow en bas des mails CMM et RPM
+function _snBloc(){ return "<div style='font-size:12px;color:#444;margin-top:16px;padding-top:10px;border-top:1px solid #eceef3'>Accéder à ServiceNow : <a href='"+SN_URL+"' style='color:#004B9B;font-weight:700'>"+SN_URL+"</a></div>"; }
+function _snTxt(){ return "\n\nAccéder à ServiceNow : "+SN_URL; }
 function _rlMailHtml(g,o,intro,recapRpm){
   var rows=g.stores.slice(0,25).map(_rlLigneStore).join(""), reste=g.stores.length>25?"<tr><td colspan='6' style='padding:5px 8px;color:#888;font-size:11px'>… et "+(g.stores.length-25)+" autre(s) magasin(s) — voir le détail en pièce jointe.</td></tr>":"";
   var kb=function(l,v,c){ return "<td align='center' style='padding:8px;border:1px solid #eceef3'><div style='font-size:9px;color:#888;text-transform:uppercase'>"+l+"</div><div style='font-size:18px;font-weight:700;color:"+c+"'>"+v+"</div></td>"; };
@@ -5430,7 +5459,7 @@ function _rlMailHtml(g,o,intro,recapRpm){
    +"<table role='presentation' width='100%' cellpadding='0' cellspacing='0' style='border-collapse:collapse;border:1px solid #eceef3'>"+_rlTableHead()+rows+reste+"</table>"
    +"<div style='background:#FFF7E8;border-left:4px solid #BA7517;border-radius:4px;padding:10px 12px;margin:16px 0;font-size:12px;color:#5a3d0a'><b>Action demandée :</b> relancer les magasins concernés ou traiter directement ces points — valider ou refuser les devis en attente, lever les blocages sur les WO en attente d'approbation, et prendre contact avec les magasins ayant un avis détracteur.</div>"
    +"<div style='font-size:12px;color:#444'>La synthèse détaillée (liste des WO, devis et avis concernés) est jointe à ce mail"+(recapRpm?"":" avec un fichier Excel")+".</div>"
-   +"<div style='font-size:13px;margin-top:18px'>Cordialement,<br><b>Direction Technique France — Carrefour</b></div></td></tr><tr><td style='background:#f3f4f8;padding:10px 22px;font-size:10px;color:#888'>Données ServiceNow · édité le "+_dfr(new Date())+"</td></tr></table></td></tr></table></body></html>";
+   +"<div style='font-size:13px;margin-top:18px'>Cordialement,<br><b>Direction Technique France — Carrefour</b></div>"+_snBloc()+"</td></tr><tr><td style='background:#f3f4f8;padding:10px 22px;font-size:10px;color:#888'>Données ServiceNow · édité le "+_dfr(new Date())+"</td></tr></table></td></tr></table></body></html>";
 }
 function _rlPdfHtml(g,o){
   var th="padding:5px 7px;background:#eef1f7;font-size:9px;text-transform:uppercase;color:#555;text-align:left", td="padding:5px 7px;border-bottom:1px solid #e3e6ee;font-size:10px";
@@ -5456,7 +5485,7 @@ function _rlXlsx(g){
 function _rlObj(){ return {objet:(document.getElementById("rl-objet")||{}).value||"Points d'alerte à traiter sur vos magasins",intro:(document.getElementById("rl-intro")||{}).value||""}; }
 function _rlBuild(g,o,recap){
   var t=_rlObj(), intro=_rlIntro(t.intro,g,o);
-  return {html:_rlMailHtml(g,o,intro,recap),text:intro+"\n\n"+g.stores.length+" magasin(s) en alerte : "+g.woAtt+" WO en attente ≥ 30 j, "+g.dv+" devis en attente > 7 j, "+g.nps+" avis NPS détracteurs, "+g.woEc+" WO en cours.\nLa synthèse détaillée est jointe. Merci de relancer les magasins concernés ou de traiter directement ces points.\n\nDirection Technique France — Carrefour",pdfHtml:_rlPdfHtml(g,o),objet:(recap?"Récapitulatif relances — pôle {cmm}":t.objet).replace(/\{cmm\}/g,g.nom).replace(/\{nb\}/g,String(g.stores.length))};
+  return {html:_rlMailHtml(g,o,intro,recap),text:intro+"\n\n"+g.stores.length+" magasin(s) en alerte : "+g.woAtt+" WO en attente ≥ 30 j, "+g.dv+" devis en attente > 7 j, "+g.nps+" avis NPS détracteurs, "+g.woEc+" WO en cours.\nLa synthèse détaillée est jointe. Merci de relancer les magasins concernés ou de traiter directement ces points.\n\nDirection Technique France — Carrefour"+_snTxt(),pdfHtml:_rlPdfHtml(g,o),objet:(recap?"Récapitulatif relances — pôle {cmm}":t.objet).replace(/\{cmm\}/g,g.nom).replace(/\{nb\}/g,String(g.stores.length))};
 }
 function rlPreview(i){
   var g=_rlGroups[i]; if(!g) return; var B=_rlBuild(g,_rlParams(),false);
@@ -5752,7 +5781,7 @@ function muCycle(){
 // ═══════════════════════════════════════════════════════════════
 // RELANCES PRESTATAIRES (volet 2 de l'onglet Relances) — validation avant envoi
 // ═══════════════════════════════════════════════════════════════
-var _rlpRows=[], _rlpEnCours=false;
+var _rlpRows=[], _rlpEnCours=false, _rlpFormInit=false;
 function rlVolet(v){
   ["cmm","prest","eff","men"].forEach(function(k){ var e=document.getElementById("rl-vol-"+k); if(e) e.style.display=(k===v)?"":"none"; var b=document.getElementById("rl-vb-"+k); if(b){ b.style.background=(k===v)?"var(--blue)":"transparent"; b.style.color=(k===v)?"#fff":"var(--t2)"; } });
   if(v==="prest") renderRelancesPrest();
@@ -5772,6 +5801,8 @@ function _rlpCompute(o){
   _eqRepeats(function(r){ return r._f&&r._f!=="Inconnu"; },o.eqMin,true).forEach(function(a){ G(a.f).eqN++; });
   var P=_fbPairs(30,"strict",true); P.list.forEach(function(p){ var f=p.w._f; if(!f||f==="Inconnu"||!p.eligible) return; var s=G(f); s.el++; if(p.rep) s.rep++; });
   var sc={}; (_scRows||[]).forEach(function(x){ sc[x.f]=x; });
+  var _d0=new Date(), _yr=String(_d0.getFullYear()), _mo0=_yr+"-"+("0"+(_d0.getMonth()+1)).slice(-2), PV={};
+  PREV.forEach(function(r){ if(!r._prest||!r._mo||r._mo.slice(0,4)!==_yr||r._mo>_mo0) return; var a=PV[r._prest]||(PV[r._prest]={n:0,cl:0}); a.n++; if(r._e==="CL") a.cl++; });
   var L=Object.keys(S).map(function(k){ return S[k]; }).filter(function(s){ return s.n>=o.min; });
   var last=_rlLS("mc_relances_p");
   L.forEach(function(s){
@@ -5782,13 +5813,21 @@ function _rlpCompute(o){
     if(o.eq&&s.eqN>0) m.push(s.eqN+" équipement(s) avec ≥ "+o.eqMin+" interventions (réparer/remplacer à étudier)");
     if(o.woEc&&s.woEc>=o.woMin) m.push(s.woEc+" WO en cours/assignés ≥ 30 j");
     if(o.score&&s.sc){ if(s.sc.score<o.scoreSeuil) m.push("score "+Math.round(s.sc.score)+"/100 (critique)"); else if(s.sc.trend!==null&&s.sc.trend<=-o.baisse) m.push("score en baisse ("+Math.round(s.sc.trend)+" pts)"); }
-    if(o.obj){ if(s.taux!==null&&s.taux<s.ob.taux) m.push("clôture "+s.taux.toFixed(1).replace(".",",")+" % < objectif "+s.ob.taux+" %"); if(s.reint!==null&&s.reint>s.ob.reint) m.push("réinterventions "+s.reint.toFixed(1).replace(".",",")+" % > "+s.ob.reint+" %"); if(s.ttr!==null&&s.ttr>s.ob.ttr) m.push("délai moyen "+s.ttr.toFixed(1).replace(".",",")+" j > "+s.ob.ttr+" j"); }
+    if(o.obj){ if(s.taux!==null&&s.taux<s.ob.taux) m.push("clôture "+s.taux.toFixed(1).replace(".",",")+" % < objectif "+s.ob.taux+" %"); if(s.reint!==null&&s.reint>s.ob.reint) m.push("réinterventions "+s.reint.toFixed(1).replace(".",",")+" % > "+s.ob.reint+" %"); if(s.ttr!==null&&s.ttr>s.ob.ttr) m.push("délai moyen "+s.ttr.toFixed(1).replace(".",",")+" j > "+s.ob.ttr+" j"); var pv=PV[s.f]; if(pv&&pv.n){ var J=_envPrevJalon(s.ob,_mo0), tp=pv.cl/pv.n*100; if(J.k&&tp<J.att) m.push("préventif "+tp.toFixed(1).replace(".",",")+" % < jalon "+J.att+" % à "+J.lib+" (objectif "+s.ob.prev+" % au 31/12)"); } }
     s.motifs=m;
   });
   return L.filter(function(s){return s.motifs.length;}).sort(function(a,b){return b.motifs.length-a.motifs.length||(a.sc?a.sc.score:100)-(b.sc?b.sc.score:100);});
 }
+// Objectifs par défaut (curatif, préventif) : enregistrés pour tous les prestataires sans réglage propre, partagés avec Apps Script
+function _rlpObjToForm(){ var d=_envDefGen(), s=function(id,v){ var e=document.getElementById(id); if(e) e.value=v; }; s("rp-taux",d.taux); s("rp-prev",d.prev); s("rp-prevk",d.prevK); }
+function _rlpSaveObj(){
+  var g=function(id,def){ var e=document.getElementById(id), x=e?parseFloat(e.value):NaN; return isNaN(x)?def:Math.max(0,Math.min(100,x)); }, k=parseFloat((document.getElementById("rp-prevk")||{}).value);
+  var o=Object.assign({},_envDefGen(),{taux:g("rp-taux",ENV_OBJ_DEF.taux),prev:g("rp-prev",ENV_OBJ_DEF.prev),prevK:(k===4||k===1)?k:2,v:2});
+  try{ localStorage.setItem("mc_env_obj",JSON.stringify(o)); }catch(e){}
+  toast("Objectifs enregistrés : clôture curatif "+o.taux+" %, préventif "+o.prev+" % au 31/12"); renderRelancesPrest();
+}
 function renderRelancesPrest(){
-  if(!WO.length) return; var o=_rlpParams(); _rlpRows=_rlpCompute(o);
+  if(!WO.length) return; if(!_rlpFormInit){ _rlpFormInit=true; _rlpObjToForm(); } var o=_rlpParams(); _rlpRows=_rlpCompute(o);
   var rc=_rlpRows.filter(function(s){return s.sc&&s.sc.score<o.scoreSeuil;}).length;
   kg("rp-kg",[{l:"Prestataires à relancer",v:fN(_rlpRows.length),s:"≥ "+o.min+" WO",c:"var(--red)"},{l:"Dont score critique",v:fN(rc),s:"< "+o.scoreSeuil,c:"var(--red)"},{l:"Équipements à interventions répétées",v:fN(_rlpRows.reduce(function(a,s){return a+s.eqN;},0)),s:"≥ "+o.eqMin+" interventions",c:"var(--amber)"},{l:"WO en cours ≥ 30 j",v:fN(_rlpRows.reduce(function(a,s){return a+s.woEc;},0)),s:"",c:"var(--amber)"}]);
   var tb=document.getElementById("rp-tb"); if(!tb) return;
@@ -6834,12 +6873,24 @@ function copierLien(url){
 // ══════════════════════════════════════════════════════════════
 // ALERTES
 // ══════════════════════════════════════════════════════════════
+// Filtres de l'onglet Alertes : listes à choix (client, CMM) et ancienneté
+function _alVal(id){ var e=document.getElementById(id); return e?e.value:""; }
+function _alSeuil(){ var x=parseInt(_alVal("al-seuil"),10); return isNaN(x)?7:x; }
+function _alFillSel(id,tous,vals){
+  var s=document.getElementById(id); if(!s) return; var cur=s.value, l=[...new Set(vals.filter(function(v){return v&&v!=="Inconnu";}))].sort();
+  while(s.options.length>1) s.remove(1);
+  l.forEach(function(v){ var o=document.createElement("option"); o.value=v; o.textContent=v; s.appendChild(o); });
+  s.options[0].textContent=tous; s.value=(cur&&l.indexOf(cur)>=0)?cur:"";
+}
 function renderAlertes(){
   var reg   = (document.getElementById("al-reg")   ? document.getElementById("al-reg").value   : "") || REGION_ACTIVE;
   var prest = document.getElementById("al-prest")  ? document.getElementById("al-prest").value  : "";
   var mag   = document.getElementById("al-mag")    ? document.getElementById("al-mag").value    : "";
   var today = new Date();
-  var SEUIL = 7;
+  var SEUIL = _alSeuil();
+  _alFillSel("al-type","Tous clients",WO.concat(QUO).map(function(r){return r._t;}));
+  _alFillSel("al-cmm","Tous CMM",(reg?WO.concat(QUO).filter(function(r){return r._r===reg;}):WO.concat(QUO)).map(function(r){return r._cmm;}));
+  var typeF=_alVal("al-type"), cmmF=_alVal("al-cmm");
 
   // Mettre à jour la liste prestataires selon la région choisie
   var selP = document.getElementById("al-prest");
@@ -6879,6 +6930,8 @@ function renderAlertes(){
     if(reg   && r._r !== reg)   return false;
     if(prest && r._f !== prest) return false;
     if(mag   && r._m !== mag)   return false;
+    if(typeF && r._t !== typeF) return false;
+    if(cmmF  && r._cmm !== cmmF) return false;
     return true;
   });
 
@@ -6888,6 +6941,8 @@ function renderAlertes(){
     if(reg   && r._r !== reg)   return false;
     if(prest && r._f !== prest) return false;
     if(mag   && r._m !== mag)   return false;
+    if(typeF && r._t !== typeF) return false;
+    if(cmmF  && r._cmm !== cmmF) return false;
     return true;
   });
 
@@ -7036,9 +7091,10 @@ function exporterAlertes(){
   var reg   = document.getElementById("al-reg")   ? document.getElementById("al-reg").value   : "";
   var prest = document.getElementById("al-prest") ? document.getElementById("al-prest").value : "";
   var mag   = document.getElementById("al-mag")   ? document.getElementById("al-mag").value   : "";
-  var SEUIL = 7;
-  var woF=WO.filter(function(r){ return (!reg||r._r===reg)&&(!prest||r._f===prest)&&(!mag||r._m===mag); });
-  var quoF=QUO.filter(function(r){ return (!reg||r._r===reg)&&(!prest||r._f===prest)&&(!mag||r._m===mag); });
+  var SEUIL = _alSeuil(), typeF=_alVal("al-type"), cmmF=_alVal("al-cmm");
+  var _okE=function(r){ return (!reg||r._r===reg)&&(!prest||r._f===prest)&&(!mag||r._m===mag)&&(!typeF||r._t===typeF)&&(!cmmF||r._cmm===cmmF); };
+  var woF=WO.filter(_okE);
+  var quoF=QUO.filter(_okE);
   var woAT=woF.filter(function(r){ return r._e==="AT"&&r._age>=SEUIL; });
   var woTU=woF.filter(function(r){ return r._p==="TU"&&r._e!=="CL"&&r._e!=="AN"&&r._age>=SEUIL; });
   var quoNA=quoF.filter(function(r){ return r._s!=="AP"&&r._s!=="AN"&&r._age>=SEUIL&&r._c>0; });
@@ -7050,9 +7106,9 @@ function exporterAlertes(){
     XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(data),name);
   }
   // Recalculer pour l'export
-  var SEUIL_EX=7;
-  var woFEx=WO.filter(function(r){return(!reg||r._r===reg)&&(!prest||r._f===prest);});
-  var quoFEx=QUO.filter(function(r){return(!reg||r._r===reg)&&(!prest||r._f===prest);});
+  var SEUIL_EX=SEUIL;
+  var woFEx=WO.filter(_okE);
+  var quoFEx=QUO.filter(_okE);
   var woATEx=woFEx.filter(function(r){return r._e==="AT"&&r._age>=SEUIL_EX;});
   var woTUEx=woFEx.filter(function(r){return r._p==="TU"&&r._e!=="CL"&&r._e!=="AN"&&r._age>=SEUIL_EX;});
   var quoNAEx=quoFEx.filter(function(r){return r._s==="APP"&&r._age>=SEUIL_EX&&r._c>0;});
