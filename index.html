@@ -510,6 +510,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
     <div class="tab" onclick="go('gtopex')">📊 GT Opex</div>
     <div class="tab" onclick="go('rapports')">📋 Rapports</div>
     <div class="tab" onclick="go('qualite')">🧹 Qualité données</div>
+    <div class="tab" onclick="go('lg')">🏷️ Sites LG</div>
     <div class="tab" onclick="go('contacts')" style="border-left:1px solid var(--border);margin-left:auto">📧 Contacts</div>
   </div>
   <div class="fbar">
@@ -1229,6 +1230,26 @@ Dans le cadre du suivi de la performance maintenance, nous attirons votre attent
       </div>
     </div>
 
+    <!-- SITES LG -->
+    <div class="page" id="page-lg">
+      <div class="alert aw">ℹ Sites passés en Location-Gérance : ils ne sont plus dans la GMAO (absents de la BDD CMM/RPM), mais toutes les demandes créées quand ils étaient intégrés doivent être clôturées. Cet onglet ne dépend pas des filtres CMM.</div>
+      <div class="kg" id="kg-lg"></div>
+      <div class="g1 card">
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
+          <div class="ct" style="margin:0">Sites LG — reste à clôturer</div>
+          <select id="lg-prest" onchange="renderLG()" style="margin-left:auto"><option value="">Tous les prestataires</option></select>
+          <select id="lg-sel" onchange="renderLG()"><option value="">Tous les sites LG</option></select>
+          <label style="font-size:11px"><input type="checkbox" id="lg-open" checked onchange="renderLG()"> Seulement les demandes à clôturer</label>
+          <button class="btn-go" style="display:inline-block;padding:6px 14px;font-size:11px" onclick="lgExport()">⬇ Export CSV</button>
+        </div>
+        <div class="tscroll"><table><thead><tr><th>Site</th><th>Région</th><th>Demandes</th><th>Clôturées</th><th>À clôturer</th><th>Taux</th><th>&gt; 30 j</th><th>Plus ancienne (j)</th><th>Prestataires concernés</th></tr></thead><tbody id="tb-lg-sites"></tbody></table></div>
+      </div>
+      <div class="g1 card">
+        <div class="ct">Détail des demandes</div>
+        <div class="tscroll"><table><thead><tr><th>Numéro</th><th>Site</th><th>Prestataire</th><th>Statut</th><th>Priorité</th><th>Créée le</th><th>Âge (j)</th><th>Description</th></tr></thead><tbody id="tb-lg-det"></tbody></table></div>
+      </div>
+    </div>
+
     <!-- NPS -->
     <div class="page" id="page-nps">
       <div class="alert aw" id="nps-warn" style="display:none">⚠ Aucun fichier NPS chargé. Revenez à l'accueil et rechargez avec le fichier NPS National.</div>
@@ -1563,7 +1584,7 @@ var _woProc=false, _quoProc=false, _npsProc=false;
 var TAB="overview";
 var FILES={wo:null,quo:null,nps:null,prev:null};
 var BUDGETS={};
-var TABS=["overview","taux","score","scoremag","magasins","devis","budget","recurrence","comparatif","evol","fiabilite","bc","nps","prev","alertes","relances","gtopex","rapports","qualite","contacts"];
+var TABS=["overview","taux","score","scoremag","magasins","devis","budget","recurrence","comparatif","evol","fiabilite","bc","nps","prev","alertes","relances","gtopex","rapports","qualite","lg","contacts"];
 
 // ═══════════════════════════════════════════════════════════════
 // UTILITAIRES
@@ -2234,7 +2255,8 @@ function openStoreDetail(mag){
   _panelCtx.wo = woList; _panelCtx.quo = quoList;
   var totalWO = woList.length;
   var cl = woList.filter(function(r){return r._e==="CL";}).length;
-  var taux = totalWO ? (cl/totalWO*100) : 0;
+  var totalHA = woList.filter(function(r){return r._e!=="AN";}).length;   // base du taux : WO créés hors annulés
+  var taux = totalHA ? (cl/totalHA*100) : 0;
   var enAttente = woList.filter(function(r){return r._e==="AT";}).length;
 
   var coutTotal = quoList.reduce(function(s,r){return s+r._c;},0);
@@ -2465,7 +2487,8 @@ function openPrestataireDetail(prest){
 
   var totalWO = woList.length;
   var cl = woList.filter(function(r){return r._e==="CL";}).length;
-  var taux = totalWO ? (cl/totalWO*100) : 0;
+  var totalHA = woList.filter(function(r){return r._e!=="AN";}).length;   // base du taux : WO créés hors annulés
+  var taux = totalHA ? (cl/totalHA*100) : 0;
   var enAttente = woList.filter(function(r){return r._e==="AT";}).length;
   var coutTotal = quoList.reduce(function(s,r){return s+r._c;},0);
   var prevTotal = prevList.length;
@@ -2495,7 +2518,8 @@ function openFamilleDetail(fam){
 
   var totalWO = woList.length;
   var cl = woList.filter(function(r){return r._e==="CL";}).length;
-  var taux = totalWO ? (cl/totalWO*100) : 0;
+  var totalHA = woList.filter(function(r){return r._e!=="AN";}).length;   // base du taux : WO créés hors annulés
+  var taux = totalHA ? (cl/totalHA*100) : 0;
   var coutTotal = quoList.reduce(function(s,r){return s+r._c;},0);
   var sites = new Set(woList.map(function(r){return r._m;})).size;
 
@@ -2520,7 +2544,8 @@ function openEquipementDetail(equip){
 
   var totalWO = woList.length;
   var cl = woList.filter(function(r){return r._e==="CL";}).length;
-  var taux = totalWO ? (cl/totalWO*100) : 0;
+  var totalHA = woList.filter(function(r){return r._e!=="AN";}).length;   // base du taux : WO créés hors annulés
+  var taux = totalHA ? (cl/totalHA*100) : 0;
   var coutTotal = quoList.reduce(function(s,r){return s+r._c;},0);
   var sites = new Set(woList.map(function(r){return r._m;})).size;
 
@@ -3088,7 +3113,7 @@ function renderAll(){
   }
   var fn={overview:renderOV,taux:renderTaux,magasins:renderMag,devis:renderDevis,
           aging:renderAging,budget:renderBudget,
-          recurrence:renderRec,bc:renderBC,nps:renderNPS,
+          recurrence:renderRec,bc:renderBC,lg:renderLG,nps:renderNPS,
           rapports:renderRapports,contacts:renderContacts};
   // contacts et rapports fonctionnent même sans données
   var noDataOk = ["contacts","rapports"];
@@ -3101,12 +3126,12 @@ function renderAll(){
 // ═══════════════════════════════════════════════════════════════
 function renderOV(){
   var wo=fWO(),quo=fQUO();
-  var tot=wo.length||1,cl=0,at=0,tu=0,as=0;
+  var tot=wo.length||1,cl=0,at=0,tu=0,as=0, totHA=(wo.filter(function(r){return r._e!=="AN";}).length)||1;
   wo.forEach(function(r){if(r._e==="CL")cl++;if(r._e==="AT")at++;if(r._p==="TU"&&r._e!=="CL"&&r._e!=="AN")tu++;if(r._e==="AS")as++;});
   var cout=quo.reduce(function(s,r){return s+r._c;},0);
   kg("kg-ov",[
     {l:"WO Total",v:fN(tot),s:"Données filtrées",c:"var(--blue)"},
-    {l:"Clôturés",v:fN(cl),s:(cl/tot*100).toFixed(1)+"% clôturés",c:"var(--green)",bar:cl/tot*100},
+    {l:"Clôturés",v:fN(cl),s:(cl/totHA*100).toFixed(1)+"% clôturés (hors annulés)",c:"var(--green)",bar:cl/totHA*100},
     {l:"En attente",v:fN(at),s:(at/tot*100).toFixed(1)+"% du total",c:"var(--red)"},
     {l:"Assignés",v:fN(as),s:"En cours d'assignation",c:"var(--blue)"},
     {l:"Très urgents ouverts",v:fN(tu),s:"Priorité 1 non résolus",c:"var(--amber)"},
@@ -3140,7 +3165,7 @@ function renderOV(){
   if(tctx&&tKeys.length)CHARTS["c-type"]=new Chart(tctx,{type:"doughnut",data:{labels:tKeys,datasets:[{data:tKeys.map(function(k){return tMap[k];}),backgroundColor:PAL,borderWidth:0}]},
     options:{responsive:true,maintainAspectRatio:false,cutout:"60%",plugins:{legend:{position:"right",labels:{color:"rgba(232,234,240,.6)",font:{size:10},boxWidth:10}}}}});
   // Régions
-  var rMap={};wo.forEach(function(r){if(r._r!=="INCONNU"){if(!rMap[r._r])rMap[r._r]={n:0,cl:0};rMap[r._r].n++;if(r._e==="CL")rMap[r._r].cl++;}});
+  var rMap={};wo.forEach(function(r){if(r._r!=="INCONNU"&&r._e!=="AN"){if(!rMap[r._r])rMap[r._r]={n:0,cl:0};rMap[r._r].n++;if(r._e==="CL")rMap[r._r].cl++;}});
   hbars("b-reg-ov",Object.entries(rMap).sort(function(a,b){return b[1].n-a[1].n;}).map(function(e){return{l:e[0].replace(/_/g," "),v:e[1].n,tx:e[1].cl/e[1].n*100};}),
     function(d){return tC(d.tx);},function(d){return fN(d.v)+" WO ("+d.tx.toFixed(0)+"% cl.)";});
   // Top fourn vol
@@ -3174,7 +3199,7 @@ function renderTaux(){
     if(!map[r._f])map[r._f]={n:0,cl:0,at:0,an:0,tu_open:0,regs:new Set(),wa:0,dv:0,ec:0};
     if(_woEc(r)) map[r._f].ec++;
     if(_woAtt(r)) map[r._f].wa++;
-    map[r._f].n++;
+    if(r._e!=="AN")map[r._f].n++;
     if(r._e==="CL")map[r._f].cl++;
     if(r._e==="AT")map[r._f].at++;
     if(r._e==="AN")map[r._f].an++;
@@ -3189,7 +3214,7 @@ function renderTaux(){
     .map(function(e){return{l:e[0],n:e[1].n,cl:e[1].cl,at:e[1].at,an:e[1].an,wa:e[1].wa,dv:e[1].dv,ec:e[1].ec,tu:e[1].tu_open,tx:e[1].cl/e[1].n*100,regs:[...e[1].regs].filter(function(r){return r!=="INCONNU";}).join(", ")};})
     .sort(function(a,b){return b.tx-a.tx;});
   // KPIs
-  var tot=wo.length||1,cl=wo.filter(function(r){return r._e==="CL";}).length;
+  var tot=wo.filter(function(r){return r._e!=="AN";}).length||1,cl=wo.filter(function(r){return r._e==="CL";}).length;
   var best=data[0],worst=data[data.length-1];
   kg("kg-taux",[
     {l:"Taux national",v:(cl/tot*100).toFixed(1)+"%",s:fN(cl)+" / "+fN(tot),c:"var(--green)",bar:cl/tot*100},
@@ -3206,11 +3231,11 @@ function renderTaux(){
   hbars("b-taux",data.map(function(d){return{l:d.l,v:d.tx};}),
     function(d){return tC(d.v);},function(d){return d.v.toFixed(1)+"%";});
   // Taux par région
-  var rMap={};wo.forEach(function(r){if(r._r!=="INCONNU"){if(!rMap[r._r])rMap[r._r]={n:0,cl:0};rMap[r._r].n++;if(r._e==="CL")rMap[r._r].cl++;}});
+  var rMap={};wo.forEach(function(r){if(r._r!=="INCONNU"&&r._e!=="AN"){if(!rMap[r._r])rMap[r._r]={n:0,cl:0};rMap[r._r].n++;if(r._e==="CL")rMap[r._r].cl++;}});
   hbars("b-taux-reg",Object.entries(rMap).map(function(e){return{l:e[0].replace(/_/g," "),v:e[1].cl/e[1].n*100,n:e[1].n};}).sort(function(a,b){return b.v-a.v;}),
     function(d){return tC(d.v);},function(d){return d.v.toFixed(1)+"% ("+fN(d.n)+" WO)";});
   // Taux mensuel
-  var mMap={};wo.forEach(function(r){if(r._mo){if(!mMap[r._mo])mMap[r._mo]={n:0,cl:0};mMap[r._mo].n++;if(r._e==="CL")mMap[r._mo].cl++;}});
+  var mMap={};wo.forEach(function(r){if(r._mo&&r._e!=="AN"){if(!mMap[r._mo])mMap[r._mo]={n:0,cl:0};mMap[r._mo].n++;if(r._e==="CL")mMap[r._mo].cl++;}});
   var months=Object.keys(mMap).sort();
   dc("c-taux-month");var mctx=document.getElementById("c-taux-month");
   if(mctx&&months.length)CHARTS["c-taux-month"]=new Chart(mctx,{type:"line",
@@ -3242,7 +3267,7 @@ function renderMag(){
   wo.forEach(function(r){
     var m=r._m;if(!m)return;
     if(!mMap[m])mMap[m]={n:0,at:0,cl:0,an:0,tu:0,reg:r._r,ages:[],wa:0,ec:0,dv:0};
-    mMap[m].n++; if(_woAtt(r)) mMap[m].wa++; if(_woEc(r)) mMap[m].ec++;
+    if(r._e!=="AN") mMap[m].n++; if(_woAtt(r)) mMap[m].wa++; if(_woEc(r)) mMap[m].ec++;
     if(r._e==="AT")mMap[m].at++;
     if(r._e==="CL")mMap[m].cl++;
     if(r._e==="AN")mMap[m].an++;
@@ -3538,7 +3563,7 @@ function calcBudget(){
 function renderRec(){
   var wo=fWO().filter(function(r){return r["Équipement"]&&String(r["Équipement"]).trim();});
   var map={};
-  wo.forEach(function(r){var eq=String(r["Équipement"]).trim().substring(0,60);if(!map[eq])map[eq]={n:0,cl:0,mags:new Set()};map[eq].n++;if(r._e==="CL")map[eq].cl++;map[eq].mags.add(r._m);});
+  wo.forEach(function(r){var eq=String(r["Équipement"]).trim().substring(0,60);if(!map[eq])map[eq]={n:0,cl:0,mags:new Set()};if(r._e!=="AN")map[eq].n++;if(r._e==="CL")map[eq].cl++;map[eq].mags.add(r._m);});
   var quoEq={};fQUO().forEach(function(r){if(r["Équipement"]){var k=String(r["Équipement"]).trim();quoEq[k]=(quoEq[k]||0)+r._c;}});
   var data=Object.entries(map).filter(function(e){return e[1].n>=3;}).map(function(e){
     return{l:e[0],n:e[1].n,cl:e[1].cl,sites:e[1].mags.size,cout:quoEq[e[0]]||0,tx:e[1].cl/e[1].n*100};
@@ -3577,6 +3602,66 @@ function renderRec(){
 // ═══════════════════════════════════════════════════════════════
 // SANS BC
 // ═══════════════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════════════
+// SITES LG (Location-Gérance) — magasins présents dans les WO mais plus dans la BDD
+// ═══════════════════════════════════════════════════════════════
+var _LG_ST={CL:"Clôturé",AS:"Assignée",EC:"En cours",AT:"En attente d'approbation",AN:"Annulé",AU:"Autre"};
+function _lgRows(){
+  if(!(BDD&&BDD.length)) return null;                 // sans BDD on ne peut pas distinguer les sites LG
+  return WO.filter(function(r){ return !r._cmm && r._m && !_horsPerimetreCMM(r._m); });
+}
+function _lgOuvert(r){ return r._e!=="CL" && r._e!=="AN"; }
+function _lgSite(n){ return String(n||"").replace(/\s*-\s*(SUPERMARCHES?(\s+MATCH)?|HYPERMARCHES?(\s+CORA)?)\s*$/i,"").replace(/\s*\((HYPERMARCHES?|SUPERMARCHES?)\)\s*$/i,""); }
+function renderLG(){
+  var all=_lgRows(), kg0=document.getElementById("kg-lg");
+  if(all===null){ kg("kg-lg",[{l:"BDD absente",v:"—",s:"Chargez la feuille BDD pour identifier les sites LG",c:"var(--amber)"}]); ["tb-lg-sites","tb-lg-det"].forEach(function(i){var e=document.getElementById(i); if(e) e.innerHTML="";}); return; }
+  var selP=document.getElementById("lg-prest"), selS=document.getElementById("lg-sel");
+  if(selP&&selP.options.length<=1){ [...new Set(all.map(function(r){return r._f;}))].sort().forEach(function(v){var o=document.createElement("option");o.value=v;o.textContent=v;selP.appendChild(o);}); }
+  if(selS&&selS.options.length<=1){ [...new Set(all.map(function(r){return r._m;}))].sort().forEach(function(v){var o=document.createElement("option");o.value=v;o.textContent=_lgSite(v);selS.appendChild(o);}); }
+  var fp=selP?selP.value:"", fs=selS?selS.value:"", onlyOpen=document.getElementById("lg-open")&&document.getElementById("lg-open").checked;
+  var rows=all.filter(function(r){ return (!fp||r._f===fp)&&(!fs||r._m===fs); });
+  var map={};
+  rows.forEach(function(r){
+    var m=map[r._m]||(map[r._m]={n:0,cl:0,op:0,o30:0,max:0,reg:r._r,p:{}});
+    if(r._e!=="AN") m.n++; if(r._e==="CL") m.cl++;
+    if(_lgOuvert(r)){ m.op++; if(r._age>30) m.o30++; if(r._age>m.max) m.max=r._age; m.p[r._f]=(m.p[r._f]||0)+1; }
+  });
+  var sites=Object.keys(map).filter(function(k){return !onlyOpen||map[k].op>0;}).sort(function(a,b){return map[b].op-map[a].op||a.localeCompare(b);});
+  var tot=rows.filter(function(r){return r._e!=="AN";}).length, op=rows.filter(_lgOuvert).length, cl=rows.filter(function(r){return r._e==="CL";}).length, o30=rows.filter(function(r){return _lgOuvert(r)&&r._age>30;}).length;
+  var nSitesAll=Object.keys(map).length, nSitesOp=Object.keys(map).filter(function(k){return map[k].op>0;}).length;
+  kg("kg-lg",[
+    {l:"Sites LG dans les WO",v:fN(nSitesAll),s:nSitesOp+" avec demandes à clôturer",c:"var(--blue)"},
+    {l:"Demandes",v:fN(tot),s:"Hors annulées",c:"var(--blue)"},
+    {l:"À clôturer",v:fN(op),s:"Hors clôturées / annulées",c:op?"var(--red)":"var(--green)"},
+    {l:"Taux de clôture",v:(tot?(cl/tot*100).toFixed(1):"—")+"%",s:fN(cl)+" clôturées",c:"var(--green)",bar:tot?cl/tot*100:0},
+    {l:"À clôturer > 30 j",v:fN(o30),s:"Priorité",c:o30?"var(--red)":"var(--green)"}
+  ]);
+  var tb=document.getElementById("tb-lg-sites");
+  if(tb) tb.innerHTML=sites.map(function(k){ var m=map[k], tx=m.n?m.cl/m.n*100:0;
+    var pr=Object.keys(m.p).sort(function(a,b){return m.p[b]-m.p[a];}).map(function(x){return _esc(x)+" ("+m.p[x]+")";}).join(", ");
+    return "<tr><td style='font-weight:600'>"+_esc(_lgSite(k))+"</td><td style='font-size:10px;color:var(--t3)'>"+_esc(String(m.reg).replace(/_/g," "))+"</td><td>"+fN(m.n)+"</td><td>"+fN(m.cl)+"</td><td style='font-weight:600;color:"+(m.op?"var(--red)":"var(--green)")+"'>"+fN(m.op)+"</td><td>"+tx.toFixed(0)+"%</td><td>"+(m.o30?"<b style='color:var(--red)'>"+m.o30+"</b>":"0")+"</td><td>"+(m.op?m.max:"—")+"</td><td style='font-size:10px'>"+(pr||"—")+"</td></tr>";
+  }).join("")||"<tr><td colspan='9' style='text-align:center;color:var(--t3)'>Aucune demande à clôturer 🎉</td></tr>";
+  var det=_lgDetail(rows,onlyOpen);
+  var td=document.getElementById("tb-lg-det");
+  if(td) td.innerHTML=det.slice(0,500).map(function(d){ return "<tr><td>"+_esc(d[0])+"</td><td>"+_esc(_lgSite(d[1]))+"</td><td>"+_esc(d[2])+"</td><td>"+_esc(d[3])+"</td><td>"+_esc(d[4])+"</td><td>"+_esc(d[5])+"</td><td>"+(d[6]>=0?d[6]:"—")+"</td><td style='font-size:10px;color:var(--t3)'>"+_esc(String(d[7]).substring(0,90))+"</td></tr>"; }).join("")
+    + (det.length>500?"<tr><td colspan='8' style='text-align:center;color:var(--t3)'>… "+(det.length-500)+" autres lignes — utilisez l'export CSV</td></tr>":"");
+}
+function _lgDetail(rows,onlyOpen){
+  return rows.filter(function(r){return !onlyOpen||_lgOuvert(r);}).sort(function(a,b){return (b._age||-1)-(a._age||-1);}).map(function(r){
+    var d=r._d?new Date(r._d):null, ds=d&&!isNaN(d)?d.toLocaleDateString("fr-FR"):"";
+    return [String(_getFuzzy(r,["Numéro","Numero","Number","mro"])||""), r._m, r._f, _LG_ST[r._e]||r._e, ({TU:"1 - Très urgent",UR:"2 - Urgent",ST:"3 - Standard"})[r._p]||r._p, ds, r._age, String(_getFuzzy(r,["Description courte","Description","Short description"])||"")];
+  });
+}
+function lgExport(){
+  var rows=_lgRows(); if(!rows) return;
+  var fp=document.getElementById("lg-prest").value, fs=document.getElementById("lg-sel").value, oo=document.getElementById("lg-open").checked;
+  rows=rows.filter(function(r){return (!fp||r._f===fp)&&(!fs||r._m===fs);});
+  var det=_lgDetail(rows,oo);
+  var csv=["Numéro","Site","Prestataire","Statut","Priorité","Créée le","Âge (j)","Description"].join(";")+"\n"+det.map(function(d){return d.map(function(x){return '"'+String(x).replace(/"/g,'""')+'"';}).join(";");}).join("\n");
+  var a=document.createElement("a"); a.href=URL.createObjectURL(new Blob(["﻿"+csv],{type:"text/csv;charset=utf-8"})); a.download="Sites_LG_demandes_a_cloturer.csv"; document.body.appendChild(a); a.click(); setTimeout(function(){URL.revokeObjectURL(a.href); a.remove();},500);
+}
+
 function renderBC(){
   var quo=fQUO().filter(function(r){return r._s==="APP"&&!r._bc;});
   var totQuo=fQUO().length||1;
@@ -3925,7 +4010,7 @@ function _groupeData(nom,entites,range,territoire,g){
 }
 
 function calcKPIs(wo,quo,nps){
-  var n=wo.length||1;
+  var n=wo.filter(function(r){return r._e!=="AN";}).length||1;   // WO créés hors annulés (base du taux de clôture)
   var cl=wo.filter(function(r){return r._e==="CL";}).length;
   var at=wo.filter(function(r){return r._e==="AT";}).length;
   var tu=wo.filter(function(r){return r._p==="TU"&&r._e!=="CL"&&r._e!=="AN";}).length;
@@ -3953,7 +4038,7 @@ function calcKPIs(wo,quo,nps){
 
 // KPI Préventif pour le rapport prestataire (formulaire Contacts → Envoi groupé)
 function calcKPIsPrev(prev){
-  var n=prev.length;
+  var n=prev.filter(function(r){return r._e!=="AN";}).length;
   var cl=prev.filter(function(r){return r._e==="CL";}).length;
   var appro=prev.filter(function(r){return r._e==="APPRO";}).length;
   var enCours=prev.filter(function(r){return r._e==="AS"||r._e==="EC";}).length;
@@ -4040,13 +4125,13 @@ function previewRapport(){
     detailHTML+="</tbody></table></div></div>";
   }
   // WO mensuel par entité
-  var monthsMap={};data.wo.forEach(function(r){if(r._mo){if(!monthsMap[r._mo])monthsMap[r._mo]={cl:0,tot:0};monthsMap[r._mo].tot++;if(r._e==="CL")monthsMap[r._mo].cl++;}});
+  var monthsMap={};data.wo.forEach(function(r){if(r._mo){if(!monthsMap[r._mo])monthsMap[r._mo]={cl:0,tot:0};if(r._e!=="AN")monthsMap[r._mo].tot++;if(r._e==="CL")monthsMap[r._mo].cl++;}});
   var months=Object.keys(monthsMap).sort();
   var mensuelHTML="";
   if(months.length){
     mensuelHTML="<div style='margin-top:14px'><div class='ct' style='margin-bottom:10px'>Évolution mensuelle</div>"
       +"<div class='tscroll'><table><thead><tr><th>Mois</th><th>WO créés</th><th>Clôturés</th><th>Taux</th></tr></thead><tbody>"
-      +months.map(function(m){var v=monthsMap[m];var tx=v.cl/v.tot*100;var pp=tx>=70?"pg":tx>=50?"pb":"pa";return"<tr><td>"+mL(m)+"</td><td>"+fN(v.tot)+"</td><td>"+fN(v.cl)+"</td><td><span class='pill "+pp+"'>"+tx.toFixed(1)+"%</span></td></tr>";}).join("")
+      +months.map(function(m){var v=monthsMap[m];var tx=v.tot?v.cl/v.tot*100:0;var pp=tx>=70?"pg":tx>=50?"pb":"pa";return"<tr><td>"+mL(m)+"</td><td>"+fN(v.tot)+"</td><td>"+fN(v.cl)+"</td><td><span class='pill "+pp+"'>"+tx.toFixed(1)+"%</span></td></tr>";}).join("")
       +"</tbody></table></div></div>";
   }
   content.innerHTML=kpiHTML+statutsHTML+detailHTML+mensuelHTML+prevHTML;
@@ -4082,7 +4167,7 @@ function genererPDF(){
   data.wo.forEach(function(r){
     if(!r._mo)return;
     if(!mMap[r._mo])mMap[r._mo]={tot:0,cl:0,at:0,cout:0};
-    mMap[r._mo].tot++;
+    if(r._e!=="AN")mMap[r._mo].tot++;
     if(r._e==="CL")mMap[r._mo].cl++;
     if(r._e==="AT")mMap[r._mo].at++;
   });
@@ -4415,10 +4500,10 @@ function genererExcel(){
   XLSX.utils.book_append_sheet(wb,ws4,"Devis Détail");
 
   // Feuille 5 : Mensuel
-  var monthsMap={};data.wo.forEach(function(r){if(r._mo){if(!monthsMap[r._mo])monthsMap[r._mo]={cl:0,tot:0,at:0,tu:0,ttrSum:0,ttrN:0};monthsMap[r._mo].tot++;if(r._e==="CL")monthsMap[r._mo].cl++;if(r._e==="AT")monthsMap[r._mo].at++;if(r._p==="TU"&&r._e!=="CL"&&r._e!=="AN")monthsMap[r._mo].tu++;if(r._ttr!==null&&r._ttr!==undefined){monthsMap[r._mo].ttrSum+=r._ttr;monthsMap[r._mo].ttrN++;}}});
+  var monthsMap={};data.wo.forEach(function(r){if(r._mo){if(!monthsMap[r._mo])monthsMap[r._mo]={cl:0,tot:0,at:0,tu:0,ttrSum:0,ttrN:0};if(r._e!=="AN")monthsMap[r._mo].tot++;if(r._e==="CL")monthsMap[r._mo].cl++;if(r._e==="AT")monthsMap[r._mo].at++;if(r._p==="TU"&&r._e!=="CL"&&r._e!=="AN")monthsMap[r._mo].tu++;if(r._ttr!==null&&r._ttr!==undefined){monthsMap[r._mo].ttrSum+=r._ttr;monthsMap[r._mo].ttrN++;}}});
   data.quo.forEach(function(r){if(r._mo&&monthsMap[r._mo]){if(!monthsMap[r._mo].cout)monthsMap[r._mo].cout=0;monthsMap[r._mo].cout+=r._c;}});
   var mRows=[["ÉVOLUTION MENSUELLE"],["Mois","WO créés","Clôturés","Taux clôture","En attente","TU ouverts","TTR moyen","Coût devis"]];
-  Object.keys(monthsMap).sort().forEach(function(m){var v=monthsMap[m];mRows.push([mL(m)+" 2026",v.tot,v.cl,+(v.cl/v.tot*100).toFixed(1),v.at,v.tu,v.ttrN?+(v.ttrSum/v.ttrN).toFixed(1):"",v.cout||0]);});
+  Object.keys(monthsMap).sort().forEach(function(m){var v=monthsMap[m];mRows.push([mL(m)+" 2026",v.tot,v.cl,+(v.tot?v.cl/v.tot*100:0).toFixed(1),v.at,v.tu,v.ttrN?+(v.ttrSum/v.ttrN).toFixed(1):"",v.cout||0]);});
   var ws5=XLSX.utils.aoa_to_sheet(mRows);
   ws5["!cols"]=[{wch:14},{wch:10},{wch:10},{wch:14},{wch:12},{wch:12},{wch:12},{wch:14}];
   XLSX.utils.book_append_sheet(wb,ws5,"Évolution Mensuelle");
@@ -4805,7 +4890,7 @@ function _tnPct(v){ return v.toFixed(1).replace(".",",")+" %"; }
 // Préventif : taux sur la période (periode) + retard actuel classé par date de création de la demande (backlog = tous les WO préventifs non clôturés)
 // Éléments attendus : {e:"CL"|"AS"|"EC"|"APPRO"|…, age:jours depuis la création (−1 si clos)}
 function _tnPrev(periode, backlog){
-  periode=periode||[]; backlog=backlog||[];
+  periode=(periode||[]).filter(function(r){return r.e!=="AN";}); backlog=backlog||[];
   var ouv=backlog.filter(function(r){ return r.e==="AS"||r.e==="EC"||r.e==="APPRO"; });
   if(!periode.length&&!ouv.length) return null;
   var cl=periode.filter(function(r){return r.e==="CL";}).length;
@@ -5016,7 +5101,7 @@ function _envCompute(s, periode){
   var kp=prev.length?calcKPIsPrev(prev):null;
   var top=function(list,agef){ var m={}; list.forEach(function(r){ var a=m[r._m]||(m[r._m]={m:r._m,n:0,age:0}); a.n++; var g=agef(r); if(g>a.age) a.age=g; }); return Object.keys(m).map(function(x){return m[x];}).sort(function(a,b){return b.n-a.n||b.age-a.age;}); };
   var topWo=top(woL,function(r){return r._age||0;});
-  var mois={}; WO.forEach(function(r){ if(!mine(r)||!r._mo) return; var a=mois[r._mo]||(mois[r._mo]={n:0,cl:0}); a.n++; if(r._e==="CL") a.cl++; });
+  var mois={}; WO.forEach(function(r){ if(!mine(r)||!r._mo) return; var a=mois[r._mo]||(mois[r._mo]={n:0,cl:0}); if(r._e!=="AN") a.n++; if(r._e==="CL") a.cl++; });
   // statuts : ok / warn / ko / na
   var stHaut=function(v,o,marge){ return v>=o?"ok":v>=o-marge?"warn":"ko"; };
   var stBas=function(v,o,tol){ return v<=o?"ok":v<=tol?"warn":"ko"; };
@@ -5262,7 +5347,7 @@ function _smCompute(o){
     if(_woAtt(r)||_woEc(r)) s.w30++;
     if(r._p==="TU"&&r._e!=="CL"&&r._e!=="AN") s.tu++;
     if(!r._d) return; var mo=r._d.getMonth()+1; if(mo<o.m1||mo>o.m2) return;
-    s.n++; if(r._e==="CL"){ s.cl++; if(r._ttr!=null){ s.ts+=r._ttr; s.tn++; } }
+    if(r._e!=="AN") s.n++; if(r._e==="CL"){ s.cl++; if(r._ttr!=null){ s.ts+=r._ttr; s.tn++; } }
   });
   var P=_fbPairs(30,"strict",true);
   P.list.forEach(function(p){ var w=p.w; if(!w._m||!p.eligible||!ok(w)) return; var mo=p.F.getMonth()+1; if(mo<o.m1||mo>o.m2) return; var s=G(w._m,w); s.el++; if(p.rep) s.rep++; });
@@ -5797,12 +5882,12 @@ function _rlpEnsureScore(){ if(!_scRows||!_scRows.length){ try{ initScore(); }ca
 function _rlpCompute(o){
   _rlpEnsureScore();
   var S={}, G=function(f){ return S[f]||(S[f]={f:f,n:0,cl:0,ts:0,tn:0,eqN:0,woEc:0,el:0,rep:0}); };
-  WO.forEach(function(r){ var f=r._f; if(!f||f==="Inconnu") return; var s=G(f); s.n++; if(r._e==="CL"){ s.cl++; if(r._ttr!=null){ s.ts+=r._ttr; s.tn++; } } if(_woEc(r)) s.woEc++; });
+  WO.forEach(function(r){ var f=r._f; if(!f||f==="Inconnu") return; var s=G(f); if(r._e!=="AN") s.n++; if(r._e==="CL"){ s.cl++; if(r._ttr!=null){ s.ts+=r._ttr; s.tn++; } } if(_woEc(r)) s.woEc++; });
   _eqRepeats(function(r){ return r._f&&r._f!=="Inconnu"; },o.eqMin,true).forEach(function(a){ G(a.f).eqN++; });
   var P=_fbPairs(30,"strict",true); P.list.forEach(function(p){ var f=p.w._f; if(!f||f==="Inconnu"||!p.eligible) return; var s=G(f); s.el++; if(p.rep) s.rep++; });
   var sc={}; (_scRows||[]).forEach(function(x){ sc[x.f]=x; });
   var _d0=new Date(), _yr=String(_d0.getFullYear()), _mo0=_yr+"-"+("0"+(_d0.getMonth()+1)).slice(-2), PV={};
-  PREV.forEach(function(r){ if(!r._prest||!r._mo||r._mo.slice(0,4)!==_yr||r._mo>_mo0) return; var a=PV[r._prest]||(PV[r._prest]={n:0,cl:0}); a.n++; if(r._e==="CL") a.cl++; });
+  PREV.forEach(function(r){ if(!r._prest||!r._mo||r._mo.slice(0,4)!==_yr||r._mo>_mo0) return; var a=PV[r._prest]||(PV[r._prest]={n:0,cl:0}); if(r._e!=="AN") a.n++; if(r._e==="CL") a.cl++; });
   var L=Object.keys(S).map(function(k){ return S[k]; }).filter(function(s){ return s.n>=o.min; });
   var last=_rlLS("mc_relances_p");
   L.forEach(function(s){
@@ -6114,7 +6199,7 @@ function _snapBuild(){
   var now=new Date(), maxD=null; WO.forEach(function(r){ if(r._d&&(!maxD||r._d>maxD)) maxD=r._d; }); var M=maxD?maxD.getMonth()+1:12;
   var rd=function(v,k){ return (v===null||v===undefined||v===""||isNaN(v))?"":Math.round(v*(k||10))/(k||10); };
   var dvBy={}, dvReg={}; QUO.forEach(function(r){ if(!_dvAtt(r)) return; if(r._f) dvBy[r._f]=(dvBy[r._f]||0)+1; if(r._r) dvReg[r._r]=(dvReg[r._r]||0)+1; });
-  var agg=function(list){ var n=0,cl=0,ts=0,tn=0,fs=0,ec=0,op=0; list.forEach(function(r){ n++; if(r._e==="CL"){ cl++; if(r._ttr!=null){ ts+=r._ttr; tn++; if(r._ttr<=7) fs++; } } if(_woEc(r)) ec++; if(r._e!=="CL"&&r._e!=="AN"&&r._age>=30) op++; }); return {n:n,cl:cl,taux:n?cl/n*100:null,ec:ec,op:op,ttr:tn?ts/tn:null,fast:tn?fs/tn*100:null}; };
+  var agg=function(list){ var n=0,cl=0,ts=0,tn=0,fs=0,ec=0,op=0; list.forEach(function(r){ if(r._e!=="AN") n++; if(r._e==="CL"){ cl++; if(r._ttr!=null){ ts+=r._ttr; tn++; if(r._ttr<=7) fs++; } } if(_woEc(r)) ec++; if(r._e!=="CL"&&r._e!=="AN"&&r._age>=30) op++; }); return {n:n,cl:cl,taux:n?cl/n*100:null,ec:ec,op:op,ttr:tn?ts/tn:null,fast:tn?fs/tn*100:null}; };
   var npsOf=function(f){ var P=0,D=0,N=0; NPS.forEach(function(r){ if(!f(r)) return; N++; if(r._cat==="P") P++; else if(r._cat==="D") D++; }); return N>=5?(P-D)/N*100:""; };
   var rows=[];
   var push=function(niv,nom,a,reint,nps,score,rang,dv,reg){ rows.push([niv,nom,a.n,a.cl,rd(a.taux),a.ec,a.op,rd(a.ttr),rd(a.fast),rd(reint),rd(nps,1),rd(score),rang===""?"":rang,dv,reg||""]); };
@@ -6475,7 +6560,7 @@ function encodeMoisData(data,kpi){
   data.wo.forEach(function(r){
     if(!r._mo)return;
     if(!mMap[r._mo])mMap[r._mo]={tot:0,cl:0,at:0,cout:0};
-    mMap[r._mo].tot++;
+    if(r._e!=="AN")mMap[r._mo].tot++;
     if(r._e==="CL")mMap[r._mo].cl++;
     if(r._e==="AT")mMap[r._mo].at++;
   });
@@ -6508,7 +6593,7 @@ function genererPDFHtml(data, kpi, periodeLabel){
   data.wo.forEach(function(r){
     if(!r._mo)return;
     if(!mMap[r._mo])mMap[r._mo]={tot:0,cl:0,at:0,cout:0};
-    mMap[r._mo].tot++;
+    if(r._e!=="AN")mMap[r._mo].tot++;
     if(r._e==="CL")mMap[r._mo].cl++;
     if(r._e==="AT")mMap[r._mo].at++;
   });
@@ -7556,12 +7641,12 @@ function renderPrev(){
     if(r._e==="AN")    an++;
     if(r._e==="AS")    as_++;
   });
-  var taux=tot?cl/tot*100:0;
+  var taux=(tot-an)?cl/(tot-an)*100:0;   // hors annulés
   var txC=taux>=85?"var(--green)":taux>=60?"var(--blue)":taux>=40?"var(--amber)":"var(--red)";
 
   kg("pv-kpis",[
     {l:"WO Préventif Total",  v:fN(tot),              s:"",c:"var(--blue)"},
-    {l:"Taux clôture",        v:taux.toFixed(1)+"%",  s:"",c:txC},
+    {l:"Taux clôture",        v:taux.toFixed(1)+"%",  s:"hors "+fN(an)+" annulé(s)",c:txC},
     {l:"Clôturés",            v:fN(cl),               s:"",c:"var(--green)"},
     {l:"En cours",            v:fN(ec),               s:"",c:"var(--blue)"},
     {l:"Att. approbation",    v:fN(appro),            s:"",c:"var(--red)"},
@@ -7606,6 +7691,7 @@ function renderPrev(){
   // Graphique taux par prestataire (top 10)
   var pMap={};
   data.forEach(function(r){
+    if(r._e==="AN")return;
     if(!pMap[r._prest])pMap[r._prest]={n:0,cl:0};
     pMap[r._prest].n++;if(r._e==="CL")pMap[r._prest].cl++;
   });
@@ -7672,6 +7758,7 @@ function renderPrev(){
   // Tableau taux par magasin (même logique que par prestataire)
   var magMap={};
   data.forEach(function(r){
+    if(r._e==="AN")return;
     if(!magMap[r._mag])magMap[r._mag]={n:0,cl:0,reg:r._reg};
     magMap[r._mag].n++;if(r._e==="CL")magMap[r._mag].cl++;
   });
@@ -7856,7 +7943,7 @@ function rapportMagasin(mag){
       var reg = woMag.length > 0 ? woMag[0]._r.replace(/_/g," ") : "";
 
       // KPIs
-      var tot=woMag.length, cl=0, at=0, tu=0, ttrSum=0, ttrN=0;
+      var tot=woMag.filter(function(r){return r._e!=="AN";}).length, cl=0, at=0, tu=0, ttrSum=0, ttrN=0;
       woMag.forEach(function(r){
         if(r._e==="CL"){cl++; if(r._ttr>0){ttrSum+=r._ttr;ttrN++;}}
         if(r._e==="AT") at++;
@@ -7874,7 +7961,7 @@ function rapportMagasin(mag){
       woMag.forEach(function(r){
         if(!r._mo)return;
         if(!mMap[r._mo])mMap[r._mo]={tot:0,cl:0};
-        mMap[r._mo].tot++;
+        if(r._e!=="AN")mMap[r._mo].tot++;
         if(r._e==="CL")mMap[r._mo].cl++;
       });
       var mos=Object.keys(mMap).sort();
@@ -7990,7 +8077,7 @@ function exporterMagasins(){
   wo.forEach(function(r){
     var m=r._m;if(!m)return;
     if(!mMap[m])mMap[m]={n:0,at:0,cl:0,an:0,reg:r._r};
-    mMap[m].n++;
+    if(r._e!=="AN")mMap[m].n++;
     if(r._e==="AT")mMap[m].at++;
     if(r._e==="CL")mMap[m].cl++;
     if(r._e==="AN")mMap[m].an++;
@@ -8013,7 +8100,7 @@ function exporterMagasinsPDF(){
   wo.forEach(function(r){
     var m=r._m;if(!m)return;
     if(!mMap[m])mMap[m]={n:0,at:0,cl:0,an:0,reg:r._r};
-    mMap[m].n++;
+    if(r._e!=="AN")mMap[m].n++;
     if(r._e==="AT")mMap[m].at++;
     if(r._e==="CL")mMap[m].cl++;
     if(r._e==="AN")mMap[m].an++;
@@ -8122,7 +8209,7 @@ function genererRapportMagasin(){
       var reg=woMag.length>0?woMag[0]._r.replace(/_/g," "):"";
 
       // KPIs
-      var tot=woMag.length,cl=0,at=0,tu=0,ttrSum=0,ttrN=0;
+      var tot=woMag.filter(function(r){return r._e!=="AN";}).length,cl=0,at=0,tu=0,ttrSum=0,ttrN=0;
       woMag.forEach(function(r){
         if(r._e==="CL"){cl++;if(r._ttr>0){ttrSum+=r._ttr;ttrN++;}}
         if(r._e==="AT")at++;
@@ -8139,7 +8226,7 @@ function genererRapportMagasin(){
       woMag.forEach(function(r){
         if(!r._mo)return;
         if(!mMap[r._mo])mMap[r._mo]={tot:0,cl:0,at:0,cout:0};
-        mMap[r._mo].tot++;
+        if(r._e!=="AN")mMap[r._mo].tot++;
         if(r._e==="CL")mMap[r._mo].cl++;
         if(r._e==="AT")mMap[r._mo].at++;
       });
@@ -8423,6 +8510,7 @@ function renderTopFlopPrest(wo, type, topId, flopId, opt){
   wo.forEach(function(r){
     if(r[TF]!==type) return;
     if(opt.excl && r._e===opt.excl) return;
+    if(r._e==="AN") return;   // taux de clôture : WO créés hors annulés
     var f = r[FLD]; if(!f || f==="Inconnu") return;
     if(!map[f]) map[f]={n:0,cl:0};
     map[f].n++; if(r._e==="CL") map[f].cl++;
@@ -8666,7 +8754,7 @@ function renderComparatif(){
       add(m[kk], r);
     }); return m;
   }
-  function woAgg(rows, keyFn){ return agg(rows, keyFn, function(k){return {l:k,n:0,cl:0,sites:{}};}, function(o,r){ o.n++; if(r._e==="CL") o.cl++; o.sites[r._m]=1; }); }
+  function woAgg(rows, keyFn){ return agg(rows, keyFn, function(k){return {l:k,n:0,cl:0,sites:{}};}, function(o,r){ if(r._e!=="AN") o.n++; if(r._e==="CL") o.cl++; o.sites[r._m]=1; }); }
   function quoAgg(rows, keyFn){ return agg(rows, keyFn, function(k){return {l:k,n:0,c:0};}, function(o,r){ o.n++; o.c+=r._c; }); }
   function sum(rows){ return rows.reduce(function(s,r){return s+r._c;},0); }
   function ttrAvg(rows){ var s=0,n=0; rows.forEach(function(r){ if(r._ttr>0){s+=r._ttr;n++;} }); return n? s/n : 0; }
@@ -9254,7 +9342,7 @@ function _scCompute(o, m1, m2, useStock, minWO){
     if(o.type && r._t!==o.type) return; if(o.reg && r._r!==o.reg) return;
     if(useStock && _woEc(r)) G(f).w30++;
     if(!r._d) return; var m=r._d.getMonth()+1; if(m<m1||m>m2) return;
-    var s=G(f); s.n++; if(r._e==="CL"){ s.cl++; if(r._ttr!=null){ s.ts+=r._ttr; s.tn++; if(r._ttr<=7) s.fast++; } }
+    var s=G(f); if(r._e!=="AN") s.n++; if(r._e==="CL"){ s.cl++; if(r._ttr!=null){ s.ts+=r._ttr; s.tn++; if(r._ttr<=7) s.fast++; } }
     s.types[r._t]=(s.types[r._t]||0)+1; s.regs[r._r]=(s.regs[r._r]||0)+1;
   });
   var P=_fbPairs(30,"strict",true);
@@ -9481,7 +9569,7 @@ function renderTauxRegion(wo, type, canvasId, tblId){
   // Par région et mois
   var datasets = regs.map(function(reg){
     var pts = mos.map(function(mo){
-      var rows = wo.filter(function(r){return r._t===type && r._r===reg && r._mo===mo;});
+      var rows = wo.filter(function(r){return r._t===type && r._r===reg && r._mo===mo && r._e!=="AN";});
       if(!rows.length) return null;
       var cl = rows.filter(function(r){return r._e==="CL";}).length;
       return +(cl/rows.length*100).toFixed(1);
@@ -9513,7 +9601,7 @@ function renderTauxRegion(wo, type, canvasId, tblId){
   var tbl = document.getElementById(tblId); if(!tbl) return;
   var lastMo = mos[mos.length-1]||"";
   var recap = regs.map(function(reg){
-    var rows = wo.filter(function(r){return r._t===type && r._r===reg;});
+    var rows = wo.filter(function(r){return r._t===type && r._r===reg && r._e!=="AN";});
     if(!rows.length) return null;
     var cl = rows.filter(function(r){return r._e==="CL";}).length;
     var taux = +(cl/rows.length*100).toFixed(1);
@@ -9836,7 +9924,7 @@ function genererRapportGT(){
           H.push("<div class='section'><div style='font-size:10px;font-weight:700;margin-bottom:6px;color:#004B9B'>"+type+"</div>");
           H.push("<table><thead><tr><th>Région</th><th>WO Total</th><th>Clôturés</th><th>Taux</th></tr></thead><tbody>");
           var recap=regs.map(function(reg){
-            var rows=wo.filter(function(r){return r._t===type&&r._r===reg;});
+            var rows=wo.filter(function(r){return r._t===type&&r._r===reg&&r._e!=="AN";});
             if(!rows.length) return null;
             var cl=rows.filter(function(r){return r._e==="CL";}).length;
             return {reg:reg,n:rows.length,cl:cl,taux:+(cl/rows.length*100).toFixed(1)};
@@ -9934,7 +10022,7 @@ function _genGTOpexPDF(opts){
           H.push("<div class='sec'><div style='font-size:10px;font-weight:700;margin-bottom:6px;color:#004B9B'>"+type+"</div>");
           H.push("<table><thead><tr><th>Région</th><th>WO</th><th>Clôturés</th><th>Taux</th></tr></thead><tbody>");
           regs.map(function(reg){
-            var rows=wo.filter(function(r){return r._t===type&&r._r===reg;});
+            var rows=wo.filter(function(r){return r._t===type&&r._r===reg&&r._e!=="AN";});
             if(!rows.length)return null;
             var cl=rows.filter(function(r){return r._e==="CL";}).length;
             return{reg:reg,n:rows.length,cl:cl,taux:+(cl/rows.length*100).toFixed(1)};
