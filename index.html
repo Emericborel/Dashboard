@@ -882,7 +882,8 @@ tr:hover td{background:rgba(255,255,255,.025)}
             <select class="fs" id="gtopex-type" style="min-width:120px" onchange="renderGTOpex()"><option value="">Tous types</option><option value="Hyper">Hyper</option><option value="Market">Market</option><option value="Match">Match</option></select>
             <select class="fs" id="gtopex-reg" style="min-width:150px" onchange="renderGTOpex()"><option value="">Toutes régions</option></select>
             <select class="fs" id="gtopex-per" style="min-width:170px" title="Année en cours = WO/devis de l'année civile en cours · 12 mois glissants = du même jour l'an dernier à aujourd'hui (inclut les données N-1)" onchange="gtPeriodChange()"><option value="annee">📅 Année en cours</option><option value="glissant">🔄 12 mois glissants</option></select>
-            <select class="fs" id="gtopex-mois" style="min-width:130px" onchange="renderGTOpex()"><option value="">Toute la période</option></select>
+            <select class="fs" id="gtopex-mois" style="min-width:130px" title="Mois de début (ou mois unique si « Au mois » est vide)" onchange="renderGTOpex()"><option value="">Toute la période</option></select>
+            <select class="fs" id="gtopex-mois2" style="min-width:130px" title="Mois de fin : choisis un mois pour obtenir une plage (ex. Nov 2025 → Oct 2026)" onchange="renderGTOpex()"><option value="">Au mois : —</option></select>
             <span id="gtopex-per-note" style="font-size:11px;color:var(--t3)"></span>
             <label style="font-size:11px;color:var(--t3);display:flex;align-items:center;gap:5px" title="Les prestataires avec moins de WO sont exclus du Top/Flop (un petit volume fausse le taux)">Min. WO <input type="number" id="gtopex-minwo" value="20" min="1" max="500" style="width:56px;padding:4px 6px;background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:11px" onchange="renderGTOpex()"></label>
             <button onclick="genererRapportGTDirect()" style="padding:6px 14px;background:var(--amber);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">⚡ PDF rapide</button>
@@ -2565,7 +2566,19 @@ function openEquipementDetail(equip){
 }
 
 // Détail filtré pour les "flops" GT Opex — montre exactement les WO/devis derrière la barre cliquée
-var _gtSt={mag:"",type:"",kind:"devis",all:true};
+function _gtNums(r){
+  if(r._gtn) return r._gtn;
+  var q="", w="";
+  Object.keys(r).forEach(function(k){
+    if(k.charAt(0)==="_") return;
+    if(_skelKey(k).indexOf("numro")!==0) return;
+    var v=String(r[k]==null?"":r[k]).trim();
+    if(!q && /^QUO/i.test(v)) q=v;
+    if(!w && /^WO/i.test(v)) w=v;
+  });
+  return (r._gtn={q:q||String(r["Numéro"]||""), w:w||String(r["Numéro_1"]||"")});
+}
+var _gtSt={mag:"",type:"",kind:"devis",all:false};
 function openGTOpexFlopDetail(mag, kind, type){
   if(!mag) return;
   _gtSt={mag:mag,type:type,kind:kind,all:false};
@@ -2603,10 +2616,10 @@ function _gtStoreTableHTML(list){
     var td=function(t){return "<td style='padding:5px 8px'>"+t+"</td>";};
     var _ix=QUO.indexOf(r);
     return "<tr style='"+(_ix>=0?"cursor:pointer;":"")+(_dvAtt(r)?"background:rgba(226,75,74,.08)":"")+"'"+(_ix>=0?" onclick='openWODetail(\"Devis\","+_ix+")'":"")+">"
-      +td(r["Numéro"]||"")
+      +td(_gtNums(r).q)
       +td(r["Rayon"]||"")
       +td("<span style='display:inline-flex;align-items:center;gap:5px'><span style='width:7px;height:7px;border-radius:50%;background:"+c+";display:inline-block'></span>"+(r["Statut du devis"]||qLabels[r._s]||"")+"</span>")
-      +td(r["Numéro_1"]||"")
+      +td(_gtNums(r).w)
       +td(r["Priorité"]||"")
       +td(r["Groupe d'affectation"]||"")
       +td(r["État"]||"")
@@ -2660,7 +2673,7 @@ function gtStoreExport(){
   var all=_gtStoreQuo(), list=_gtSt.all?all:all.filter(_dvAtt);
   var cols=["Numéro","Rayon","Statut du devis","Numéro_1","Priorité","Groupe d'affectation","État","Coût total","Créé"];
   var head=["N° Devis","Rayon","Statut du devis","N° WO","Priorité","Groupe d'affectation","État WO","Coût total","Créé"];
-  var csv=head.join(";")+"\n"+list.map(function(r){return cols.map(function(c){return '"'+String(r[c]==null?"":r[c]).replace(/"/g,'""')+'"';}).join(";");}).join("\n");
+  var csv=head.join(";")+"\n"+list.map(function(r){return cols.map(function(c){var v=c==="Numéro"?_gtNums(r).q:c==="Numéro_1"?_gtNums(r).w:r[c]; return '"'+String(v==null?"":v).replace(/"/g,'""')+'"';}).join(";");}).join("\n");
   var blob=new Blob(["\ufeff"+csv],{type:"text/csv;charset=utf-8"});
   var a=document.createElement("a"); a.href=URL.createObjectURL(blob);
   a.download="Devis_"+_gtSt.mag.replace(/[^\w]+/g,"_")+".csv"; document.body.appendChild(a); a.click(); a.remove();
@@ -8538,13 +8551,38 @@ function _gtPool(){
   return {wo:merge(WO,n1ok?N1.WO:[],false), quo:merge(QUO,n1ok?N1.QUO:[],true)};
 }
 var _gtWaitT=null;
-function _gtFillMois(keep){
+function _gtMoisVal(){
+  var a=(document.getElementById("gtopex-mois")||{value:""}).value, b=(document.getElementById("gtopex-mois2")||{value:""}).value;
+  if(!a&&!b) return "";
+  if(a&&!b) return a;
+  if(a&&b&&a>b){ var t=a; a=b; b=t; }
+  return (a||"")+".."+(b||"");
+}
+function _gtMoisOk(r,f){
+  if(!f) return true;
+  if(f.indexOf("..")<0) return r._mo===f;
+  var p=f.split(".."), lo=p[0]||"0000-00", hi=p[1]||"9999-99";
+  return !!r._mo && r._mo>=lo && r._mo<=hi;
+}
+function _gtMoisLabel(f){
+  if(!f) return "Toute la période";
+  if(f.indexOf("..")<0) return _gtMoLabel(f);
+  var p=f.split(".."); return (p[0]?_gtMoLabel(p[0]):"début")+" → "+(p[1]?_gtMoLabel(p[1]):"fin");
+}
+function _gtFillMois(keep,keep2){
   var sel=document.getElementById("gtopex-mois"); if(!sel) return;
+  var sel2=document.getElementById("gtopex-mois2");
+  if(keep2===undefined && sel2) keep2=sel2.value;
   var pool=_gtPool();
   var mos=[...new Set(pool.wo.map(function(r){return r._mo;}).filter(Boolean))].sort();
   while(sel.options.length>1) sel.remove(1);
   mos.forEach(function(m){ var o=document.createElement("option"); o.value=m; o.textContent=_gtMoLabel(m); sel.appendChild(o); });
   sel.value = (keep && mos.indexOf(keep)>=0) ? keep : "";
+  if(sel2){
+    while(sel2.options.length>1) sel2.remove(1);
+    mos.forEach(function(m){ var o=document.createElement("option"); o.value=m; o.textContent=_gtMoLabel(m); sel2.appendChild(o); });
+    sel2.value = (keep2 && mos.indexOf(keep2)>=0) ? keep2 : "";
+  }
 }
 function gtPeriodChange(){
   var note=document.getElementById("gtopex-per-note"); if(note) note.textContent="";
@@ -8558,11 +8596,11 @@ function gtPeriodChange(){
         clearInterval(_gtWaitT);
         if(N1.etat!=="ok" && note) note.textContent="⚠️ Données N-1 indisponibles : seules les données de l'année en cours sont prises en compte.";
         else if(note) note.textContent="";
-        _gtFillMois(""); renderGTOpex();
+        _gtFillMois("",""); renderGTOpex();
       }
     },700);
   }
-  _gtFillMois(""); renderGTOpex();
+  _gtFillMois("",""); renderGTOpex();
 }
 
 function renderGTOpex(){
@@ -8574,14 +8612,14 @@ function renderGTOpex(){
   // Debug check type client
   var types=[...new Set(WO.map(function(r){return r._t;}).filter(Boolean))];
   console.log("GT Opex - Types WO:", types, "Total WO:", WO.length);
-  var moisF = (document.getElementById("gtopex-mois")||{value:""}).value;
+  var moisF = _gtMoisVal();
 
   var regF  = (document.getElementById("gtopex-reg")||{value:""}).value;
   var typeF = (document.getElementById("gtopex-type")||{value:""}).value;
   _gtApplyTypeView(typeF);
   var _pool=_gtPool();
-  var wo  = (moisF ? _pool.wo.filter(function(r){return r._mo===moisF;}) : _pool.wo).filter(_affOk);
-  var quo = (moisF ? _pool.quo.filter(function(r){return r._mo===moisF;}) : _pool.quo).filter(_affOk);
+  var wo  = (moisF ? _pool.wo.filter(function(r){return _gtMoisOk(r,moisF);}) : _pool.wo).filter(_affOk);
+  var quo = (moisF ? _pool.quo.filter(function(r){return _gtMoisOk(r,moisF);}) : _pool.quo).filter(_affOk);
   if(regF){ wo=wo.filter(function(r){return r._r===regF;}); quo=quo.filter(function(r){return r._r===regF;}); }
 
   // ── KPIs globaux ──
@@ -8631,7 +8669,7 @@ function renderGTOpex(){
   renderTopFlopPrest(wo, "Match",  "gtopex-ptop-match",  "gtopex-pflop-match");
 
   // ── VUE 2ter : Top / Flop 10 prestataires — taux de clôture PRÉVENTIF ──
-  var prevP = moisF ? PREV.filter(function(r){return r._mo===moisF;}) : PREV;
+  var prevP = moisF ? PREV.filter(function(r){return _gtMoisOk(r,moisF);}) : PREV;
   if(regF) prevP = prevP.filter(function(r){return r._reg===regF;});
   ["Hyper","Market","Match"].forEach(function(t){
     var k=t.toLowerCase();
@@ -9773,11 +9811,11 @@ function renderTauxRegion(wo, type, canvasId, tblId){
 function exporterGTOpex(){
   if(WO.length===0){toast("Aucune donnée",true);return;}
   var wb=XLSX.utils.book_new();
-  var moisF=(document.getElementById("gtopex-mois")||{value:""}).value;
+  var moisF=_gtMoisVal();
   var regX=(document.getElementById("gtopex-reg")||{value:""}).value;
   var _gp=_gtPool();
-  var wo=moisF?_gp.wo.filter(function(r){return r._mo===moisF;}):_gp.wo;
-  var quo=moisF?_gp.quo.filter(function(r){return r._mo===moisF;}):_gp.quo;
+  var wo=moisF?_gp.wo.filter(function(r){return _gtMoisOk(r,moisF);}):_gp.wo;
+  var quo=moisF?_gp.quo.filter(function(r){return _gtMoisOk(r,moisF);}):_gp.quo;
   if(regX){ wo=wo.filter(function(r){return r._r===regX;}); quo=quo.filter(function(r){return r._r===regX;}); }
 
   // Feuille 1: Devis en attente par magasin
@@ -9838,7 +9876,7 @@ function exporterGTOpex(){
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(pRows),"Prestataires taux clôture");
   // Feuille 5 : classement prestataires — préventif
   var vRows=[["Rang","Prestataire","Type client","WO préventifs","Clôturés","Taux clôture %","Seuil min : "+minWOx]];
-  var prevX=moisF?PREV.filter(function(r){return r._mo===moisF;}):PREV;
+  var prevX=moisF?PREV.filter(function(r){return _gtMoisOk(r,moisF);}):PREV;
   if(regX) prevX=prevX.filter(function(r){return r._reg===regX;});
   ["Hyper","Market","Match"].forEach(function(type){
     var pm={};
@@ -9872,7 +9910,7 @@ function gtChart(id, type, labels, datasets, opts){
 function genererRapportGTDirect(){
   var tF=(document.getElementById("gtopex-type")||{value:""}).value;
   _genGTOpexPDF({inclKpi:true,inclDv:true,inclWoF:true,inclTbl:true,inclDet:true,
-    moisF:(document.getElementById("gtopex-mois")||{value:""}).value,
+    moisF:_gtMoisVal(),
     reg:(document.getElementById("gtopex-reg")||{value:""}).value,
     inclH:!tF||tF==="Hyper", inclM:!tF||tF==="Market", inclMa:!tF||tF==="Match"});
 }
@@ -10120,10 +10158,10 @@ function _genGTOpexPDF(opts){
       if(opts.inclMa!==false)typeFilt.push("Match");
       if(!typeFilt.length)typeFilt=["Hyper","Market","Match"];
       var _gp=_gtPool();
-      var wo=_gp.wo.filter(function(r){return(!moisF||r._mo===moisF)&&typeFilt.indexOf(r._t)>=0&&(!opts.reg||r._r===opts.reg);});
-      var quo=_gp.quo.filter(function(r){return(!moisF||r._mo===moisF)&&typeFilt.indexOf(r._t)>=0&&(!opts.reg||r._r===opts.reg);});
+      var wo=_gp.wo.filter(function(r){return(!moisF||_gtMoisOk(r,moisF))&&typeFilt.indexOf(r._t)>=0&&(!opts.reg||r._r===opts.reg);});
+      var quo=_gp.quo.filter(function(r){return(!moisF||_gtMoisOk(r,moisF))&&typeFilt.indexOf(r._t)>=0&&(!opts.reg||r._r===opts.reg);});
       var now=_dfr(new Date());
-      var periodeLabel=moisF?mL(moisF)+" 2026":"Toute la période";
+      var periodeLabel=_gtMoisLabel(moisF);
       var regs=Object.keys(REG_COLORS).filter(function(r){return r!=="AUTRE";});
       var css="@page{margin:12mm}body{font-family:Arial,sans-serif;color:#1a1a2e;font-size:11px;margin:0;padding:20px}"
         +".hdr{border-bottom:3px solid #004B9B;padding-bottom:10px;margin-bottom:14px;display:flex;justify-content:space-between}"
