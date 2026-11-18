@@ -892,18 +892,26 @@ tr:hover td{background:rgba(255,255,255,.025)}
           </div>
         </div>
         <div class="kg" id="gtopex-kg" style="margin-bottom:14px"></div>
-        <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:8px">🧾 Flop 10 Magasins — Devis en attente &gt; 7 jours <span style="color:var(--t3);font-weight:500">(hors « Ouvert »)</span></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px">
-          <div class="card"><div class="ct">Hyper</div><div id="gtopex-dv-hyper"></div></div>
-          <div class="card"><div class="ct">Market</div><div id="gtopex-dv-market"></div></div>
-          <div class="card"><div class="ct">Match</div><div id="gtopex-dv-match"></div></div>
+        <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:8px">⭐ NPS Click &amp; Repair — évaluation des prestataires externes <span style="color:var(--t3);font-weight:500">(NPS = % promoteurs − % détracteurs · courbe = NPS glissant sur 30 jours · pointillé = tendance)</span></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:6px">
+          <div class="card"><div class="ct">NPS évaluation prestataire — Hyper <span id="gtopex-nps-evo-hyper" style="float:right"></span></div><div class="cw" style="height:170px"><canvas id="gtopex-nps-d-hyper"></canvas></div><div id="gtopex-nps-leg-hyper" style="font-size:10px;text-align:center;margin:4px 0 8px"></div><div class="cw" style="height:170px"><canvas id="gtopex-nps-l-hyper"></canvas></div></div>
+          <div class="card"><div class="ct">NPS évaluation prestataire — Market <span id="gtopex-nps-evo-market" style="float:right"></span></div><div class="cw" style="height:170px"><canvas id="gtopex-nps-d-market"></canvas></div><div id="gtopex-nps-leg-market" style="font-size:10px;text-align:center;margin:4px 0 8px"></div><div class="cw" style="height:170px"><canvas id="gtopex-nps-l-market"></canvas></div></div>
+          <div class="card"><div class="ct">NPS évaluation prestataire — Match <span id="gtopex-nps-evo-match" style="float:right"></span></div><div class="cw" style="height:170px"><canvas id="gtopex-nps-d-match"></canvas></div><div id="gtopex-nps-leg-match" style="font-size:10px;text-align:center;margin:4px 0 8px"></div><div class="cw" style="height:170px"><canvas id="gtopex-nps-l-match"></canvas></div></div>
         </div>
-        <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:8px">⏳ Flop 10 Magasins — WO en attente d'approbation ≥ 30 jours</div>
+        <div id="gtopex-nps-note" style="font-size:10px;color:var(--t3);margin-bottom:14px"></div>
+        <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:8px">🧾 Flop 10 Magasins — Devis en attente de validation par le magasin &gt; 7 jours <span style="color:var(--t3);font-weight:500">(hors « Ouvert »)</span></div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px">
-          <div class="card"><div class="ct">Hyper</div><div id="gtopex-wo-hyper"></div></div>
-          <div class="card"><div class="ct">Market</div><div id="gtopex-wo-market"></div></div>
-          <div class="card"><div class="ct">Match</div><div id="gtopex-wo-match"></div></div>
+          <div class="card"><div class="ct">Devis en attente &gt; 7 jours — Hyper France</div><div class="cw" style="height:300px"><canvas id="gtopex-dv-hyper"></canvas></div></div>
+          <div class="card"><div class="ct">Devis en attente &gt; 7 jours — Market France</div><div class="cw" style="height:300px"><canvas id="gtopex-dv-market"></canvas></div></div>
+          <div class="card"><div class="ct">Devis en attente &gt; 7 jours — Match France</div><div class="cw" style="height:300px"><canvas id="gtopex-dv-match"></canvas></div></div>
         </div>
+        <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:8px">⏳ Flop 10 Magasins — Clôture tickets : WO en attente d'approbation &gt; 30 jours <span style="color:var(--t3);font-weight:500">(clic sur une barre = détail du magasin)</span></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px">
+          <div class="card"><div class="ct">WO en attente d'approbation &gt; 30 jours — Hyper France</div><div class="cw" style="height:300px"><canvas id="gtopex-wo-hyper"></canvas></div></div>
+          <div class="card"><div class="ct">WO en attente d'approbation &gt; 30 jours — Market France</div><div class="cw" style="height:300px"><canvas id="gtopex-wo-market"></canvas></div></div>
+          <div class="card"><div class="ct">WO en attente d'approbation &gt; 30 jours — Match France</div><div class="cw" style="height:300px"><canvas id="gtopex-wo-match"></canvas></div></div>
+        </div>
+        <div id="gtopex-reg-leg" style="display:flex;flex-wrap:wrap;gap:6px 16px;justify-content:center;font-size:11px;margin:0 0 16px;padding:8px;background:var(--card);border:1px solid var(--border);border-radius:8px"></div>
         <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:8px">🏆 Top 10 Prestataires — Taux de clôture (hors annulés)</div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px">
           <div class="card"><div class="ct">Hyper</div><div id="gtopex-ptop-hyper"></div></div>
@@ -1307,6 +1315,8 @@ Dans le cadre du suivi de la performance maintenance, nous attirons votre attent
           <select id="pv-mag"   class="fs" style="min-width:160px" onchange="renderPrev()"><option value="">Tous magasins</option></select>
           <select id="pv-cmm"   class="fs" style="min-width:160px" onchange="renderPrev()"><option value="">Tous CMM</option></select>
           <select id="pv-type"  class="fs" style="min-width:130px" onchange="renderPrev()"><option value="">Tous types</option><option value="Hyper">Hyper</option><option value="Market">Market</option><option value="Match">Match</option></select>
+          <select id="pv-freq"  class="fs" style="min-width:150px" title="Périodicité lue dans le titre de la demande (code 1M / 3M / 6M / 12M ou 1A)" onchange="renderPrev()"><option value="">Toutes périodicités</option><option value="Mensuel">Mensuel</option><option value="Trimestriel">Trimestriel (3 mois)</option><option value="Semestriel">Semestriel (6 mois)</option><option value="Annuel">Annuel</option><option value="Autre">Autre / non définie</option></select>
+          <select id="pv-kind"  class="fs" style="min-width:150px" title="Préventif externe = prestataire externe (titre « Maintenance Préventive externe » ou groupe FR_EXT)" onchange="renderPrev()"><option value="">Externe + interne</option><option value="Externe">Préventif externe</option><option value="Interne">Préventif interne</option></select>
           <select id="pv-mois"  class="fs" style="min-width:130px" onchange="renderPrev()"><option value="">Tous mois</option></select>
         </div>
         <!-- KPIs -->
@@ -7554,6 +7564,23 @@ function appliquerRegionURL(){
 // ══════════════════════════════════════════════════════════════
 var PREV = [];
 
+// Périodicité (code du titre : …_3M_…, …_6M_…, …_12M_…, …_1A_…) et nature (externe / interne) d'un WO préventif
+function _prFreq(titre){
+  var t=String(titre||"");
+  var m=t.match(/_(\d{1,2})\s*([MAST])(?=_|\b)/i);
+  if(m){
+    var n=parseInt(m[1],10), u=m[2].toUpperCase(), mois=u==="M"?n:u==="A"?n*12:u==="S"?n*6:n*3;
+    if(mois===1) return "Mensuel"; if(mois===3) return "Trimestriel"; if(mois===6) return "Semestriel"; if(mois===12) return "Annuel";
+    return "Autre";
+  }
+  var l=t.toLowerCase();
+  if(/mensuel/.test(l)) return "Mensuel"; if(/trimestri/.test(l)) return "Trimestriel"; if(/semestri/.test(l)) return "Semestriel"; if(/annuel/.test(l)) return "Annuel";
+  return "Autre";
+}
+function _prKind(titre,grp){
+  if(/pr.ventive\s+externe/i.test(String(titre||"")) || _isExt(grp)) return "Externe";
+  return "Interne";
+}
 function parsePREV(rows){
   PREV=[];
   if(!rows||!rows.length) return;
@@ -7623,6 +7650,8 @@ function parsePREV(rows){
       _age  : age,
       _closed: closed&&!isNaN(closed)?_dfr(closed):"",
       _titre: titre,
+      _freq : _prFreq(titre),
+      _kind : _prKind(titre, r["Groupe d'affectation"]),
       _equip: equip,
     });
   });
@@ -7655,7 +7684,11 @@ function getPrevFiltered(){
   var prest = document.getElementById('pv-prest') ? document.getElementById('pv-prest').value : '';
   var type  = document.getElementById('pv-type')  ? document.getElementById('pv-type').value  : '';
   var mois  = document.getElementById('pv-mois')  ? document.getElementById('pv-mois').value  : '';
+  var freq  = document.getElementById('pv-freq')  ? document.getElementById('pv-freq').value  : '';
+  var kind  = document.getElementById('pv-kind')  ? document.getElementById('pv-kind').value  : '';
   return PREV.filter(function(r){
+    if(freq  && r._freq  !== freq)  return false;
+    if(kind  && r._kind  !== kind)  return false;
     if(reg   && r._reg   !== reg)   return false;
     if(prest && r._prest !== prest) return false;
     if(type  && r._type  !== type)  return false;
@@ -7702,6 +7735,8 @@ function renderPrev(){
   var cmm  =(document.getElementById("pv-cmm")    ||{value:""}).value;
   var typeF=(document.getElementById("pv-type")   ||{value:""}).value;
   var mois =(document.getElementById("pv-mois")   ||{value:""}).value;
+  var freqF=(document.getElementById("pv-freq")   ||{value:""}).value;
+  var kindF=(document.getElementById("pv-kind")   ||{value:""}).value;
 
   // Peupler magasin/CMM (respecte la région déjà choisie)
   var selMagPv=document.getElementById("pv-mag");
@@ -7730,6 +7765,8 @@ function renderPrev(){
     if(cmm  &&r._cmm!==cmm)    return false;
     if(typeF&&r._type!==typeF) return false;
     if(mois &&r._mo!==mois)    return false;
+    if(freqF&&r._freq!==freqF) return false;
+    if(kindF&&r._kind!==kindF) return false;
     return true;
   });
   var tot=data.length,cl=0,ec=0,appro=0,an=0,as_=0;
@@ -8603,6 +8640,85 @@ function gtPeriodChange(){
   _gtFillMois("",""); renderGTOpex();
 }
 
+// ── NPS Click & Repair (GT Opex) : prestataires externes, par type de client ──
+function _gtNpsPool(){
+  var per=_gtPer(), now=new Date(), y=now.getFullYear();
+  var st = per==="glissant" ? _gtStart() : new Date(y,0,1);
+  var en = new Date(y,now.getMonth(),now.getDate(),23,59,59);
+  var regF=(document.getElementById("gtopex-reg")||{value:""}).value;
+  return NPS.filter(function(r){
+    if(!r._d || r._d<st || r._d>en) return false;
+    if(!_xOf(r)) return false;                 // NPS « Externe » : évaluations de prestataires externes
+    if(regF && r._r!==regF) return false;
+    return true;
+  }).map(function(r){ if(!r._tg) r._tg = r._t || _typeClient(r["Type de client"], r["Compte"]); return r; });
+}
+function _gtNpsOf(arr){
+  var p=0,d=0,n=0; arr.forEach(function(r){ n++; if(r._cat==="P")p++; else if(r._cat==="D")d++; });
+  return {n:n,p:p,d:d,neu:n-p-d,nps:n?(p-d)/n*100:null};
+}
+function renderGTNps(){
+  var all=_gtNpsPool(), moisF=_gtMoisVal();
+  var DAY=86400000, WIN=30, MINN=10;
+  var note=document.getElementById("gtopex-nps-note");
+  if(!NPS.length){ if(note) note.textContent="Aucune donnée NPS chargée."; }
+  ["Hyper","Market","Match"].forEach(function(t){
+    var k=t.toLowerCase();
+    var rows=all.filter(function(r){return r._tg===t;});
+    var scope=moisF?rows.filter(function(r){return _gtMoisOk(r,moisF);}):rows;
+    var S=_gtNpsOf(scope);
+    var leg=document.getElementById("gtopex-nps-leg-"+k), evo=document.getElementById("gtopex-nps-evo-"+k);
+    var pc=function(v){return S.n?(v/S.n*100).toFixed(2).replace(".",",")+"%":"—";};
+    if(leg) leg.innerHTML=S.n?("<span style='color:#E24B4A'>■ Détracteurs = "+fN(S.d)+" ("+pc(S.d)+")</span> &nbsp; <span style='color:#BA9B3A'>■ Neutres = "+fN(S.neu)+" ("+pc(S.neu)+")</span> &nbsp; <span style='color:#1D9E75'>■ Promoteurs = "+fN(S.p)+" ("+pc(S.p)+")</span>"):"<span style='color:var(--t3)'>Aucune évaluation</span>";
+    // Donut + score au centre
+    var centre={id:"npsCentre",afterDraw:function(ch){
+      var a=ch.chartArea, c=ch.ctx; if(!a) return;
+      c.save(); c.textAlign="center"; c.textBaseline="middle"; c.fillStyle=tc();
+      c.font="700 26px sans-serif"; c.fillText(S.n?S.nps.toFixed(2).replace(".",","):"—",(a.left+a.right)/2,(a.top+a.bottom)/2);
+      c.restore(); }};
+    var did="gtopex-nps-d-"+k; var dv=document.getElementById(did);
+    if(dv){ if(CHARTS[did]){try{CHARTS[did].destroy();}catch(e){} delete CHARTS[did]; }
+      try{ CHARTS[did]=new Chart(dv.getContext("2d"),{type:"doughnut",plugins:[centre],
+        data:{labels:["Détracteurs","Neutres","Promoteurs"],datasets:[{data:[S.d,S.neu,S.p],backgroundColor:["#E24B4A","#E8DFA8","#1D9E75"],borderWidth:1}]},
+        options:{animation:false,responsive:true,maintainAspectRatio:false,cutout:"62%",plugins:{legend:{display:false}}}}); }catch(e){ console.log("nps donut error",e); } }
+    // NPS glissant 30 jours + tendance
+    var pts=[], labels=[];
+    if(rows.length){
+      var ds=rows.map(function(r){return r._d.getTime();}), lo=Math.min.apply(null,ds), hi=Math.max.apply(null,ds);
+      var byDay={}; rows.forEach(function(r){ var key=Math.floor(r._d.getTime()/DAY); (byDay[key]=byDay[key]||[]).push(r); });
+      var d0=Math.floor(lo/DAY), d1=Math.floor(hi/DAY);
+      for(var d=d0; d<=d1; d++){
+        var arr=[]; for(var j=d-WIN+1;j<=d;j++){ if(byDay[j]) arr=arr.concat(byDay[j]); }
+        var dt=new Date(d*DAY);
+        var mo=dt.getFullYear()+"-"+String(dt.getMonth()+1).padStart(2,"0");
+        if(moisF && !_gtMoisOk({_mo:mo},moisF)) continue;
+        var o=_gtNpsOf(arr);
+        labels.push(dt.toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit",year:"2-digit"}));
+        pts.push(o.n>=MINN ? +o.nps.toFixed(2) : null);
+      }
+    }
+    // régression linéaire sur les points valides
+    var xs=[],ys=[]; pts.forEach(function(v,i){ if(v!==null){xs.push(i);ys.push(v);} });
+    var trend=pts.map(function(){return null;}), delta=null;
+    if(xs.length>=2){
+      var mx=xs.reduce(function(a,b){return a+b;},0)/xs.length, my=ys.reduce(function(a,b){return a+b;},0)/ys.length, num=0, den=0;
+      xs.forEach(function(x,i){ num+=(x-mx)*(ys[i]-my); den+=(x-mx)*(x-mx); });
+      var sl=den?num/den:0, ic=my-sl*mx;
+      trend=pts.map(function(v,i){return +(ic+sl*i).toFixed(2);});
+      delta=(ic+sl*xs[xs.length-1])-(ic+sl*xs[0]);
+    }
+    if(evo) evo.innerHTML = delta===null ? "" : "<span style='font-size:13px;font-weight:800;color:"+(delta>=0?"#1D9E75":"#E24B4A")+"' title='Évolution de la tendance sur la période'>"+(delta>=0?"↗ +":"↘ ")+delta.toFixed(2).replace(".",",")+"</span>";
+    gtChart("gtopex-nps-l-"+k,"line",labels,[
+      {label:"NPS externe (30 j)",data:pts,borderColor:"#2BB3C0",backgroundColor:"transparent",borderWidth:1.5,pointRadius:0,tension:.25,spanGaps:true},
+      {label:"Tendance",data:trend,borderColor:"#F5A623",backgroundColor:"transparent",borderWidth:1.5,borderDash:[5,4],pointRadius:0,spanGaps:true}
+    ],{scales:{x:{ticks:{color:tc(),font:{size:9},maxTicksLimit:7,maxRotation:0},grid:{display:false}},y:{ticks:{color:tc(),font:{size:9}},grid:{color:"rgba(128,128,128,.15)"}}}});
+  });
+  if(note && NPS.length){
+    var dts=all.map(function(r){return r._d.getTime();});
+    note.textContent = all.length ? ("Évaluations de prestataires externes du "+new Date(Math.min.apply(null,dts)).toLocaleDateString("fr-FR")+" au "+new Date(Math.max.apply(null,dts)).toLocaleDateString("fr-FR")+" ("+fN(all.length)+") · courbe affichée dès 10 évaluations sur 30 jours · évolution = variation de la droite de tendance sur la période.") : "Aucune évaluation NPS externe sur la période.";
+  }
+}
+
 function renderGTOpex(){
   if(WO.length === 0){
     var kg=document.getElementById("gtopex-kg");
@@ -8653,6 +8769,9 @@ function renderGTOpex(){
   if(typeF && kg){ ["Hyper","Market","Match"].forEach(function(t){ if(t===typeF) return;
     [].slice.call(kg.children).forEach(function(c){ if(c.textContent.indexOf(" "+t)>=0) c.style.display="none"; }); }); }
 
+  try{ renderGTNps(); }catch(e){ console.error("renderGTNps:", e); }
+
+  _gtLegRegs={};
   // ── VUE 1 : Flop 10 devis en attente par magasin ──
   renderFlop10Devis(quo, "Hyper",  "gtopex-dv-hyper");
   renderFlop10Devis(quo, "Market", "gtopex-dv-market");
@@ -8662,6 +8781,7 @@ function renderGTOpex(){
   renderFlop10WO(wo, "Hyper",  "gtopex-wo-hyper");
   renderFlop10WO(wo, "Market", "gtopex-wo-market");
   renderFlop10WO(wo, "Match",  "gtopex-wo-match");
+  _gtRenderRegLegend();
 
   // ── VUE 2bis : Top / Flop 10 prestataires par taux de clôture ──
   renderTopFlopPrest(wo, "Hyper",  "gtopex-ptop-hyper",  "gtopex-pflop-hyper");
@@ -9710,38 +9830,64 @@ function scFichesLot(tous){
   toast("📄 "+bodies.length+" fiche(s) prestataire dans un seul PDF");
 }
 
+// Couleurs des régions (palette des slides Click & Repair)
+var GT_RC={CENTRE_ALPES:"#B8F0F8",ILE_DE_FRANCE:"#7ED957",NORD:"#F5A524",OUEST:"#4B2E5E",SUD_EST:"#F8C8D0",SUD_OUEST:"#7F7A7A",EST:"#4A90D9"};
+var _gtLegRegs={};
+function _gtRenderRegLegend(){
+  var el=document.getElementById("gtopex-reg-leg"); if(!el) return;
+  var regs=Object.keys(_gtLegRegs).sort();
+  el.style.display=regs.length?"flex":"none";
+  el.innerHTML=regs.map(function(k){return "<span><i style='display:inline-block;width:12px;height:12px;border-radius:2px;margin-right:6px;vertical-align:-2px;background:"+(GT_RC[k]||"#888")+"'></i>"+k+"</span>";}).join("");
+}
+function _gtShort(n){ n=String(n||""); return n.length>20 ? n.slice(0,19).trim()+"…" : n; }
+// Histogramme vertical : Top 10 magasins, couleur = région, valeur dans une pastille, clic = détail du magasin
+function _gtFlopBars(canvasId, sorted, unit, type, kind){
+  var cv=document.getElementById(canvasId); if(!cv) return;
+  if(CHARTS[canvasId]){ try{CHARTS[canvasId].destroy();}catch(e){} delete CHARTS[canvasId]; }
+  sorted.forEach(function(e){ _gtLegRegs[e[1].reg]=1; });
+  var pill={id:"gtPill",afterDatasetsDraw:function(ch){
+    var c=ch.ctx, m=ch.getDatasetMeta(0);
+    if(!sorted.length){ c.save(); c.fillStyle=tc(); c.font="12px sans-serif"; c.textAlign="center"; c.fillText("Aucune donnée",(ch.chartArea.left+ch.chartArea.right)/2,(ch.chartArea.top+ch.chartArea.bottom)/2); c.restore(); return; }
+    m.data.forEach(function(b,i){
+      var v=String(ch.data.datasets[0].data[i]), y=(b.y+b.base)/2;
+      c.save(); c.font="600 10px sans-serif"; var w=c.measureText(v).width+10;
+      c.fillStyle="rgba(20,20,30,.88)"; c.beginPath(); if(c.roundRect) c.roundRect(b.x-w/2,y-9,w,18,4); else c.rect(b.x-w/2,y-9,w,18); c.fill();
+      c.fillStyle="#fff"; c.textAlign="center"; c.textBaseline="middle"; c.fillText(v,b.x,y); c.restore(); }); }};
+  try{
+    CHARTS[canvasId]=new Chart(cv.getContext("2d"),{type:"bar",plugins:[pill],
+      data:{labels:sorted.map(function(e){return _gtShort(e[0]);}),
+            datasets:[{data:sorted.map(function(e){return e[1].n;}),backgroundColor:sorted.map(function(e){return GT_RC[e[1].reg]||"#888";}),borderWidth:0,categoryPercentage:.96,barPercentage:.96}]},
+      options:{animation:false,responsive:true,maintainAspectRatio:false,
+        onClick:function(ev,els){ if(els&&els.length){ var e=sorted[els[0].index]; if(e) openGTOpexFlopDetail(e[0],kind,type); } },
+        onHover:function(ev,els){ if(ev&&ev.native&&ev.native.target) ev.native.target.style.cursor=(els&&els.length)?"pointer":"default"; },
+        plugins:{legend:{display:false},tooltip:{callbacks:{
+          title:function(it){ return it.length?sorted[it[0].dataIndex][0]:""; },
+          label:function(it){ var e=sorted[it.dataIndex]; return [fN(e[1].n)+" "+unit.toLowerCase()+" en attente","Région : "+String(e[1].reg).replace(/_/g," ")]; }}}},
+        scales:{x:{grid:{display:false},ticks:{color:tc(),font:{size:9},maxRotation:55,minRotation:55,autoSkip:false}},
+                y:{beginAtZero:true,grid:{color:"rgba(128,128,128,.18)"},ticks:{color:tc(),font:{size:9},precision:0},title:{display:true,text:unit+" : nombre",color:tc(),font:{size:9}}}}}});
+  }catch(e){ console.log("flop bars error:",canvasId,e); }
+}
 function renderFlop10Devis(quo, type, containerId){
-  var data = quo.filter(function(r){
-    return r._t===type && _dvAtt(r);
-  });
-  var mMap = {};
-  data.forEach(function(r){
+  var mMap={};
+  quo.forEach(function(r){
+    if(r._t!==type || !_dvAtt(r)) return;
     var m=r._m||r["Compte"]||""; if(!m) return;
     if(!mMap[m]) mMap[m]={n:0,reg:r._r};
     mMap[m].n++;
   });
-  var sorted = Object.entries(mMap).sort(function(a,b){return b[1].n-a[1].n;}).slice(0,10);
-  hbars(containerId, sorted.map(function(e){return{l:e[0],v:e[1].n};}),
-    function(d,i){return REG_COLORS[sorted[i]?sorted[i][1].reg:""]||"#378ADD";},
-    function(d){return fN(d.v)+" devis";}, 10,
-    function(d){openGTOpexFlopDetail(d.l,"devis",type);});
+  var sorted=Object.entries(mMap).sort(function(a,b){return b[1].n-a[1].n;}).slice(0,10);
+  _gtFlopBars(containerId, sorted, "Devis", type, "devis");
 }
-
 function renderFlop10WO(wo, type, containerId){
-  var data = wo.filter(function(r){
-    return r._t===type && _woAtt(r);
-  });
-  var mMap = {};
-  data.forEach(function(r){
+  var mMap={};
+  wo.forEach(function(r){
+    if(r._t!==type || !_woAtt(r)) return;
     var m=r._m||""; if(!m) return;
     if(!mMap[m]) mMap[m]={n:0,reg:r._r};
     mMap[m].n++;
   });
-  var sorted = Object.entries(mMap).sort(function(a,b){return b[1].n-a[1].n;}).slice(0,10);
-  hbars(containerId, sorted.map(function(e){return{l:e[0],v:e[1].n};}),
-    function(d,i){return REG_COLORS[sorted[i]?sorted[i][1].reg:""]||"#E24B4A";},
-    function(d){return fN(d.v)+" WO";}, 10,
-    function(d){openGTOpexFlopDetail(d.l,"wo",type);});
+  var sorted=Object.entries(mMap).sort(function(a,b){return b[1].n-a[1].n;}).slice(0,10);
+  _gtFlopBars(containerId, sorted, "WO", type, "wo");
 }
 
 function renderTauxRegion(wo, type, canvasId, tblId){
