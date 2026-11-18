@@ -2581,12 +2581,11 @@ function _gtNums(r){
   var q="", w="";
   Object.keys(r).forEach(function(k){
     if(k.charAt(0)==="_") return;
-    if(_skelKey(k).indexOf("numro")!==0) return;
     var v=String(r[k]==null?"":r[k]).trim();
-    if(!q && /^QUO/i.test(v)) q=v;
-    if(!w && /^WO/i.test(v)) w=v;
+    if(!q && /^QUO\d/i.test(v)) q=v;      // n° de devis : valeur « QUO0123456 », quelle que soit la colonne
+    if(!w && /^WO\d/i.test(v)) w=v;       // n° de WO : valeur « WO1234567 »
   });
-  return (r._gtn={q:q||String(r["Numéro"]||""), w:w||String(r["Numéro_1"]||"")});
+  return (r._gtn={q:q, w:w||String(r["Numéro_1"]||"")});
 }
 var _gtSt={mag:"",type:"",kind:"devis",all:false};
 function openGTOpexFlopDetail(mag, kind, type){
@@ -2641,7 +2640,9 @@ function _gtStoreTableHTML(list){
     +"<table style='width:100%;border-collapse:collapse;font-size:11px'><thead style='position:sticky;top:0;background:var(--bg2)'><tr>"
     +th("N° Devis")+th("Rayon")+th("Statut du devis")+th("N° WO")+th("Priorité")+th("Groupe d'affectation")+th("État WO")+th("Coût total")+th("Créé")
     +"</tr></thead><tbody>"+(rows||"<tr><td colspan='9' style='padding:10px;color:var(--t3)'>Aucun devis</td></tr>")+"</tbody></table></div>"
-    +(list.length>500?"<div style='font-size:10px;color:var(--t3);margin-top:4px'>500 plus récents affichés sur "+fN(list.length)+" — l'export CSV contient tout.</div>":"");
+    +(list.length>500?"<div style='font-size:10px;color:var(--t3);margin-top:4px'>500 plus récents affichés sur "+fN(list.length)+" — l'export CSV contient tout.</div>":"")
+    +((list.length && !list.some(function(r){return _gtNums(r).q;}))
+      ?"<div style='font-size:11px;color:#E24B4A;margin-top:8px'>⚠ Aucun numéro de devis (QUO…) trouvé dans les données chargées. Colonnes reçues : "+Object.keys(list[0]).filter(function(k){return k.charAt(0)!=="_";}).join(" · ")+"</div>":"");
 }
 function _gtStoreWO(){
   return _gtPool().wo.filter(function(r){return (r._m===_gtSt.mag||r["Compte"]===_gtSt.mag) && (!_gtSt.type||r._t===_gtSt.type);});
@@ -2797,6 +2798,14 @@ function _typeClient(raw, compte){
 function buildData(){
   var today=new Date();
   _canonKeys(WO); _canonKeys(QUO); _canonKeys(NPS);
+  // Devis : « Numéro » doit contenir le n° de devis (QUO…) et « Numéro_1 » le n° de WO. Si les colonnes sont inversées ou dupliquées, on corrige.
+  QUO.forEach(function(r){
+    var cur=String(r["Numéro"]==null?"":r["Numéro"]).trim();
+    if(/^QUO\d/i.test(cur)) return;
+    var q="";
+    for(var k in r){ if(k.charAt(0)==="_"||k==="Numéro") continue; var v=String(r[k]==null?"":r[k]).trim(); if(/^QUO\d/i.test(v)){ q=v; break; } }
+    if(q){ if(/^WO\d/i.test(cur) && !r["Numéro_1"]) r["Numéro_1"]=cur; r["Numéro"]=q; }
+  });
   var EM_RAW={"Clôturé achevé":"CL","Assignée":"AS","En cours":"EC","En attente d'approbation":"AT","Annulé":"AN"};
   var EM=buildStatusMap(EM_RAW);
   // Table "squelette" construite sur les libellés d'ORIGINE (accents inclus) : les
