@@ -1316,7 +1316,7 @@ Dans le cadre du suivi de la performance maintenance, nous attirons votre attent
           <select id="pv-cmm"   class="fs" style="min-width:160px" onchange="renderPrev()"><option value="">Tous CMM</option></select>
           <select id="pv-type"  class="fs" style="min-width:130px" onchange="renderPrev()"><option value="">Tous types</option><option value="Hyper">Hyper</option><option value="Market">Market</option><option value="Match">Match</option></select>
           <select id="pv-freq"  class="fs" style="min-width:150px" title="Périodicité lue dans le titre de la demande (code 1M / 3M / 6M / 12M ou 1A)" onchange="renderPrev()"><option value="">Toutes périodicités</option><option value="Mensuel">Mensuel</option><option value="Trimestriel">Trimestriel (3 mois)</option><option value="Semestriel">Semestriel (6 mois)</option><option value="Annuel">Annuel</option><option value="Autre">Autre / non définie</option></select>
-          <select id="pv-kind"  class="fs" style="min-width:150px" title="Préventif externe = prestataire externe (titre « Maintenance Préventive externe » ou groupe FR_EXT)" onchange="renderPrev()"><option value="">Externe + interne</option><option value="Externe">Préventif externe</option><option value="Interne">Préventif interne</option></select>
+          <select id="pv-kind"  class="fs" style="min-width:150px" title="Type de maintenance préventive (colonne « Nom » de l'export) : Préventif externe ou Préventif" onchange="renderPrev()"><option value="">Externe + interne</option><option value="Externe">Préventif externe</option><option value="Interne">Préventif</option></select>
           <select id="pv-mois"  class="fs" style="min-width:130px" onchange="renderPrev()"><option value="">Tous mois</option></select>
         </div>
         <!-- KPIs -->
@@ -4163,6 +4163,63 @@ function calcKPIsPrev(prev){
   return{n:n,cl:cl,appro:appro,enCours:enCours,taux:n?cl/n*100:0};
 }
 
+// ── Taux d'avancement préventif, par nature (Externe / tout court) puis par type de client ──
+// Une nature n'apparaît que si le prestataire a au moins une demande de cette nature.
+// Taux = Clôturées ÷ demandes hors annulées. Les 3 statuts du donut ServiceNow : Assignée, En cours, Clôturé achevé.
+function _prevStat(rows){
+  var c={AS:0,EC:0,CL:0,APPRO:0,AN:0,AUT:0};
+  rows.forEach(function(r){ if(c[r._e]!==undefined) c[r._e]++; else c.AUT++; });
+  var n=rows.length-c.AN;
+  return {tot:rows.length, n:n, as:c.AS, ec:c.EC, cl:c.CL, appro:c.APPRO, an:c.AN, aut:c.AUT, taux:n?c.CL/n*100:0};
+}
+function prevKindBlocks(prev){
+  var out=[];
+  ["Externe","Interne"].forEach(function(k){
+    var rows=prev.filter(function(r){return r._kind===k;});
+    if(!rows.length) return;
+    var types=[...new Set(rows.map(function(r){return r._type||"Autre";}))].sort();
+    out.push({kind:k, lib:_prKindLib(k), all:_prevStat(rows),
+      types:types.map(function(t){ return {type:t, s:_prevStat(rows.filter(function(r){return (r._type||"Autre")===t;}))}; })});
+  });
+  return out;
+}
+function _prevPct(v,n){ return n?(v/n*100).toFixed(1).replace(".",",")+" %":"—"; }
+// Donut SVG (identique en écran, PDF et impression) : Assignée / En cours / Clôturé achevé (+ Att. approbation si > 0)
+function _prevDonut(titre,x,pdf){
+  var sl=[["Assignée",x.as,"#00A6A6"],["En cours",x.ec,"#FFC266"],["Clôturé achevé",x.cl,"#52BA60"]];
+  if(x.appro) sl.push(["Att. approbation",x.appro,"#8E7CC3"]);
+  var tot=sl.reduce(function(a,b){return a+b[1];},0), R=54, r=34, cx=60, cy=60, a0=-Math.PI/2, paths="";
+  if(tot){ sl.forEach(function(e){ if(!e[1]) return; var f=e[1]/tot; if(f>=0.9999){ paths+="<circle cx='"+cx+"' cy='"+cy+"' r='"+((R+r)/2)+"' fill='none' stroke='"+e[2]+"' stroke-width='"+(R-r)+"'/>"; return; }
+      var a1=a0+f*2*Math.PI, lg=f>0.5?1:0, c=Math.cos, sn=Math.sin;
+      paths+="<path d='M"+(cx+R*c(a0))+" "+(cy+R*sn(a0))+" A"+R+" "+R+" 0 "+lg+" 1 "+(cx+R*c(a1))+" "+(cy+R*sn(a1))+" L"+(cx+r*c(a1))+" "+(cy+r*sn(a1))+" A"+r+" "+r+" 0 "+lg+" 0 "+(cx+r*c(a0))+" "+(cy+r*sn(a0))+" Z' fill='"+e[2]+"' stroke='#fff' stroke-width='1'/>"; a0=a1; }); }
+  var leg=sl.map(function(e){ return "<div style='display:flex;align-items:center;gap:5px;font-size:"+(pdf?"9":"11")+"px'><span style='width:9px;height:9px;border-radius:2px;background:"+e[2]+";display:inline-block'></span>"+e[0]+" : <b>"+fN(e[1])+"</b> ("+(tot?(e[1]/tot*100).toFixed(1).replace(".",","):"0")+" %)</div>"; }).join("");
+  return "<div style='display:inline-block;vertical-align:top;margin:6px 14px 6px 0;min-width:190px'><div style='font-size:"+(pdf?"10":"12")+"px;font-weight:600;margin-bottom:4px'>"+titre+"</div>"
+    +"<div style='display:flex;align-items:center;gap:10px'><svg width='96' height='96' viewBox='0 0 120 120'>"+paths+"<text x='60' y='58' text-anchor='middle' font-size='15' font-weight='700' fill='"+(pdf?"#1a1a2e":"currentColor")+"'>"+(x.n?x.taux.toFixed(0):"–")+(x.n?" %":"")+"</text><text x='60' y='72' text-anchor='middle' font-size='8' fill='#888'>clôturé</text></svg><div>"+leg+"</div></div></div>";
+}
+function prevKindHTML(prev,mode){ // mode "app" (aperçu écran) ou "pdf"
+  var B=prevKindBlocks(prev); if(!B.length) return "";
+  var pdf=mode==="pdf", h="";
+  B.forEach(function(b){
+    var a=b.all;
+    h+= pdf ? "<h3 style='font-size:13px;color:#004B9B;margin:14px 0 6px'>Taux d'avancement préventif — "+b.lib+"</h3>"
+            : "<div class='ct' style='margin:12px 0 8px'>Taux d'avancement préventif — "+b.lib+"</div>";
+    var cells=[["Demandes (hors annulées)",fN(a.n),""],["Assignées",fN(a.as),_prevPct(a.as,a.n)],["En cours",fN(a.ec),_prevPct(a.ec,a.n)],["Clôturées (achevé)",fN(a.cl),_prevPct(a.cl,a.n)]];
+    if(a.appro) cells.push(["Att. approbation",fN(a.appro),_prevPct(a.appro,a.n)]);
+    if(pdf){ h+="<div class='kg' style='grid-template-columns:repeat("+cells.length+",1fr)'>"+cells.map(function(c,i){return "<div class='kb'"+(i==3?" style='border-top-color:#085041'":"")+"><div class='kl'>"+c[0]+"</div><div class='kv'>"+c[1]+"</div><div class='ks'>"+c[2]+"</div></div>";}).join("")+"</div>"; }
+    else { var bc=["","var(--blue)","var(--blue)","var(--green)","var(--amber)"]; h+="<div class='kg' style='grid-template-columns:repeat(auto-fit,minmax(130px,1fr))'>"+cells.map(function(c,i){return "<div class='kpi'"+(bc[i]?" style='border-top-color:"+bc[i]+"'":"")+"><div class='kl'>"+c[0]+"</div><div class='kv'>"+c[1]+"</div><div class='ks'>"+c[2]+"</div></div>";}).join("")+"</div>"; }
+    var tt=function(t){ return "Taux d'avancement préventif "+(b.kind==="Externe"?"Externe presta ":"")+"["+t+"]"; };
+    h+="<div>"+b.types.map(function(t){return _prevDonut(tt(t.type),t.s,pdf);}).join("")+_prevDonut(tt("Tous types"),a,pdf)+"</div>";
+    var th=pdf?"style='text-align:left;font-size:9px;color:#888;padding:5px 6px;border-bottom:1px solid #e2e4eb'":"", td=pdf?"style='padding:5px 6px;border-bottom:1px solid #f0f0f0;font-size:11px'":"";
+    var showA=b.types.some(function(t){return t.s.appro>0;}), showN=b.types.some(function(t){return t.s.an>0;});
+    var rowsH=b.types.concat([{type:"Total",s:a}]).map(function(t){ var x=t.s, tot=t.type==="Total";
+      return "<tr"+(tot?" style='font-weight:700'":"")+"><td "+td+">"+t.type+"</td><td "+td+">"+fN(x.n)+"</td><td "+td+">"+fN(x.as)+"</td><td "+td+">"+fN(x.ec)+"</td><td "+td+">"+fN(x.cl)+"</td>"+(showA?"<td "+td+">"+fN(x.appro)+"</td>":"")+(showN?"<td "+td+">"+fN(x.an)+"</td>":"")+"<td "+td+"><b>"+(x.n?x.taux.toFixed(1).replace(".",",")+" %":"—")+"</b></td></tr>"; }).join("");
+    var hd=["Type de client","Demandes","Assignées","En cours","Clôturées"].concat(showA?["Att. approb."]:[]).concat(showN?["Annulées (exclues)"]:[]).concat(["Taux d'avancement"]);
+    h+="<div class='tscroll'><table style='width:100%;border-collapse:collapse'><thead><tr>"+hd.map(function(x){return "<th "+th+">"+x+"</th>";}).join("")+"</tr></thead><tbody>"+rowsH+"</tbody></table></div>";
+  });
+  h+= pdf ? "<div style='font-size:9px;color:#888;margin-top:4px'>Taux d'avancement = clôturées ÷ demandes hors annulées.</div>" : "<div style='font-size:10px;color:var(--t3);margin-top:4px'>Taux d'avancement = clôturées ÷ demandes hors annulées.</div>";
+  return h;
+}
+
 function previewRapport(){
   var gid=document.getElementById("rap-groupe").value;if(!gid)return;
   // Mise à jour info email
@@ -4204,13 +4261,7 @@ function previewRapport(){
   var prevHTML="";
   if(data.prev && data.prev.length>0){
     var kpiPrev=calcKPIsPrev(data.prev);
-    prevHTML="<div style='margin-bottom:14px'><div class='ct' style='margin-bottom:8px'>🔧 Maintenance préventive</div>"
-      +"<div class='kg' style='grid-template-columns:repeat(auto-fit,minmax(130px,1fr))'>"
-      +"<div class='kpi'><div class='kl'>Demandes créées</div><div class='kv'>"+fN(kpiPrev.n)+"</div></div>"
-      +"<div class='kpi' style='border-top-color:var(--amber)'><div class='kl'>Att. approbation</div><div class='kv'>"+fN(kpiPrev.appro)+"</div></div>"
-      +"<div class='kpi' style='border-top-color:var(--blue)'><div class='kl'>En cours</div><div class='kv'>"+fN(kpiPrev.enCours)+"</div></div>"
-      +"<div class='kpi' style='border-top-color:var(--green)'><div class='kl'>Clôturées</div><div class='kv'>"+fN(kpiPrev.cl)+"</div><div class='ks'>"+kpiPrev.taux.toFixed(1)+"%</div></div>"
-      +"</div></div>";
+    prevHTML="<div style='margin-bottom:14px'><div class='ct' style='margin-bottom:8px'>🔧 Maintenance préventive</div>"+prevKindHTML(data.prev,"app")+"</div>";
   } else if(typeof PREV!=="undefined" && PREV.length>0){
     var prestPrevVus2=[...new Set(PREV.map(function(r){return r._prest;}).filter(Boolean))].sort().slice(0,15);
     prevHTML="<div style='margin-bottom:14px'><div class='ct' style='margin-bottom:8px'>🔧 Maintenance préventive</div>"
@@ -4516,12 +4567,7 @@ function genererPDF(){
     if(data.prev && data.prev.length>0){
       var kpiPrev=calcKPIsPrev(data.prev);
       H.push("<h2>🔧 Maintenance préventive</h2>");
-      H.push("<div class='kg'>");
-      H.push("<div class='kb'><div class='kl'>Demandes créées</div><div class='kv'>"+fN(kpiPrev.n)+"</div></div>");
-      H.push("<div class='kb'><div class='kl'>En attente d'approbation</div><div class='kv' style='color:"+(kpiPrev.appro>0?"#633806":"#085041")+"'>"+fN(kpiPrev.appro)+"</div></div>");
-      H.push("<div class='kb'><div class='kl'>En cours</div><div class='kv' style='color:#185FA5'>"+fN(kpiPrev.enCours)+"</div></div>");
-      H.push("<div class='kb' style='border-top-color:#085041'><div class='kl'>Clôturées</div><div class='kv' style='color:#085041'>"+fN(kpiPrev.cl)+"</div><div class='ks'>"+kpiPrev.taux.toFixed(1)+"%</div></div>");
-      H.push("</div>");
+      H.push(prevKindHTML(data.prev,"pdf"));
     } else if(typeof PREV!=="undefined" && PREV.length>0){
       // Le Préventif est chargé globalement mais aucune ligne ne correspond à cette entité —
       // signe probable d'un écart de nom de prestataire entre WO et PREV. On l'affiche
@@ -6522,9 +6568,11 @@ function buildExcelWB(data, kpi){
   ];
   if(data.prev && data.prev.length>0){
     var kpiPrev=calcKPIsPrev(data.prev);
-    kpiRows.push([""],["MAINTENANCE PRÉVENTIVE"],
-      ["Demandes créées",kpiPrev.n],["Att. approbation",kpiPrev.appro],
-      ["En cours",kpiPrev.enCours],["Clôturées",kpiPrev.cl],["% Clôture",+(kpiPrev.taux.toFixed(1))]);
+    kpiRows.push([""],["MAINTENANCE PRÉVENTIVE — TAUX D'AVANCEMENT (clôturées ÷ demandes hors annulées)"]);
+    prevKindBlocks(data.prev).forEach(function(b){
+      kpiRows.push([""],[b.lib],["Type de client","Demandes (hors annulées)","Assignées","En cours","Clôturées","Att. approbation","Annulées (exclues)","Taux d'avancement %"]);
+      b.types.concat([{type:"Total",s:b.all}]).forEach(function(t){ var x=t.s; kpiRows.push([t.type,x.n,x.as,x.ec,x.cl,x.appro,x.an,x.n?+(x.taux.toFixed(1)):""]); });
+    });
   }
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(kpiRows), "KPIs");
   var woRows=[["N° WO","Statut","Prestataire","Magasin","Région","Priorité","Mois","Âge","Temps de traitement"]];
@@ -7586,10 +7634,15 @@ function _prFreq(titre){
   if(/mensuel/.test(l)) return "Mensuel"; if(/trimestri/.test(l)) return "Trimestriel"; if(/semestri/.test(l)) return "Semestriel"; if(/annuel/.test(l)) return "Annuel";
   return "Autre";
 }
-function _prKind(titre,grp){
+// Nature du préventif : colonne « Nom » de l'export ServiceNow (« Maintenance Préventive externe » = Externe ;
+// « Maintenance Préventive » = tout court). À défaut de colonne Nom : titre de la demande, puis groupe FR_EXT.
+function _prKind(titre,grp,nom){
+  var n=String(nom||"").trim();
+  if(n) return /externe/i.test(n) ? "Externe" : "Interne";
   if(/pr.ventive\s+externe/i.test(String(titre||"")) || _isExt(grp)) return "Externe";
   return "Interne";
 }
+function _prKindLib(k){ return k==="Externe" ? "Préventif externe" : "Préventif"; }
 function parsePREV(rows){
   PREV=[];
   if(!rows||!rows.length) return;
@@ -7660,13 +7713,50 @@ function parsePREV(rows){
       _closed: closed&&!isNaN(closed)?_dfr(closed):"",
       _titre: titre,
       _freq : _prFreq(titre),
-      _kind : _prKind(titre, r["Groupe d'affectation"]),
+      _nom  : get(r,["Nom"]).trim(),
+      _kind : _prKind(titre, r["Groupe d'affectation"], get(r,["Nom"])),
       _equip: equip,
     });
   });
+  // Sécurité fiabilité : un même N° de demande ne doit être compté qu'une fois (l'export « Externe » l'emporte)
+  var _seenP={}, _dedup=[], _nd=0;
+  PREV.forEach(function(r){ var k=r._num; if(!k){ _dedup.push(r); return; }
+    var i=_seenP[k]; if(i===undefined){ _seenP[k]=_dedup.length; _dedup.push(r); return; }
+    _nd++; if(r._kind==="Externe" && _dedup[i]._kind!=="Externe") _dedup[i]=r; });
+  PREV=_dedup; if(_nd) console.warn("PREV : "+_nd+" doublon(s) de N° retiré(s)");
   initPrevFilters();
 }
 
+
+// ── Recherche dans les listes déroulantes (prestataire, magasin, CMM…) ──
+// Ajoute un champ « 🔍 » devant la liste : on tape quelques lettres (accents/majuscules ignorés), la liste se réduit ;
+// Entrée sélectionne le 1er résultat. Effacer le champ restaure la liste complète.
+function _ssNorm(t){ return String(t||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase(); }
+function selSearch(id){
+  var sel=document.getElementById(id); if(!sel||sel._ss||!sel.parentNode) return; sel._ss=1;
+  var inp=document.createElement("input"); inp.type="search"; inp.className="fs"; inp.placeholder="🔍 Rechercher…"; inp.setAttribute("aria-label","Rechercher dans la liste");
+  inp.style.cssText="width:"+(id.indexOf("rap-")===0||id==="sc-prest"||id==="sm-mag"?"100%":"130px")+";box-sizing:border-box;margin-right:4px";
+  if(id.indexOf("rap-")===0||id==="sc-prest"||id==="sm-mag"){ inp.style.display="block"; inp.style.marginBottom="4px"; }
+  sel.parentNode.insertBefore(inp,sel);
+  var all=null, nF=0;
+  var fill=function(list,cur){ while(sel.options.length) sel.remove(0); list.forEach(function(o){ var op=document.createElement("option"); op.value=o.v; op.text=o.t; sel.add(op); }); if(cur!==undefined) sel.value=cur; };
+  inp.addEventListener("input",function(){
+    var q=_ssNorm(inp.value).trim();
+    if(!q){ if(all){ var c=sel.value; fill(all,c); all=null; } return; }
+    if(!all) all=Array.prototype.map.call(sel.options,function(o){return {v:o.value,t:o.text};});
+    var cur=sel.value, f=all.filter(function(o,i){ return i===0||_ssNorm(o.t).indexOf(q)>=0; });
+    fill(f,cur); nF=f.length;
+    if(f.length===1){ sel.options[0].text=all[0].t+" — aucun résultat"; }
+  });
+  inp.addEventListener("keydown",function(e){ if(e.key==="Enter"&&sel.options.length>1){ e.preventDefault(); sel.selectedIndex=1; sel.dispatchEvent(new Event("change",{bubbles:true})); } });
+  sel.addEventListener("change",function(){
+    if(all&&sel.options.length===nF){ var c=sel.value; fill(all,c); }   // liste non rechargée par ailleurs → on restaure
+    all=null; inp.value="";
+  });
+}
+(function(){ var ids=["ev-prest","sc-prest","sm-mag","sm-cmm","lg-prest","pv-prest","pv-mag","pv-cmm","al-prest","al-mag","al-cmm","rap-mag-select"];
+  var run=function(){ ids.forEach(selSearch); };
+  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",run); else run(); })();
 
 function initPrevFilters(){
   var regs   = [...new Set(PREV.map(function(r){return r._reg;}).filter(Boolean))].sort();
@@ -7674,7 +7764,7 @@ function initPrevFilters(){
   var mois   = [...new Set(PREV.map(function(r){return r._mo;}).filter(Boolean))].sort();
   pvFillSel('pv-reg',   regs,   function(v){return '📍 '+v.replace(/_/g,' ');});
   pvFillSel('pv-prest', prests, function(v){return v;});
-  pvFillSel('pv-mois',  mois,   function(v){return mL(v)+' 2026';});
+  pvFillSel('pv-mois',  mois,   function(v){return mL(v)+' '+String(v).slice(0,4);});
 }
 
 function pvFillSel(id, vals, label){
